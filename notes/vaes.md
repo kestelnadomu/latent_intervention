@@ -1,148 +1,155 @@
 # Variational Autoencoders for Text
 
-## Workflow
+## Architecture: Four-Phase Pipeline for Counterfactual Fairness
 
-- Four-phase pipeline aimed at **counterfactual fairness**
-- Essentially a LatPlan-flavored architecture applied to a downstream prediction task (predicting job counts from text about jobs, it seems):
-
-  - **Phase 0**: Pretrained VAE (encoder + decoder on text)
-  - **Phase 1**: Train a *semantic decoder* from the frozen latent → tabular metadata (analogous to LatPlan's "state decoder" that maps the latent to propositional facts)
-  - **Phase 2**: Train a *neural manipulator* that mimics the effect of a *symbolic manipulator* acting on metadata. Loss = discrepancy between (semantic_decoder(manipulated_z)) and (symbolic_manipulator(metadata)). This is the LatPlan-inspired core.
-  - **Phase 3**: Predictor operates on manipulated latents
-  - **Phase 4**: Counterfactual fairness via consistency between real and manipulated predictions
-
-- LatPlan analogy:
-  - Their State AutoEncoder learns a discrete latent, and action models learn to transition between latent states in a way consistent with symbolic PDDL operators. 
-  - Here: same thing, but for text, with continuous latents, and with fairness/debiasing as the downstream objective rather than planning.
+- **Phase 0** — Pretrained text VAE (encoder + decoder). The key design choice is producing a **single, fixed-dimensional continuous latent vector** per input (not token-level representations). This is non-trivial: standard models like BERT/Sentence-BERT don't have this structure, making their latents unsuitable for manipulation.
+- **Phase 1** — Semantic decoder: a small MLP from frozen latent z → tabular metadata. Acts as a consistency oracle and interpretability handle.
+- **Phase 2** — Neural manipulator: trained to mimic a *symbolic manipulator* acting on metadata. Loss = discrepancy between `semantic_decoder(manipulated_z)` and `symbolic_manipulator(metadata)`. This is the direct LatPlan analogue.
+- **Phase 3/4** — Predictor on manipulated latents, enforcing counterfactual fairness by requiring predictions to be consistent across real and counterfactual inputs.
 
 ---
 
-## Framework Recommendation
+## VAE Design Reasoning
 
-For the **text encoder/VAE part (Phase 0)**, my strong recommendation is:
+The core challenge is that text VAEs are harder to manipulate than image VAEs. Two critical failure modes from the literature:
 
-### **Optimus** — the best fit for your use case
+1. **Posterior collapse** — the encoder ignores the latent and the decoder learns to operate without it (KL term → 0). Requires careful KL annealing or free-bits techniques.
+2. **Latent holes** (Xu et al., 2020) — when you manipulate a latent vector, you can land in regions not covered by the aggregate posterior, causing the decoder to produce nonsense. This is a fundamental obstacle to Phase 2 working at all.
 
-Reasons it fits your specific needs:
+This is why model choice matters: the latent space must be structured enough that arithmetic/manipulation stays on the manifold. Optimus was the prior state-of-the-art for this, but **LangVAE** (2025) supersedes it via KV cache injection — the latent is linearly projected into the decoder's Key-Value cache, keeping base decoder weights frozen, reducing parameters by >95% while improving latent structure.
 
-1. **It is the text VAE with the most "LatPlan-like" properties.** It produces a single, fixed-dimensional continuous latent vector per input — unlike token-level models. This is exactly what you need for Phase 2, where the manipulator has to act on a bounded, well-defined representation.
+| | Optimus (2020) | LangVAE (2025) |
+|---|---|---|
+| Backbone | BERT + GPT-2 (fixed) | Any HF encoder + decoder (modular) |
+| Latent injection | All-layer embedding injection | KV cache injection; decoder frozen |
+| Param efficiency | Full fine-tuning | >95% reduction vs. Optimus |
+| Analysis tooling | Community notebooks | LangSpace: vector arithmetic, interpolation, disentanglement metrics (MIG, DCI, z-diff) |
+| Status | Unmaintained | EMNLP 2025, actively maintained |
 
-2. **The latent space is structured enough for arithmetic/manipulation.** Optimus was explicitly demonstrated to support latent-space interpolation, sentence transfer, and attribute manipulation (e.g., tense, sentiment). This is the *critical* property for your manipulator to be learnable — if moving in latent space doesn't correspond to meaningful semantic change, Phase 2 won't work. This is where plain token-level encoders (including raw BERT/Sentence-BERT) fail.
-
-3. **Pretrained checkpoints exist** (BERT encoder + GPT-2 decoder), so Phase 0 can genuinely be "pretrained" as your diagram suggests. You can then fine-tune on your domain corpus.
-
-4. **Your semantic decoder (Phase 1) becomes straightforward** — a small MLP from z → tabular metadata works well because z is a compact fixed vector.
-
-### Honest caveats about Optimus
-
-- The original codebase is from 2020 and is somewhat dated (older HuggingFace APIs). You may need to port it to modern `transformers`, or find a community reimplementation.
-- Posterior collapse is still a risk; budget some time for KL annealing / free-bits tuning.
-- If your texts are long (>512 tokens), you'll need chunking or a different backbone.
+**T5VQVAE** is an alternative with discrete latents — closer to LatPlan's original binary latent spirit, where the manipulator becomes a genuinely symbolic discrete operator rather than regression in continuous space.
 
 ---
 
-## Alternatives Ranked for Your Use Case
+## Alternatives Ranked
 
 | Option | Fit | Why |
 |---|---|---|
-| **Optimus** | ★★★★★ | Fixed-dim continuous latent + pretrained + demonstrated manipulability |
-| **DELLA / LD4LG (latent diffusion for text)** | ★★★★ | Good latent structure, but adds complexity; the diffusion in latent space may actually *help* your manipulator, since training a diffusion-like manipulator has precedent |
-| **Sentence-T5 or Sentence-BERT + learned decoder** | ★★★ | Pragmatic: use a frozen sentence encoder, train only a decoder to make it VAE-like. Less principled but much simpler. The latent isn't KL-regularized though, which may hurt manipulability |
-| **β-VAE on transformer backbone** | ★★★ | Disentanglement helps the manipulator, but harder to train |
-| **VQ-VAE for text** | ★★★ | Discrete codes are *very* LatPlan-like (LatPlan uses binary latents), but the manipulator becomes a discrete operator — different problem formulation. Worth considering if you want to stay closer to LatPlan's spirit |
-| **Token-level BERT / plain RNN-VAE (Bowman)** | ★★ | Token-level latents are too high-dimensional and unstructured for your manipulator; Bowman is too weak for real text |
+| **LangVAE** | ★★★★★ | Fixed-dim continuous latent + modular + demonstrated manipulability + LangSpace tooling |
+| **T5VQVAE** | ★★★★ | Discrete latents; more LatPlan-aligned; outperforms Optimus on controllability |
+| **DELLA / LD4LG** | ★★★★ | Good latent structure, but adds diffusion complexity |
+| **Sentence-T5 or Sentence-BERT + learned decoder** | ★★★ | Pragmatic but latent isn't KL-regularized; may hurt manipulability |
+| **β-VAE on transformer backbone** | ★★★ | Disentanglement helps manipulator; harder to train |
+| **Optimus** | ★★★ | Superseded by LangVAE; dated codebase |
+| **Token-level BERT / plain RNN-VAE (Bowman)** | ★★ | Token-level latents too high-dimensional and unstructured |
 
 ---
 
-## A Suggestion You Might Consider
+## Literature Review
 
-Given how close your architecture is to LatPlan, a **VQ-VAE-based text encoder** is worth serious consideration as a parallel track. LatPlan's whole trick is that *binary* latents let the symbolic and neural worlds meet cleanly — the manipulator becomes a genuinely symbolic operator over discrete bits, not a regression in continuous space. If interpretability and the neurosymbolic bridge matter more than generation quality, VQ-VAE (or even a **Binary AutoEncoder** like LatPlan's own SAE, but adapted to text) aligns more tightly with the original LatPlan thesis.
+### LatPlan Lineage
 
-Optimus gives you better text modeling; a binary/VQ encoder gives you a tighter neurosymbolic story. Which matters more depends on whether Phase 2's "symbolic manipulator" is actually symbolic (PDDL-style rules) or just "tabular metadata edits" (which is what your diagram literally shows, and which Optimus handles fine).
+- **Asai & Fukunaga (2018/2022)** — original LatPlan; SAE learns propositional states, AMA learns symbolic action models. Your manipulator is an AMA analogue for text. JAIR version explicitly notes the architecture doesn't assume images and could apply to text.
+- **Takata & Fukunaga (2023)** — latent plans can be "invalid" w.r.t. the ground-truth domain; your semantic decoder loss is the direct fix for this failure mode.
+- **Asai (2019)** — extension to first-order logic; relevant if metadata has relational structure.
 
----
+### Counterfactual Fairness
 
-Would you like me to sketch out a concrete implementation plan for Phase 0 → Phase 2 with Optimus, or go deeper on the VQ-VAE / binary-latent alternative?
+- **Kusner et al. (2017)** — foundational definition: a decision is fair if it matches the counterfactual world with the sensitive attribute flipped.
+- **Ma et al., CLAIRE (2023)** — structurally nearest to your full pipeline: maps observed variables to latent space and enforces counterfactual fairness as a constraint on embeddings.
+- **Joo et al. (2024)** — module on frozen pretrained generator that constructs a fair latent space via disentanglement; remarkably close to Phase 0+2 structure.
+- **Chiappa (2019)** — path-specific counterfactual fairness; relevant if the manipulator should only neutralize certain causal pathways.
+- **Grari et al., GCFN (2023)** — critical caveat: argues VAE-based approaches can still be correlated with sensitive attributes; VAEs have "weak capability in constructing latent representations."
 
+### Causal Representation Learning
 
+The theoretical foundation underlying both the HSIC argument and the manipulator's non-identifiability concerns. If Phase 2 is framed as "learning to perform a causal intervention in latent space," this is the literature that tells you when that is even possible.
 
-Let me search for recent work in this specific direction — neurosymbolic manipulation of latent representations with auxiliary metadata decoders, especially for fairness.Good, I have solid grounding on LatPlan follow-ups. Now let me search for the counterfactual fairness angle, which is equally central to your workflow.Excellent finds. Let me do one more search for the specific "steering" / latent editing direction, which is the closest technical cousin to your manipulator.I have enough grounded material to give you a comprehensive, well-sourced answer. Let me organize this around the four distinct research threads that your workflow touches.
+- **Schölkopf et al. (2021)** — *Towards Causal Representation Learning*. The field-defining survey; connects disentanglement, ICA, and causality, and argues that robust/transferable representations require causal structure rather than purely statistical dependencies. Frames the problem your manipulator is solving.
+- **Locatello et al. (2019, ICML best paper)** — *Challenging Common Assumptions in the Unsupervised Learning of Disentangled Representations*. **The impossibility result.** Proves that unsupervised disentanglement is fundamentally impossible without inductive biases on both models and data. Every disentangled representation can be transformed into an entangled one with the same marginal distribution. This is why your manipulator needs the supervision signal from the semantic decoder — without it, there is no ground truth about what "the right direction" in latent space is.
+- **Hyvärinen & Morioka (2016, 2017)** — nonlinear ICA using temporal structure / time-contrastive learning. First positive identifiability results for nonlinear ICA, showing auxiliary information breaks the impossibility.
+- **Hyvärinen, Sasaki & Turner (2019)** — *Nonlinear ICA Using Auxiliary Variables*. Generalizes the above: if you have an auxiliary variable u (e.g., metadata, environment label) that the latent factors depend on, identifiability can be recovered. **Your metadata is exactly such an auxiliary variable** — this paper is the theoretical justification for why Phase 1's semantic decoder is more than just a consistency check.
+- **Khemakhem et al., iVAE (2020)** — *Variational Autoencoders and Nonlinear ICA: A Unifying Framework*. Practical iVAE construction: conditioning the prior on auxiliary variables makes the VAE identifiable up to a simple transformation. Directly applicable to your pipeline — the metadata can serve as the iVAE auxiliary input.
+- **von Kügelgen et al. (2021, NeurIPS)** — *Self-Supervised Learning with Data Augmentations Provably Isolates Content from Style*. Shows that paired views (original + augmentation) identify content variables while leaving style unconstrained. The "counterfactual pairs" framing closest to how your manipulator training data is structured: (x, x_counterfactual) tied via metadata edits.
+- **Locatello et al. (2020)** — *Weakly-Supervised Disentanglement Without Compromises*. Shows paired samples sharing some factors is sufficient for disentanglement — a practical middle ground between fully supervised and unsupervised. Your metadata-paired training regime falls into this category.
+- **Brehmer et al. (2022, NeurIPS)** — *Weakly Supervised Causal Representation Learning*. Identifies causal variables from paired pre-/post-intervention observations. **This is structurally identical to Phase 2**: the symbolic manipulator is the intervention, the original and manipulated latents are the pre/post pair.
+- **Ahuja et al. (2022, 2023)** — *Interventional Causal Representation Learning* / *Weakly Supervised Representation Learning with Sparse Perturbations*. Formalizes identifiability under sparse interventions; quantifies how many intervention types are needed to identify the latent causal structure. Relevant for deciding how many distinct metadata edits you need in training.
+- **Lippe et al., CITRIS (2022) / BISCUIT (2023)** — temporal causal representation learning with known/weakly-known interventions. Useful if your metadata edits have a compositional structure over time.
+- **Wang & Jordan (2021)** — *Desiderata for Representation Learning: A Causal Perspective*. Argues that good representations should support counterfactual reasoning, which requires structural assumptions beyond statistical independence. Philosophical grounding for the whole project.
 
+**Why this matters for Phase 2:** The manipulator's training signal — paired (original latent, manipulated latent) tied to a symbolic metadata edit — is precisely the weakly supervised CRL setting. Reading Brehmer et al. (2022) and von Kügelgen et al. (2021) gives you the vocabulary and identifiability results to defend the manipulator-based approach against the "no identifiability guarantee" objection. The honest position: you get identifiability *conditional on* the symbolic manipulator being a true intervention on a real latent factor, not free identifiability the way HSIC claims.
 
-## 1. The LatPlan Lineage (closest conceptual ancestor)
+### Text VAE Manipulation
 
-These are the papers most directly in the spirit of your architecture — learning a latent space and a *manipulator* (action model) that acts on it in a way consistent with symbolic semantics.
+- **Xu et al. (2020)** — identifies the latent hole problem; proposes constraining posterior mean to a probability simplex. Must-read before Phase 2.
+- **Hu et al. (2017)** — VAE + attribute discriminators for controlled text generation; semantic decoder plays an analogous disentangling role.
+- **Liu et al., LatentOps (2022)** — ODE-based composable operators in GPT-2 latent space; their "plug-in operators" are conceptually identical to the neurosymbolic manipulator.
+- **Li et al., Optimus (2020)** — prior backbone candidate; superseded by LangVAE.
+- **Vaeth et al., RegDiff (2025)** — diffusion in VAE latent space for controllable style manipulation.
+- **Anonymous (ICLR)** — unsupervised discovery of interpretable latent directions in language VAEs; useful baseline your manipulator should outperform.
 
-- **Asai & Fukunaga (2018/2022)** — *Classical Planning in Deep Latent Space* The original LatPlan paper; proposes the State AutoEncoder (SAE) which finds a propositional state representation using a VAE, and the Action Autoencoder/Discriminator which jointly finds action symbols and implicit action models. Your "Neurosymbolic Manipulator" is essentially an AMA analogue.
+### Manchester/Freitas Group (LangVAE lineage)
 
-- **Asai et al. (2022)** — *Classical Planning in Deep Latent Space* (JAIR version, the one you cited). Contains the extended discussion of symbol stability and improvements to make the AMA more robust. Importantly, this paper explicitly notes: "While we present an image-based implementation (data = raw images), the architecture itself does not make such assumptions and could be applied to other types of data such as audio/text" — a direct endorsement of your plan to port it to text.
+- **Mercatali & Freitas (2021)** — discrete VAEs for text with explicit generative factors; starting point of the group.
+- **Carvalho et al. (2023, EACL)** — disentangled representations for NL definitions using syntactic/semantic regularities.
+- **Zhang et al., LlaMaVAE (2023)** — beats Optimus on LM, STS, and definition modeling; increased semantic clustering and geometric consistency.
+- **Zhang et al., T5VQVAE (2024, EACL)** — discrete/VQ variant; outperforms Optimus on controllability. The LatPlan-aligned option.
+- **Zhang et al. (2024, NAACL)** — graph-induced syntactic injection into transformer VAEs; useful if metadata is relational.
+- **Carvalho et al. (2025, EMNLP)** — LangVAE paper itself.
+- **Zhang/Carvalho/Freitas (survey)** — compares VAE, VQ-VAE, Sparse AE through lens of compositional semantics; theoretical framing directly aligned with this project's motivation. Read early.
 
-- **Takata & Fukunaga (2023)** — *Plausibility-Based Heuristics for Latent Space Classical Planning*. Addresses a critical weakness relevant to you: latent plans produced by LatPlan can be "invalid with respect to the underlying, ground-truth domain" — i.e., the latent manipulation may not correspond to a semantically valid change. This is exactly the failure mode your "semantic decoder loss" tries to guard against.
+### Semantic Decoders / Property Predictors
 
-- **Asai (2019)** — *Unsupervised Grounding of Plannable First-Order Logic Representation from Images*. Extension to first-order logic — relevant if your metadata has relational structure (e.g., dependencies between attributes).
-
----
-
-## 2. Counterfactual Fairness via Latent Manipulation (closest to your Phase 4)
-
-This is where your architecture's *purpose* lives, and there's a very active literature here.
-
-- **Kusner et al. (2017)** — *Counterfactual Fairness* (the foundational paper). Introduces the framework: a decision is fair if it coincides with the one that would have been taken in a counterfactual world where the sensitive attribute were different. Your Phase 4 is a direct operationalization of this.
-
-- **Ma et al. (2023)** — *CLAIRE: Learning for Counterfactual Fairness from Observational Data*. Generates counterfactuals for each individual with different sensitive attribute values, learning fair representations by minimizing the difference between predictions made on original data and on its counterfactuals. It maps observed variables to a latent representation space and uses a counterfactual fairness constraint on the embeddings. This is **structurally nearly identical to your Phase 4**.
-
-- **Grari et al. (2023) / GCFN** — *Counterfactual Fairness for Predictions using GANs*. Critiques VAE-based approaches: "the learned representation can be potentially correlated with the sensitive attributes, which thus leads to bias, and VAEs have weak capability in constructing latent representations". Important caveat worth knowing about before you commit.
-
-- **Chiappa (2019)** — *Path-Specific Counterfactual Fairness*. Generalizes abduction-action-prediction for counterfactual reasoning, allowing some paths from the sensitive attribute to remain active. Useful if your manipulator should only neutralize *some* causal pathways (your diagram note "Manipulator might remove a dependency" hints at this).
-
-- **Joo et al. (2024)** — *Constructing Fair Latent Space for Intersection of Fairness and Explainability*. Proposes a module that constructs a fair latent space by disentangling and redistributing labels and sensitive attributes, attaching to a pretrained generative model to transform its biased latent space into a fair one. Counterfactual explanations are generated by adjusting values along label/sensitive-attribute dimensions. **This is remarkably close to your workflow** — frozen pretrained encoder, lightweight module on top, counterfactual manipulation in latent space.
-
-- **Ramaswamy et al. (2021)** — *Fair Attribute Classification through Latent Space De-biasing*. Proposes perturbing vectors in GAN latent space to de-correlate target and protected attributes. GAN-based analogue.
-
----
-
-## 3. Latent Manipulation in Text VAEs (the technical foundation for your Phase 0–2)
-
-These papers address the specific challenges of making latent manipulation *work* for text — which, as I noted earlier, is much harder than for images.
-
-- **Hu et al. (2017)** — *Toward Controlled Generation of Text*. Combines VAEs and attribute discriminators, where the VAE trains the generator to reconstruct sentences while discriminators enforce attribute-coherent output. Learns disentangled representations with "designated semantic structure" for generating sentences with dynamically specified attributes. Your semantic decoder plays a similar disentangling role, although with regression rather than classification.
-
-- **Xu et al. (2020)** — *On Variational Learning of Controllable Representations for Text without Supervision*. A critical paper you should read early: "sequence VAEs trained on text fail to properly decode when the latent codes are manipulated, because the modified codes often land in holes or vacant regions in the aggregated posterior latent space". Proposes constraining the posterior mean to a learned probability simplex to enable manipulation. **This is a foundational problem your manipulator will hit.**
-
-- **Li et al. (2020)** — *Optimus: Organizing Sentences via Pre-trained Modeling of a Latent Space*. The one I recommended earlier. "The FIRST VAE with big pre-trained models (BERT and GPT-2)"; downstream tasks include controlled text generation.
-
-- **Liu et al. (2022)** — *Composable Text Control Operations in Latent Space with ODEs (LatentOps)*. Uses the latent space of an adapted GPT-2 for composable text manipulation: "The low-dimensionality and differentiability of the text latent vector allow us to develop an efficient sampler based on ODEs given arbitrary plug-in operators". **A very strong candidate framework** for your manipulator — their "plug-in operators" are conceptually identical to your neurosymbolic manipulator.
-
-- **Vaeth et al. (2025) — RegDiff** — *Controllable Stylistic Text Generation with Train-Time Attribute-Regularized Diffusion*. Integrates diffusion into the latent space of a VAE for interpretable and controllable style manipulation. Recent (2025) and relevant if you want latent-diffusion-based manipulation.
-
-- **Anonymous (ICLR submission)** — *Unsupervised Discovery of Interpretable Latent Manipulations in Language VAEs*. Makes the key observation relevant to your Phase 2: "State-of-the-art NLG models like BART/T5/GPT-3 do not have latent spaces, therefore there is no natural way to perform controlled generation. In contrast, less popular models with explicit latent spaces have the innate ability to manipulate text attributes by moving along latent directions". Finds that PCA on VAE representations discovers meaningful directions like sentence length, subject age, and verb tense. Useful baseline — your learned manipulator should outperform simple linear directions.
+- **Louizos et al., CEVAE (2017)** — VAE with auxiliary predictors for causal inference; structural precursor to Phase 1.
+- **Tu et al., PCAE (2022)** — plug-in conditional AE framework; analogous Phase 1 setup with a broadcasting net for injecting control signals.
 
 ---
 
-## 4. Semantic Decoders / Property Predictors from Latents (your Phase 1)
+## Manipulator (Phase 2) vs. HSIC
 
-- **Louizos et al. (2017)** — *Causal Effect Inference with Deep Latent-Variable Models (CEVAE)*. Predecessor to many of the fairness VAEs above; uses a VAE with auxiliary predictors for causal inference. Your semantic decoder is structurally similar.
+### Case FOR Phase 2 Manipulator
 
-- **PCAE (Tu et al., 2022)** — *A Framework of Plug-in Conditional Auto-Encoder for Controllable Text Generation*. "Invents Broadcasting Net to repeatedly add control signals into latent space to create a concentrate and manipulable latent space in VAE. Experienced on both RNN and BART VAE models". Framework for plugging auxiliary heads into a pretrained VAE, similar to your Phase 1 setup.
+**Encoder reuse and compositionality.** HSIC bakes a specific notion of bias into the encoder at training time. If you later discover a new sensitive attribute, you retrain from scratch. A single general-purpose VAE paired with many lightweight manipulators lets you add new interventions cheaply. Compositionality also holds: you can chain manipulators (remove gender bias, then age bias), whereas HSIC encoders trained to enforce independence from multiple attributes simultaneously degrade reconstruction quality quickly as the number of attributes grows.
 
----
+**Interpretability and verifiability.** The HSIC-debiased encoder is a black box — you can't point at any dimension and say "this encodes attribute A." A linear Phase 2 manipulator is a literal concept vector: inspectable, steerable, visualizable. The semantic decoder provides a second interpretability handle — you can verify the manipulator moved the gender field while leaving other metadata unchanged. This maps directly onto LatPlan's strength: the latent is inspectable as propositions, actions are inspectable as STRIPS operators.
 
-## A Word of Warning from the Literature
+**Counterfactual explanations.** HSIC produces a fair predictor but no explanations — there is no operation "show me what this input would look like if the sensitive attribute were flipped." The manipulator produces this for free. Joo et al. (2024) argue this is the primary justification for their module-on-frozen-generator design: fair *prediction* and counterfactual *explanation* are distinct goals, and only the manipulator approach delivers both.
 
-There's one important caveat worth surfacing. Non-linear ICA results show that VAE latent variables are non-identifiable, meaning that VAE-based methods can estimate the latent variable but it is not guaranteed to be correctly identified, and non-identifiability of latent variables implies non-identifiability of counterfactual queries. In plain terms: your Phase 2 manipulator may learn to change *something* in latent space that decodes to the right metadata change, but it's not guaranteed to be the *causally correct* change. GCFN (Grari et al.) raises exactly this point. Your architecture partially sidesteps it by using the semantic decoder as a consistency check, but it's worth being explicit about.
+**Testability of the neurosymbolic bridge.** With HSIC, you trust the penalty worked; failure manifests only downstream when the predictor is still unfair. Phase 1+2 has a built-in check: if the semantic decoder loss stays high, the manipulator is not working, and you know before running the predictor.
+
+**Weaker assumptions.** Theorem 1 (identifiability result) requires condition A1: sufficient variability of S over the latent space. These conditions are non-trivial and generally unverifiable in the wild. The manipulator-based approach shifts the burden to a weaker, empirically testable assumption: that there exists a smooth mapping in latent space corresponding to the metadata edit, visible directly from semantic decoder loss convergence.
+
+### Case AGAINST (Where HSIC is Stronger)
+
+**No identifiability guarantee.** Theorem 1 gives a formal guarantee that the HSIC-debiased subspace is an invertible transformation of the true bias-free latent. A learned manipulator has no such guarantee — non-linear ICA results show VAE latents are generically non-identifiable, and non-identifiability of latents implies non-identifiability of counterfactual queries. The manipulator might produce metadata-consistent decoded output while changing the latent in a direction that isn't the "true" counterfactual, leaving residual bias in correlated latent dimensions the predictor still exploits.
+
+**Counterfactual leakage.** If the bias-free and spurious latents are correlated in training data (which they almost always are), a manipulator that only edits the "gender-decodable" part of the latent leaves the correlation channels intact. The decoder reconstructs text that still carries gender signals through unmanipulated but correlated dimensions. HSIC severs these correlations structurally; Phase 2 manipulation doesn't, unless you explicitly penalize them — at which point you're reinventing HSIC with extra steps.
+
+**Brittle out-of-distribution latents.** Combined with the latent hole problem (Xu et al., 2020), a manipulator trained on observed pairs may push latents into unpopulated regions, producing decoded text that is nonsense or implausible as a counterfactual.
+
+### Synthesis
+
+| Priority | Approach |
+|---|---|
+| Formal guarantee; single known bias; encoder retraining OK | HSIC |
+| Encoder reuse; interpretability; counterfactual explanations; LatPlan story | Phase 2 manipulator |
+| Maximum robustness | Hybrid: HSIC at Phase 0 for known bias axes + Phase 2 for post-hoc interventions |
+
+**Recommended framing:** *"HSIC-based identifiability requires bias-specific encoder training. We instead propose a modular approach where a general-purpose encoder is paired with learned symbolic-consistency-constrained manipulators, trading identifiability guarantees for compositionality, interpretability, and encoder reuse — following the LatPlan architectural paradigm."*
+
+The HSIC approach, as an established technique, represents an engineering contribution when applied to text. The LatPlan-style manipulator — where the semantic decoder acts as a neurosymbolic bridge enforcing consistency between latent edits and symbolic metadata operations — is the genuinely novel contribution.
 
 ---
 
 ## Suggested Reading Order
 
-If I had to prioritize, I'd read in this order:
-
-1. **Asai et al. (2022) JAIR version** — your north star
-2. **Kusner et al. (2017)** — to ground the fairness framing
-3. **Ma et al. (2023, CLAIRE)** — because it's structurally the closest to your full pipeline
-4. **Xu et al. (2020)** — to understand the latent vacancy problem before you hit it
-5. **Li et al. (2020, Optimus)** — as the text VAE backbone candidate
-6. **Liu et al. (2022, LatentOps)** — for the manipulator framework
-7. **Joo et al. (2024)** — the "construct a fair latent space" paper most aligned with your phase structure
-
-Want me to dig deeper into any one of these, or help you map specific design decisions (e.g., discrete vs. continuous latents, choice of manipulator architecture) against what these papers found?
+1. **Asai et al. (2022) JAIR** — north star for the neurosymbolic framing
+2. **Kusner et al. (2017)** — ground the fairness framing
+3. **Locatello et al. (2019)** — the impossibility result; explains why supervision is needed
+4. **Khemakhem et al. (2020, iVAE)** — how auxiliary variables (metadata) restore identifiability
+5. **Brehmer et al. (2022)** — weakly supervised CRL from paired interventions; theoretical backbone for Phase 2
+6. **Ma et al. (2023, CLAIRE)** — structurally closest to the full pipeline
+7. **Xu et al. (2020)** — understand the latent vacancy problem before hitting it
+8. **Zhang/Carvalho/Freitas survey** — theoretical framing for why structured latents work
+9. **Liu et al. (2022, LatentOps)** — manipulator framework
+10. **Joo et al. (2024)** — fair latent space paper most aligned with the phase structure
+11. **Carvalho et al. (2025, LangVAE)** — the backbone

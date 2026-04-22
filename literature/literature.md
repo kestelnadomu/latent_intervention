@@ -79,5 +79,3 @@ If I had to prioritize, I'd read in this order:
 5. **Li et al. (2020, Optimus)** — as the text VAE backbone candidate
 6. **Liu et al. (2022, LatentOps)** — for the manipulator framework
 7. **Joo et al. (2024)** — the "construct a fair latent space" paper most aligned with your phase structure
-
-Want me to dig deeper into any one of these, or help you map specific design decisions (e.g., discrete vs. continuous latents, choice of manipulator architecture) against what these papers found?
