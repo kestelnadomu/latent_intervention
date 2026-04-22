@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="">
+<meta name="author" content="Philipp Boustani">
+<meta name="author" content="Christoph Kern">
+
+<title>Neurosymbolic Interventions on Text Latent Representations for Counterfactual Fairness</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="paper_outline_files/libs/clipboard/clipboard.min.js"></script>
+<script src="paper_outline_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="paper_outline_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="paper_outline_files/libs/quarto-html/popper.min.js"></script>
+<script src="paper_outline_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="paper_outline_files/libs/quarto-html/anchor.min.js"></script>
+<link href="paper_outline_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="paper_outline_files/libs/quarto-html/quarto-syntax-highlighting-845c23b38eaddc0f92fda52bfe77a8c8.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="paper_outline_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="paper_outline_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="paper_outline_files/libs/bootstrap/bootstrap-138a6193a3bd40baf1e627da441a4734.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#abstract" id="toc-abstract" class="nav-link active" data-scroll-target="#abstract">Abstract</a></li>
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction">Introduction</a>
+  <ul class="collapse">
+  <li><a href="#motivation" id="toc-motivation" class="nav-link" data-scroll-target="#motivation">Motivation</a></li>
+  <li><a href="#the-latplan-analogy" id="toc-the-latplan-analogy" class="nav-link" data-scroll-target="#the-latplan-analogy">The LatPlan analogy</a></li>
+  <li><a href="#contributions" id="toc-contributions" class="nav-link" data-scroll-target="#contributions">Contributions</a></li>
+  </ul></li>
+  <li><a href="#background-and-related-work" id="toc-background-and-related-work" class="nav-link" data-scroll-target="#background-and-related-work">Background and Related Work</a>
+  <ul class="collapse">
+  <li><a href="#text-variational-autoencoders" id="toc-text-variational-autoencoders" class="nav-link" data-scroll-target="#text-variational-autoencoders">Text Variational Autoencoders</a></li>
+  <li><a href="#neurosymbolic-latent-space-reasoning" id="toc-neurosymbolic-latent-space-reasoning" class="nav-link" data-scroll-target="#neurosymbolic-latent-space-reasoning">Neurosymbolic Latent-space Reasoning</a></li>
+  <li><a href="#counterfactual-fairness" id="toc-counterfactual-fairness" class="nav-link" data-scroll-target="#counterfactual-fairness">Counterfactual Fairness</a></li>
+  <li><a href="#controllable-and-manipulable-text-generation" id="toc-controllable-and-manipulable-text-generation" class="nav-link" data-scroll-target="#controllable-and-manipulable-text-generation">Controllable and Manipulable Text Generation</a></li>
+  <li><a href="#reward-model-debiasing-via-causal-representation-learning" id="toc-reward-model-debiasing-via-causal-representation-learning" class="nav-link" data-scroll-target="#reward-model-debiasing-via-causal-representation-learning">Reward Model Debiasing via Causal Representation Learning</a></li>
+  </ul></li>
+  <li><a href="#problem-formulation" id="toc-problem-formulation" class="nav-link" data-scroll-target="#problem-formulation">Problem Formulation</a>
+  <ul class="collapse">
+  <li><a href="#setting" id="toc-setting" class="nav-link" data-scroll-target="#setting">Setting</a></li>
+  <li><a href="#the-identifiability-vs.-modularity-trade-off" id="toc-the-identifiability-vs.-modularity-trade-off" class="nav-link" data-scroll-target="#the-identifiability-vs.-modularity-trade-off">The identifiability vs.&nbsp;modularity trade-off</a></li>
+  <li><a href="#architectural-desiderata" id="toc-architectural-desiderata" class="nav-link" data-scroll-target="#architectural-desiderata">Architectural desiderata</a></li>
+  </ul></li>
+  <li><a href="#proposed-architecture" id="toc-proposed-architecture" class="nav-link" data-scroll-target="#proposed-architecture">Proposed Architecture</a>
+  <ul class="collapse">
+  <li><a href="#overview-of-the-four-phase-pipeline" id="toc-overview-of-the-four-phase-pipeline" class="nav-link" data-scroll-target="#overview-of-the-four-phase-pipeline">Overview of the four-phase pipeline</a></li>
+  <li><a href="#phase-0-text-vae-backbone" id="toc-phase-0-text-vae-backbone" class="nav-link" data-scroll-target="#phase-0-text-vae-backbone">Phase 0: Text VAE backbone</a></li>
+  <li><a href="#phase-1-semantic-decoder" id="toc-phase-1-semantic-decoder" class="nav-link" data-scroll-target="#phase-1-semantic-decoder">Phase 1: Semantic decoder</a></li>
+  <li><a href="#phase-2-neurosymbolic-manipulator" id="toc-phase-2-neurosymbolic-manipulator" class="nav-link" data-scroll-target="#phase-2-neurosymbolic-manipulator">Phase 2: Neurosymbolic manipulator</a></li>
+  <li><a href="#phase-3-predictor" id="toc-phase-3-predictor" class="nav-link" data-scroll-target="#phase-3-predictor">Phase 3: Predictor</a></li>
+  <li><a href="#phase-4-counterfactual-fairness-mitigation" id="toc-phase-4-counterfactual-fairness-mitigation" class="nav-link" data-scroll-target="#phase-4-counterfactual-fairness-mitigation">Phase 4: Counterfactual fairness mitigation</a></li>
+  </ul></li>
+  <li><a href="#theoretical-considerations" id="toc-theoretical-considerations" class="nav-link" data-scroll-target="#theoretical-considerations">Theoretical Considerations</a>
+  <ul class="collapse">
+  <li><a href="#what-the-manipulator-approach-gives-up-vs.-hsic" id="toc-what-the-manipulator-approach-gives-up-vs.-hsic" class="nav-link" data-scroll-target="#what-the-manipulator-approach-gives-up-vs.-hsic">What the manipulator approach gives up vs.&nbsp;HSIC</a></li>
+  <li><a href="#what-the-manipulator-approach-adds" id="toc-what-the-manipulator-approach-adds" class="nav-link" data-scroll-target="#what-the-manipulator-approach-adds">What the manipulator approach adds</a></li>
+  <li><a href="#optional-partial-identifiability-analysis-for-the-manipulator" id="toc-optional-partial-identifiability-analysis-for-the-manipulator" class="nav-link" data-scroll-target="#optional-partial-identifiability-analysis-for-the-manipulator">Optional: partial identifiability analysis for the manipulator</a></li>
+  </ul></li>
+  <li><a href="#experimental-setup" id="toc-experimental-setup" class="nav-link" data-scroll-target="#experimental-setup">Experimental Setup</a>
+  <ul class="collapse">
+  <li><a href="#datasets" id="toc-datasets" class="nav-link" data-scroll-target="#datasets">Datasets</a></li>
+  <li><a href="#baselines" id="toc-baselines" class="nav-link" data-scroll-target="#baselines">Baselines</a></li>
+  <li><a href="#evaluation-metrics" id="toc-evaluation-metrics" class="nav-link" data-scroll-target="#evaluation-metrics">Evaluation metrics</a></li>
+  <li><a href="#ablations" id="toc-ablations" class="nav-link" data-scroll-target="#ablations">Ablations</a></li>
+  </ul></li>
+  <li><a href="#results" id="toc-results" class="nav-link" data-scroll-target="#results">Results</a>
+  <ul class="collapse">
+  <li><a href="#main-results" id="toc-main-results" class="nav-link" data-scroll-target="#main-results">Main results</a></li>
+  <li><a href="#modularity-demonstration" id="toc-modularity-demonstration" class="nav-link" data-scroll-target="#modularity-demonstration">Modularity demonstration</a></li>
+  <li><a href="#interpretability-analysis" id="toc-interpretability-analysis" class="nav-link" data-scroll-target="#interpretability-analysis">Interpretability analysis</a></li>
+  <li><a href="#counterfactual-explanation-case-studies" id="toc-counterfactual-explanation-case-studies" class="nav-link" data-scroll-target="#counterfactual-explanation-case-studies">Counterfactual explanation case studies</a></li>
+  <li><a href="#robustness-and-failure-modes" id="toc-robustness-and-failure-modes" class="nav-link" data-scroll-target="#robustness-and-failure-modes">Robustness and failure modes</a></li>
+  </ul></li>
+  <li><a href="#discussion" id="toc-discussion" class="nav-link" data-scroll-target="#discussion">Discussion</a>
+  <ul class="collapse">
+  <li><a href="#when-to-use-hsic-vs.-manipulator" id="toc-when-to-use-hsic-vs.-manipulator" class="nav-link" data-scroll-target="#when-to-use-hsic-vs.-manipulator">When to use HSIC vs.&nbsp;manipulator</a></li>
+  <li><a href="#connection-to-broader-neurosymbolic-ai" id="toc-connection-to-broader-neurosymbolic-ai" class="nav-link" data-scroll-target="#connection-to-broader-neurosymbolic-ai">Connection to broader neurosymbolic AI</a></li>
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations">Limitations</a></li>
+  </ul></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion">Conclusion</a></li>
+  <li><a href="#appendix" id="toc-appendix" class="nav-link" data-scroll-target="#appendix">Appendix</a>
+  <ul class="collapse">
+  <li><a href="#a.-implementation-details" id="toc-a.-implementation-details" class="nav-link" data-scroll-target="#a.-implementation-details">A. Implementation details</a></li>
+  <li><a href="#b.-additional-experiments" id="toc-b.-additional-experiments" class="nav-link" data-scroll-target="#b.-additional-experiments">B. Additional experiments</a></li>
+  <li><a href="#c.-reproducibility" id="toc-c.-reproducibility" class="nav-link" data-scroll-target="#c.-reproducibility">C. Reproducibility</a></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="../paper_outline.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Neurosymbolic Interventions on Text Latent Representations for Counterfactual Fairness</h1>
+</div>
+
+
+<div class="quarto-title-meta-author">
+  <div class="quarto-title-meta-heading">Authors</div>
+  <div class="quarto-title-meta-heading">Affiliations</div>
+  
+    <div class="quarto-title-meta-contents">
+    <p class="author">Leonhard Kestel </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Ludwig-Maximilians-Universität München (LMU)
+          </p>
+        <p class="affiliation">
+            Munich Center for Machine Learning (MCML)
+          </p>
+      </div>
+    <div class="quarto-title-meta-contents">
+    <p class="author">Philipp Boustani </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Ludwig-Maximilians-Universität München (LMU)
+          </p>
+        <p class="affiliation">
+            Munich Center for Machine Learning (MCML)
+          </p>
+      </div>
+    <div class="quarto-title-meta-contents">
+    <p class="author">Christoph Kern </p>
+  </div>
+  <div class="quarto-title-meta-contents">
+        <p class="affiliation">
+            Ludwig-Maximilians-Universität München (LMU)
+          </p>
+        <p class="affiliation">
+            Munich Center for Machine Learning (MCML)
+          </p>
+      </div>
+  </div>
+
+<div class="quarto-title-meta">
+
+      
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="abstract" class="level1">
+<h1>Abstract</h1>
+<ul>
+<li>Problem: reward models and predictors on text exploit spurious correlations tied to sensitive attributes</li>
+<li>Gap: existing debiasing approaches either (a) bake bias-specific constraints into the encoder (HSIC-based, <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>) or (b) require full retraining per new attribute</li>
+<li>Proposal: a LatPlan-inspired <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span> modular neurosymbolic architecture for text where a frozen, general-purpose text VAE is paired with learned manipulators that mimic symbolic operators on tabular metadata</li>
+<li>Contribution: four-phase pipeline (encoder → semantic decoder → neurosymbolic manipulator → counterfactual fairness mitigation) with interpretability, encoder reuse, and counterfactual explanation as first-class properties</li>
+<li>Results preview: [empirical claims TBD]</li>
+</ul>
+</section>
+<section id="introduction" class="level1">
+<h1>Introduction</h1>
+<section id="motivation" class="level2">
+<h2 class="anchored" data-anchor-id="motivation">Motivation</h2>
+<ul>
+<li>Fairness in text-based prediction systems (hiring, content moderation, reward modeling) requires mitigating sensitive-attribute influence</li>
+<li>Counterfactual fairness <span class="citation" data-cites="kusner2017counterfactual">(<a href="#ref-kusner2017counterfactual" role="doc-biblioref"><strong>kusner2017counterfactual?</strong></a>)</span> as the target criterion: predictions should be stable under interventions on sensitive attributes</li>
+<li>Standard approaches either require invasive encoder training or lack interpretability</li>
+</ul>
+</section>
+<section id="the-latplan-analogy" class="level2">
+<h2 class="anchored" data-anchor-id="the-latplan-analogy">The LatPlan analogy</h2>
+<ul>
+<li>LatPlan <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span> learns discrete latent states and symbolic action operators from images</li>
+<li>Our work ports this neurosymbolic architecture to text, replacing planning with counterfactual fairness as the downstream objective</li>
+<li>Key adaptation: continuous (or quantized) text latents instead of binary propositional symbols; learned manipulators instead of PDDL operators</li>
+</ul>
+</section>
+<section id="contributions" class="level2">
+<h2 class="anchored" data-anchor-id="contributions">Contributions</h2>
+<ul>
+<li>A four-phase modular architecture that decouples encoding from bias mitigation</li>
+<li>A training objective for latent space manipulators / interventions using a frozen semantic decoder as a neurosymbolic consistency bridge</li>
+<li>Empirical demonstration of the approach on synthetic and real-world datasets, showing competitive fairness-accuracy trade-offs
+<ul>
+<li>Empirical comparison against HSIC-based encoder-level debiasing <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span></li>
+</ul></li>
+<li>Analysis of trade-offs between identifiability guarantees and modularity/interpretability</li>
+</ul>
+</section>
+</section>
+<section id="background-and-related-work" class="level1">
+<h1>Background and Related Work</h1>
+<section id="text-variational-autoencoders" class="level2">
+<h2 class="anchored" data-anchor-id="text-variational-autoencoders">Text Variational Autoencoders</h2>
+<ul>
+<li>Foundational work: <span class="citation" data-cites="bowman2016generating">(<a href="#ref-bowman2016generating" role="doc-biblioref"><strong>bowman2016generating?</strong></a>)</span> on LSTM-based text VAEs; posterior collapse problem</li>
+<li>Transformer-based VAEs: Optimus <span class="citation" data-cites="li2020optimus">(<a href="#ref-li2020optimus" role="doc-biblioref"><strong>li2020optimus?</strong></a>)</span> as the first pretrained LM-VAE</li>
+<li>Modern frameworks: LangVAE <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref"><strong>carvalho2025langvae?</strong></a>)</span> with KV-cache injection for frozen-decoder training</li>
+<li>Advances on LlaMaVAE <span class="citation" data-cites="zhang2023llamavae">(<a href="#ref-zhang2023llamavae" role="doc-biblioref"><strong>zhang2023llamavae?</strong></a>)</span>, T5VQVAE <span class="citation" data-cites="zhang2024improving">(<a href="#ref-zhang2024improving" role="doc-biblioref"><strong>zhang2024improving?</strong></a>)</span>, graph-induced VAEs <span class="citation" data-cites="zhang2024graph">(<a href="#ref-zhang2024graph" role="doc-biblioref"><strong>zhang2024graph?</strong></a>)</span></li>
+<li>Latent-space manipulability challenges: latent vacancy problem <span class="citation" data-cites="xu2020variational">(<a href="#ref-xu2020variational" role="doc-biblioref"><strong>xu2020variational?</strong></a>)</span></li>
+</ul>
+</section>
+<section id="neurosymbolic-latent-space-reasoning" class="level2">
+<h2 class="anchored" data-anchor-id="neurosymbolic-latent-space-reasoning">Neurosymbolic Latent-space Reasoning</h2>
+<ul>
+<li>LatPlan original and JAIR version <span class="citation" data-cites="asai2018classical asai2022classical">(<a href="#ref-asai2018classical" role="doc-biblioref"><strong>asai2018classical?</strong></a>; <a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span></li>
+<li>State AutoEncoder and Action Model Acquisition (AMA)</li>
+<li>First-order extensions <span class="citation" data-cites="asai2019unsupervised">(<a href="#ref-asai2019unsupervised" role="doc-biblioref"><strong>asai2019unsupervised?</strong></a>)</span></li>
+<li>Plausibility heuristics for latent plan validation <span class="citation" data-cites="takata2023plausibility">(<a href="#ref-takata2023plausibility" role="doc-biblioref"><strong>takata2023plausibility?</strong></a>)</span></li>
+<li>Relation to our Phase 2: manipulator as a learned, metadata-consistent action operator</li>
+</ul>
+</section>
+<section id="counterfactual-fairness" class="level2">
+<h2 class="anchored" data-anchor-id="counterfactual-fairness">Counterfactual Fairness</h2>
+<ul>
+<li>Foundational formulation <span class="citation" data-cites="kusner2017counterfactual">(<a href="#ref-kusner2017counterfactual" role="doc-biblioref"><strong>kusner2017counterfactual?</strong></a>)</span></li>
+<li>Path-specific refinements <span class="citation" data-cites="chiappa2019pathspecific">(<a href="#ref-chiappa2019pathspecific" role="doc-biblioref"><strong>chiappa2019pathspecific?</strong></a>)</span></li>
+<li>Latent-representation methods: CLAIRE <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref"><strong>ma2023clairelearning?</strong></a>)</span>, GCFN <span class="citation" data-cites="grari2023counterfactual">(<a href="#ref-grari2023counterfactual" role="doc-biblioref"><strong>grari2023counterfactual?</strong></a>)</span></li>
+<li>Fair latent space construction with frozen generators <span class="citation" data-cites="joo2024constructing">(<a href="#ref-joo2024constructing" role="doc-biblioref"><strong>joo2024constructing?</strong></a>)</span></li>
+<li>GAN-based latent de-biasing <span class="citation" data-cites="ramaswamy2021fair">(<a href="#ref-ramaswamy2021fair" role="doc-biblioref"><strong>ramaswamy2021fair?</strong></a>)</span></li>
+</ul>
+</section>
+<section id="controllable-and-manipulable-text-generation" class="level2">
+<h2 class="anchored" data-anchor-id="controllable-and-manipulable-text-generation">Controllable and Manipulable Text Generation</h2>
+<ul>
+<li>Attribute-conditioned VAEs <span class="citation" data-cites="hu2017toward">(<a href="#ref-hu2017toward" role="doc-biblioref"><strong>hu2017toward?</strong></a>)</span></li>
+<li>LatentOps: composable operators via ODEs <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref"><strong>liu2022composable?</strong></a>)</span></li>
+<li>Unsupervised discovery of latent directions <span class="citation" data-cites="vechtomova2020unsupervised">(<a href="#ref-vechtomova2020unsupervised" role="doc-biblioref"><strong>vechtomova2020unsupervised?</strong></a>)</span></li>
+<li>Diffusion-based latent control: RegDiff <span class="citation" data-cites="vaeth2025regdiff">(<a href="#ref-vaeth2025regdiff" role="doc-biblioref"><strong>vaeth2025regdiff?</strong></a>)</span></li>
+</ul>
+</section>
+<section id="reward-model-debiasing-via-causal-representation-learning" class="level2">
+<h2 class="anchored" data-anchor-id="reward-model-debiasing-via-causal-representation-learning">Reward Model Debiasing via Causal Representation Learning</h2>
+<ul>
+<li>Debiasing with theoretical guarantees via HSIC and surrogate conditioning <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span></li>
+<li>Counterfactual invariance framing <span class="citation" data-cites="veitch2021counterfactual">(<a href="#ref-veitch2021counterfactual" role="doc-biblioref"><strong>veitch2021counterfactual?</strong></a>)</span></li>
+<li>Information-theoretic approaches: DIR <span class="citation" data-cites="li2025eliminating">(<a href="#ref-li2025eliminating" role="doc-biblioref"><strong>li2025eliminating?</strong></a>)</span></li>
+<li>Positioning: we target fairness rather than reward hacking, but share the causal-representation framing</li>
+</ul>
+</section>
+</section>
+<section id="problem-formulation" class="level1">
+<h1>Problem Formulation</h1>
+<section id="setting" class="level2">
+<h2 class="anchored" data-anchor-id="setting">Setting</h2>
+<ul>
+<li>Text input <span class="math inline">\(x\)</span>, ground-truth label <span class="math inline">\(y\)</span>, sensitive metadata <span class="math inline">\(m\)</span> (tabular)</li>
+<li>Prediction task <span class="math inline">\(\hat{y} = f(x)\)</span> where spurious correlations between <span class="math inline">\(m\)</span> and <span class="math inline">\(y\)</span> can bias <span class="math inline">\(f\)</span></li>
+<li>Counterfactual fairness requirement: <span class="math inline">\(\hat{y}(x) = \hat{y}(x^{\text{cf}})\)</span> where <span class="math inline">\(x^{\text{cf}}\)</span> is the counterfactual text with flipped sensitive attribute</li>
+</ul>
+</section>
+<section id="the-identifiability-vs.-modularity-trade-off" class="level2">
+<h2 class="anchored" data-anchor-id="the-identifiability-vs.-modularity-trade-off">The identifiability vs.&nbsp;modularity trade-off</h2>
+<ul>
+<li>HSIC-based approaches <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>: bias-specific encoder training, formal identifiability (Theorems 1–2), but no encoder reuse</li>
+<li>Our claim: for many applications, encoder reuse, interpretability, and counterfactual explanation outweigh formal identifiability</li>
+<li>Discussion of when each trade-off is appropriate</li>
+</ul>
+</section>
+<section id="architectural-desiderata" class="level2">
+<h2 class="anchored" data-anchor-id="architectural-desiderata">Architectural desiderata</h2>
+<ul>
+<li>Encoder reuse across attributes and tasks</li>
+<li>Interpretable manipulation operators</li>
+<li>Counterfactual explanations as a built-in capability</li>
+<li>Testable neurosymbolic consistency (bridge between symbolic metadata edits and latent-space operations)</li>
+</ul>
+</section>
+</section>
+<section id="proposed-architecture" class="level1">
+<h1>Proposed Architecture</h1>
+<section id="overview-of-the-four-phase-pipeline" class="level2">
+<h2 class="anchored" data-anchor-id="overview-of-the-four-phase-pipeline">Overview of the four-phase pipeline</h2>
+<ul>
+<li>Phase 0: Pretrained text VAE (encoder + decoder)</li>
+<li>Phase 1: Semantic decoder from latent to metadata</li>
+<li>Phase 2: Neurosymbolic manipulator learning metadata-consistent latent operations</li>
+<li>Phase 3: Downstream predictor</li>
+<li>Phase 4: Counterfactual fairness mitigation using frozen manipulator</li>
+<li>Figure: architecture diagram</li>
+</ul>
+</section>
+<section id="phase-0-text-vae-backbone" class="level2">
+<h2 class="anchored" data-anchor-id="phase-0-text-vae-backbone">Phase 0: Text VAE backbone</h2>
+<ul>
+<li>Choice of backbone: LangVAE <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref"><strong>carvalho2025langvae?</strong></a>)</span> for modularity and frozen-decoder efficiency</li>
+<li>Alternative: T5VQVAE <span class="citation" data-cites="zhang2024improving">(<a href="#ref-zhang2024improving" role="doc-biblioref"><strong>zhang2024improving?</strong></a>)</span> for discrete latents with tighter LatPlan analogy</li>
+<li>Training corpus and preprocessing details</li>
+</ul>
+</section>
+<section id="phase-1-semantic-decoder" class="level2">
+<h2 class="anchored" data-anchor-id="phase-1-semantic-decoder">Phase 1: Semantic decoder</h2>
+<ul>
+<li>Architecture: lightweight MLP from frozen latent <span class="math inline">\(z\)</span> to metadata <span class="math inline">\(\hat{m}\)</span></li>
+<li>Training objective: reconstruction loss on metadata (regression/classification per column)</li>
+<li>Role: establishes the neurosymbolic bridge; provides interpretability and a consistency target for Phase 2</li>
+</ul>
+</section>
+<section id="phase-2-neurosymbolic-manipulator" class="level2">
+<h2 class="anchored" data-anchor-id="phase-2-neurosymbolic-manipulator">Phase 2: Neurosymbolic manipulator</h2>
+<ul>
+<li>Input: latent <span class="math inline">\(z\)</span> and symbolic metadata edit <span class="math inline">\(\Delta m\)</span></li>
+<li>Output: manipulated latent <span class="math inline">\(z'\)</span> such that semantic_decoder(<span class="math inline">\(z'\)</span>) matches manipulated metadata</li>
+<li>Architecture options: linear direction, MLP, conditional normalizing flow</li>
+<li>Loss: consistency with symbolic manipulator + decoded-text plausibility + minimality of change</li>
+<li>Relation to LatPlan AMA <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span> and LatentOps plug-in operators <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref"><strong>liu2022composable?</strong></a>)</span></li>
+</ul>
+</section>
+<section id="phase-3-predictor" class="level2">
+<h2 class="anchored" data-anchor-id="phase-3-predictor">Phase 3: Predictor</h2>
+<ul>
+<li>Trained on frozen latents or manipulated latents</li>
+<li>Standard MLP or linear head</li>
+</ul>
+</section>
+<section id="phase-4-counterfactual-fairness-mitigation" class="level2">
+<h2 class="anchored" data-anchor-id="phase-4-counterfactual-fairness-mitigation">Phase 4: Counterfactual fairness mitigation</h2>
+<ul>
+<li>In-processing: consistency loss between <span class="math inline">\(\hat{y}(z)\)</span> and <span class="math inline">\(\hat{y}(z')\)</span> where <span class="math inline">\(z'\)</span> is counterfactually manipulated</li>
+<li>Closely related to CLAIRE <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref"><strong>ma2023clairelearning?</strong></a>)</span> objective</li>
+</ul>
+</section>
+</section>
+<section id="theoretical-considerations" class="level1">
+<h1>Theoretical Considerations</h1>
+<section id="what-the-manipulator-approach-gives-up-vs.-hsic" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-manipulator-approach-gives-up-vs.-hsic">What the manipulator approach gives up vs.&nbsp;HSIC</h2>
+<ul>
+<li>No identifiability guarantee in the sense of <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span> Theorems 1–2</li>
+<li>Non-identifiability of VAE latents <span class="citation" data-cites="hyvarinen2023nonlinear locatello2019challenging">(<a href="#ref-hyvarinen2023nonlinear" role="doc-biblioref"><strong>hyvarinen2023nonlinear?</strong></a>; <a href="#ref-locatello2019challenging" role="doc-biblioref"><strong>locatello2019challenging?</strong></a>)</span> carries over to counterfactual queries</li>
+<li>Discussion of residual correlation channels (bias leakage through unmanipulated dimensions)</li>
+</ul>
+</section>
+<section id="what-the-manipulator-approach-adds" class="level2">
+<h2 class="anchored" data-anchor-id="what-the-manipulator-approach-adds">What the manipulator approach adds</h2>
+<ul>
+<li>Modularity argument: attribute-per-manipulator composition</li>
+<li>Interpretability via direct inspection of manipulator operations</li>
+<li>Consistency check via semantic decoder loss (testable neurosymbolic bridge)</li>
+<li>Counterfactual explanation as a capability, not just fairness as a predicate</li>
+</ul>
+</section>
+<section id="optional-partial-identifiability-analysis-for-the-manipulator" class="level2">
+<h2 class="anchored" data-anchor-id="optional-partial-identifiability-analysis-for-the-manipulator">Optional: partial identifiability analysis for the manipulator</h2>
+<ul>
+<li>Conditions under which the learned manipulator recovers the “true” counterfactual direction</li>
+<li>Possible use of causal ordering assumptions <span class="citation" data-cites="kori2023causal">(<a href="#ref-kori2023causal" role="doc-biblioref"><strong>kori2023causal?</strong></a>)</span></li>
+<li>Honest acknowledgement of where guarantees end</li>
+</ul>
+</section>
+</section>
+<section id="experimental-setup" class="level1">
+<h1>Experimental Setup</h1>
+<section id="datasets" class="level2">
+<h2 class="anchored" data-anchor-id="datasets">Datasets</h2>
+<ul>
+<li>Synthetic text data with controllable sensitive attributes (for sanity checks)</li>
+<li>Real-world dataset(s): [TBD — options include Bios <span class="citation" data-cites="de2019bias">(<a href="#ref-de2019bias" role="doc-biblioref"><strong>de2019bias?</strong></a>)</span>, Jigsaw Toxicity, resume data]</li>
+<li>Sycophancy and concept bias benchmarks from <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span> for direct comparison</li>
+</ul>
+</section>
+<section id="baselines" class="level2">
+<h2 class="anchored" data-anchor-id="baselines">Baselines</h2>
+<ul>
+<li>Vanilla predictor on raw text embeddings</li>
+<li>HSIC-based debiased encoder (CARD, <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>)</li>
+<li>CLAIRE-style counterfactual augmentation <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref"><strong>ma2023clairelearning?</strong></a>)</span></li>
+<li>Unsupervised latent directions via PCA <span class="citation" data-cites="vechtomova2020unsupervised">(<a href="#ref-vechtomova2020unsupervised" role="doc-biblioref"><strong>vechtomova2020unsupervised?</strong></a>)</span></li>
+<li>LatentOps plug-in operator <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref"><strong>liu2022composable?</strong></a>)</span></li>
+</ul>
+</section>
+<section id="evaluation-metrics" class="level2">
+<h2 class="anchored" data-anchor-id="evaluation-metrics">Evaluation metrics</h2>
+<ul>
+<li>Predictive accuracy and worst-case subgroup accuracy</li>
+<li>Counterfactual fairness metric (prediction invariance on manipulated inputs)</li>
+<li>Bias@C <span class="citation" data-cites="zhou2024explore">(<a href="#ref-zhou2024explore" role="doc-biblioref"><strong>zhou2024explore?</strong></a>)</span> for concept bias</li>
+<li>Disentanglement metrics from LangSpace <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref"><strong>carvalho2025langvae?</strong></a>)</span>: MIG, DCI, z-diff</li>
+<li>Interpretability probes: linear probe recovery of metadata from manipulated vs.&nbsp;unmanipulated latents</li>
+<li>Counterfactual explanation quality (human or automated eval)</li>
+</ul>
+</section>
+<section id="ablations" class="level2">
+<h2 class="anchored" data-anchor-id="ablations">Ablations</h2>
+<ul>
+<li>Effect of semantic decoder supervision on manipulator quality</li>
+<li>Continuous vs.&nbsp;discrete (VQ) latents</li>
+<li>Linear vs.&nbsp;nonlinear manipulator</li>
+<li>Encoder finetuning vs.&nbsp;frozen</li>
+</ul>
+</section>
+</section>
+<section id="results" class="level1">
+<h1>Results</h1>
+<section id="main-results" class="level2">
+<h2 class="anchored" data-anchor-id="main-results">Main results</h2>
+<ul>
+<li>Headline fairness vs.&nbsp;accuracy trade-off curves</li>
+<li>Comparison against HSIC baseline <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span></li>
+</ul>
+</section>
+<section id="modularity-demonstration" class="level2">
+<h2 class="anchored" data-anchor-id="modularity-demonstration">Modularity demonstration</h2>
+<ul>
+<li>Train encoder once, show multiple manipulators for different attributes</li>
+<li>Compositionality of manipulators (chain attribute edits)</li>
+</ul>
+</section>
+<section id="interpretability-analysis" class="level2">
+<h2 class="anchored" data-anchor-id="interpretability-analysis">Interpretability analysis</h2>
+<ul>
+<li>Visualization of learned manipulator directions</li>
+<li>Semantic decoder probe: which metadata columns are recoverable from which latent subspaces</li>
+</ul>
+</section>
+<section id="counterfactual-explanation-case-studies" class="level2">
+<h2 class="anchored" data-anchor-id="counterfactual-explanation-case-studies">Counterfactual explanation case studies</h2>
+<ul>
+<li>Concrete examples of original vs.&nbsp;counterfactual text pairs</li>
+<li>Comparison with Joo et al. <span class="citation" data-cites="joo2024constructing">(<a href="#ref-joo2024constructing" role="doc-biblioref"><strong>joo2024constructing?</strong></a>)</span> style explanations</li>
+</ul>
+</section>
+<section id="robustness-and-failure-modes" class="level2">
+<h2 class="anchored" data-anchor-id="robustness-and-failure-modes">Robustness and failure modes</h2>
+<ul>
+<li>Behavior under distribution shift (analogous to sycophancy experiment in <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>)</li>
+<li>Cases where the manipulator fails: latent vacancy <span class="citation" data-cites="xu2020variational">(<a href="#ref-xu2020variational" role="doc-biblioref"><strong>xu2020variational?</strong></a>)</span>, correlated bias-free dimensions</li>
+</ul>
+</section>
+</section>
+<section id="discussion" class="level1">
+<h1>Discussion</h1>
+<section id="when-to-use-hsic-vs.-manipulator" class="level2">
+<h2 class="anchored" data-anchor-id="when-to-use-hsic-vs.-manipulator">When to use HSIC vs.&nbsp;manipulator</h2>
+<ul>
+<li>Decision framework: known single bias + willingness to retrain encoder → HSIC; multiple/evolving biases + need for explanation → manipulator</li>
+<li>Hybrid pipelines: HSIC for known axes, manipulator for long tail</li>
+</ul>
+</section>
+<section id="connection-to-broader-neurosymbolic-ai" class="level2">
+<h2 class="anchored" data-anchor-id="connection-to-broader-neurosymbolic-ai">Connection to broader neurosymbolic AI</h2>
+<ul>
+<li>LatPlan’s vision for symbol grounding <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span></li>
+<li>Our work as evidence that the LatPlan pattern ports beyond image-based planning</li>
+<li>Open question: can we extract genuinely symbolic (PDDL-like) operators from the learned manipulator?</li>
+</ul>
+</section>
+<section id="limitations" class="level2">
+<h2 class="anchored" data-anchor-id="limitations">Limitations</h2>
+<ul>
+<li>No formal identifiability guarantee</li>
+<li>Text VAE reconstruction quality as an upper bound on counterfactual text quality</li>
+<li>Dependence on quality and coverage of metadata annotations</li>
+</ul>
+</section>
+</section>
+<section id="conclusion" class="level1">
+<h1>Conclusion</h1>
+<ul>
+<li>Summary of contributions</li>
+<li>A modular, interpretable, LatPlan-inspired approach to text-based counterfactual fairness</li>
+<li>Call for further work on partial identifiability guarantees for manipulator-based methods</li>
+</ul>
+</section>
+<section id="appendix" class="level1">
+<h1>Appendix</h1>
+<section id="a.-implementation-details" class="level2">
+<h2 class="anchored" data-anchor-id="a.-implementation-details">A. Implementation details</h2>
+<ul>
+<li>LangVAE configuration, hyperparameters, compute</li>
+</ul>
+</section>
+<section id="b.-additional-experiments" class="level2">
+<h2 class="anchored" data-anchor-id="b.-additional-experiments">B. Additional experiments</h2>
+<ul>
+<li>Ablation details, extra baselines</li>
+</ul>
+</section>
+<section id="c.-reproducibility" class="level2">
+<h2 class="anchored" data-anchor-id="c.-reproducibility">C. Reproducibility</h2>
+<ul>
+<li>Code, datasets, pretrained checkpoints</li>
+</ul>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

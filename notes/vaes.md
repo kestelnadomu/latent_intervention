@@ -97,6 +97,8 @@ The theoretical foundation underlying both the HSIC argument and the manipulator
 - **Carvalho et al. (2025, EMNLP)** — LangVAE paper itself.
 - **Zhang/Carvalho/Freitas (survey)** — compares VAE, VQ-VAE, Sparse AE through lens of compositional semantics; theoretical framing directly aligned with this project's motivation. Read early.
 
+[Medium article](https://medium.com/@rodolfojaamorim/variational-auto-encoders-meet-llms-fe4286b9177d)
+
 ### Semantic Decoders / Property Predictors
 
 - **Louizos et al., CEVAE (2017)** — VAE with auxiliary predictors for causal inference; structural precursor to Phase 1.
