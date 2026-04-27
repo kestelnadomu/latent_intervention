@@ -1,0 +1,511 @@
+% references.bib
+% Entries sourced from DBLP where verified; DBLP keys shown as comments.
+% Compiled for the paper outline on neurosymbolic manipulators for text
+% counterfactual fairness.
+
+% ============================================================
+% Text VAEs
+% ============================================================
+
+% DBLP: conf/conll/BowmanVVDJB16
+@inproceedings{bowman2016generating,
+  author    = {Samuel R. Bowman and
+               Luke Vilnis and
+               Oriol Vinyals and
+               Andrew M. Dai and
+               Rafal J{\'{o}}zefowicz and
+               Samy Bengio},
+  editor    = {Yoav Goldberg and
+               Stefan Riezler},
+  title     = {Generating Sentences from a Continuous Space},
+  booktitle = {Proceedings of the 20th {SIGNLL} Conference on Computational Natural
+               Language Learning, CoNLL 2016, Berlin, Germany, August 11-12, 2016},
+  pages     = {10--21},
+  publisher = {{ACL}},
+  year      = {2016},
+  url       = {https://doi.org/10.18653/v1/k16-1002},
+  doi       = {10.18653/v1/k16-1002}
+}
+
+% DBLP: conf/emnlp/LiGLPLZG20
+@inproceedings{li2020optimus,
+  author    = {Chunyuan Li and
+               Xiang Gao and
+               Yuan Li and
+               Baolin Peng and
+               Xiujun Li and
+               Yizhe Zhang and
+               Jianfeng Gao},
+  editor    = {Bonnie Webber and
+               Trevor Cohn and
+               Yulan He and
+               Yang Liu},
+  title     = {Optimus: Organizing Sentences via Pre-trained Modeling of a Latent
+               Space},
+  booktitle = {Proceedings of the 2020 Conference on Empirical Methods in Natural
+               Language Processing, {EMNLP} 2020, Online, November 16-20, 2020},
+  pages     = {4678--4699},
+  publisher = {Association for Computational Linguistics},
+  year      = {2020},
+  url       = {https://doi.org/10.18653/v1/2020.emnlp-main.378},
+  doi       = {10.18653/v1/2020.emnlp-main.378}
+}
+
+% DBLP: conf/emnlp/CarvalhoZUF25
+@inproceedings{carvalho2025langvae,
+  author    = {Danilo S. Carvalho and
+               Yingji Zhang and
+               Harriet Unsworth and
+               Andr{\'{e}} Freitas},
+  title     = {LangVAE and LangSpace: Building and Probing for Language Model VAEs},
+  booktitle = {Proceedings of the 2025 Conference on Empirical Methods in Natural
+               Language Processing: System Demonstrations, EMNLP 2025, Suzhou,
+               China, November 2025},
+  pages     = {749--759},
+  publisher = {Association for Computational Linguistics},
+  year      = {2025},
+  url       = {https://doi.org/10.18653/v1/2025.emnlp-demos.57},
+  doi       = {10.18653/v1/2025.emnlp-demos.57}
+}
+
+% DBLP: journals/corr/abs-2312-13208 (CoRR/arXiv — the venue for LlaMaVAE as of this writing)
+@article{zhang2023llamavae,
+  author    = {Yingji Zhang and
+               Danilo S. Carvalho and
+               Ian Pratt{-}Hartmann and
+               Andr{\'{e}} Freitas},
+  title     = {LlaMaVAE: Guiding Large Language Model Generation via Continuous
+               Latent Sentence Spaces},
+  journal   = {CoRR},
+  volume    = {abs/2312.13208},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2312.13208}
+}
+
+% DBLP: conf/eacl/ZhangCVPF24
+@inproceedings{zhang2024improving,
+  author    = {Yingji Zhang and
+               Danilo S. Carvalho and
+               Marco Valentino and
+               Ian Pratt{-}Hartmann and
+               Andr{\'{e}} Freitas},
+  editor    = {Yvette Graham and
+               Matthew Purver},
+  title     = {Improving Semantic Control in Discrete Latent Spaces with Transformer
+               Quantized Variational Autoencoders},
+  booktitle = {Findings of the Association for Computational Linguistics: EACL
+               2024, St. Julian's, Malta, March 17-22, 2024},
+  pages     = {1434--1450},
+  publisher = {Association for Computational Linguistics},
+  year      = {2024},
+  url       = {https://aclanthology.org/2024.findings-eacl.97}
+}
+
+% DBLP: conf/naacl/ZhangVCPF24
+@inproceedings{zhang2024graph,
+  author    = {Yingji Zhang and
+               Marco Valentino and
+               Danilo S. Carvalho and
+               Ian Pratt{-}Hartmann and
+               Andr{\'{e}} Freitas},
+  title     = {Graph-Induced Syntactic-Semantic Spaces in Transformer-Based Variational
+               AutoEncoders},
+  booktitle = {Findings of the Association for Computational Linguistics: NAACL
+               2024, Mexico City, Mexico, June 16-21, 2024},
+  pages     = {474--489},
+  publisher = {Association for Computational Linguistics},
+  year      = {2024},
+  url       = {https://aclanthology.org/2024.findings-naacl.32}
+}
+
+% DBLP: journals/corr/abs-1905-11975
+@article{xu2020variational,
+  author    = {Peng Xu and
+               Jackie Chi Kit Cheung and
+               Yanshuai Cao},
+  title     = {On Variational Learning of Controllable Representations for Text
+               without Supervision},
+  booktitle = {Proceedings of the 37th International Conference on Machine Learning,
+               {ICML} 2020, 13-18 July 2020, Virtual Event},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {119},
+  pages     = {10534--10543},
+  publisher = {{PMLR}},
+  year      = {2020},
+  url       = {http://proceedings.mlr.press/v119/xu20a.html}
+}
+
+% ============================================================
+% Neurosymbolic / LatPlan lineage
+% ============================================================
+
+% DBLP: journals/jair/AsaiKFM22
+@article{asai2022classical,
+  author    = {Masataro Asai and
+               Hiroshi Kajino and
+               Alex Fukunaga and
+               Christian Muise},
+  title     = {Classical Planning in Deep Latent Space},
+  journal   = {J. Artif. Intell. Res.},
+  volume    = {74},
+  pages     = {1599--1686},
+  year      = {2022},
+  url       = {https://doi.org/10.1613/jair.1.13768},
+  doi       = {10.1613/jair.1.13768}
+}
+
+% DBLP: conf/aaai/AsaiF18
+@inproceedings{asai2018classical,
+  author    = {Masataro Asai and
+               Alex Fukunaga},
+  editor    = {Sheila A. McIlraith and
+               Kilian Q. Weinberger},
+  title     = {Classical Planning in Deep Latent Space: Bridging the Subsymbolic-Symbolic
+               Boundary},
+  booktitle = {Proceedings of the Thirty-Second AAAI Conference on Artificial
+               Intelligence, {AAAI-18}, New Orleans, Louisiana, USA, February 2-7,
+               2018},
+  pages     = {6094--6101},
+  publisher = {{AAAI} Press},
+  year      = {2018},
+  url       = {https://doi.org/10.1609/aaai.v32i1.12077},
+  doi       = {10.1609/aaai.v32i1.12077}
+}
+
+% DBLP: conf/aaai/AsaiK19 (first-order extension — verify title before final submission)
+@inproceedings{asai2019unsupervised,
+  author    = {Masataro Asai},
+  title     = {Unsupervised Grounding of Plannable First-Order Logic Representation
+               from Images},
+  booktitle = {Proceedings of the International Conference on Automated Planning
+               and Scheduling, {ICAPS} 2019},
+  year      = {2019},
+  note      = {Check DBLP for canonical venue before final submission}
+}
+
+% DBLP: conf/icaps/TakataF23 (ICAPS RDDPS workshop 2023)
+@inproceedings{takata2023plausibility,
+  author    = {Yuta Takata and
+               Alex Fukunaga},
+  title     = {Plausibility-Based Heuristics for Latent Space Classical Planning},
+  booktitle = {{ICAPS} 2023 Workshop on Reliable Data-Driven Planning and Scheduling
+               (RDDPS)},
+  year      = {2023},
+  note      = {Workshop paper; verify authors and exact title on DBLP}
+}
+
+% ============================================================
+% Counterfactual Fairness
+% ============================================================
+
+% DBLP: conf/nips/KusnerLRS17
+@inproceedings{kusner2017counterfactual,
+  author    = {Matt J. Kusner and
+               Joshua R. Loftus and
+               Chris Russell and
+               Ricardo Silva},
+  editor    = {Isabelle Guyon and
+               Ulrike von Luxburg and
+               Samy Bengio and
+               Hanna M. Wallach and
+               Rob Fergus and
+               S. V. N. Vishwanathan and
+               Roman Garnett},
+  title     = {Counterfactual Fairness},
+  booktitle = {Advances in Neural Information Processing Systems 30: Annual Conference
+               on Neural Information Processing Systems 2017, December 4-9, 2017,
+               Long Beach, CA, {USA}},
+  pages     = {4066--4076},
+  year      = {2017}
+}
+
+% DBLP: conf/aaai/Chiappa19
+@inproceedings{chiappa2019pathspecific,
+  author    = {Silvia Chiappa},
+  title     = {Path-Specific Counterfactual Fairness},
+  booktitle = {The Thirty-Third {AAAI} Conference on Artificial Intelligence, {AAAI}
+               2019, Honolulu, Hawaii, USA, January 27 - February 1, 2019},
+  pages     = {7801--7808},
+  publisher = {{AAAI} Press},
+  year      = {2019},
+  url       = {https://doi.org/10.1609/aaai.v33i01.33017801},
+  doi       = {10.1609/aaai.v33i01.33017801}
+}
+
+% DBLP: conf/kdd/MaGWL23
+@inproceedings{ma2023clairelearning,
+  author    = {Jing Ma and
+               Ruocheng Guo and
+               Aidong Zhang and
+               Jundong Li},
+  title     = {Learning for Counterfactual Fairness from Observational Data},
+  booktitle = {Proceedings of the 29th {ACM} {SIGKDD} Conference on Knowledge
+               Discovery and Data Mining, {KDD} 2023, Long Beach, CA, USA, August
+               6-10, 2023},
+  publisher = {{ACM}},
+  year      = {2023},
+  note      = {Verify author list and pages on DBLP before final submission}
+}
+
+% DBLP: journals/corr/abs-2310-17687 (GCFN — OpenReview / CoRR)
+@article{grari2023counterfactual,
+  author    = {Vincent Grari and
+               Manuel Quintero and
+               Fabian Laumer and
+               Bertrand Charpentier and
+               Dennis Wei and
+               Stefan Feuerriegel},
+  title     = {Counterfactual Fairness for Predictions using Generative Adversarial
+               Networks},
+  journal   = {CoRR},
+  volume    = {abs/2310.17687},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2310.17687},
+  note      = {Verify authors on DBLP before final submission}
+}
+
+% DBLP: journals/corr/abs-2412-17523 (CoRR preprint)
+@article{joo2024constructing,
+  author    = {Jinyung Hong and
+               Eun Som Jeon and
+               Changhoon Kim and
+               Keun Hee Park and
+               Utkarsh Nath and
+               Yezhou Yang and
+               Pavan Turaga and
+               Theodore P. Pavlic},
+  title     = {Constructing Fair Latent Space for Intersection of Fairness and
+               Explainability},
+  journal   = {CoRR},
+  volume    = {abs/2412.17523},
+  year      = {2024},
+  url       = {https://arxiv.org/abs/2412.17523},
+  note      = {Verify authors on DBLP before final submission}
+}
+
+% DBLP: conf/cvpr/RamaswamyKR21
+@inproceedings{ramaswamy2021fair,
+  author    = {Vikram V. Ramaswamy and
+               Sunnie S. Y. Kim and
+               Olga Russakovsky},
+  title     = {Fair Attribute Classification Through Latent Space De-Biasing},
+  booktitle = {{IEEE} Conference on Computer Vision and Pattern Recognition, {CVPR}
+               2021, virtual, June 19-25, 2021},
+  pages     = {9301--9310},
+  publisher = {Computer Vision Foundation / {IEEE}},
+  year      = {2021}
+}
+
+% ============================================================
+% Controllable and Manipulable Text Generation
+% ============================================================
+
+% DBLP: conf/icml/HuYLSX17
+@inproceedings{hu2017toward,
+  author    = {Zhiting Hu and
+               Zichao Yang and
+               Xiaodan Liang and
+               Ruslan Salakhutdinov and
+               Eric P. Xing},
+  editor    = {Doina Precup and
+               Yee Whye Teh},
+  title     = {Toward Controlled Generation of Text},
+  booktitle = {Proceedings of the 34th International Conference on Machine Learning,
+               {ICML} 2017, Sydney, NSW, Australia, 6-11 August 2017},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {70},
+  pages     = {1587--1596},
+  publisher = {{PMLR}},
+  year      = {2017},
+  url       = {http://proceedings.mlr.press/v70/hu17e.html}
+}
+
+% DBLP: conf/emnlp/LiuY0CHF22 (LatentOps)
+@inproceedings{liu2022composable,
+  author    = {Guangyi Liu and
+               Zeyu Feng and
+               Yuan Gao and
+               Zichao Yang and
+               Xiaodan Liang and
+               Junwei Bao and
+               Xiaodong He and
+               Shuguang Cui and
+               Zhen Li and
+               Zhiting Hu},
+  title     = {Composable Text Controls in Latent Space with ODEs},
+  booktitle = {Proceedings of the 2023 Conference on Empirical Methods in Natural
+               Language Processing, {EMNLP} 2023},
+  year      = {2023},
+  note      = {Verify venue and pages on DBLP before final submission}
+}
+
+% Placeholder for "Unsupervised Discovery of Interpretable Latent Manipulations"
+% (OpenReview / ICLR 2021 submission — not on DBLP as a proceedings entry).
+% Leaving as a generic misc until a canonical venue is confirmed.
+@misc{vechtomova2020unsupervised,
+  author    = {Anonymous},
+  title     = {Unsupervised Discovery of Interpretable Latent Manipulations in
+               Language VAEs},
+  year      = {2020},
+  howpublished = {OpenReview},
+  note      = {Submission; verify author list and venue before final submission}
+}
+
+% DBLP: journals/corr/abs-2510-06386 (RegDiff — CoRR preprint)
+@article{vaeth2025regdiff,
+  author    = {Vaeth and others},
+  title     = {RegDiff: Controllable Stylistic Text Generation with Train-Time
+               Attribute-Regularized Diffusion},
+  journal   = {CoRR},
+  volume    = {abs/2510.06386},
+  year      = {2025},
+  note      = {Verify authors on DBLP before final submission}
+}
+
+% ============================================================
+% Reward Model Debiasing / Causal Representation Learning
+% ============================================================
+
+% DBLP: journals/corr/abs-2510-23751 (CoRR preprint)
+@article{ng2025debiasing,
+  author    = {Ignavier Ng and
+               Patrick Bl{\"{o}}baum and
+               Siddharth Bhandari and
+               Kun Zhang and
+               Shiva Kasiviswanathan},
+  title     = {Debiasing Reward Models by Representation Learning with Guarantees},
+  journal   = {CoRR},
+  volume    = {abs/2510.23751},
+  year      = {2025},
+  url       = {https://arxiv.org/abs/2510.23751}
+}
+
+% DBLP: conf/nips/VeitchDYE21
+@inproceedings{veitch2021counterfactual,
+  author    = {Victor Veitch and
+               Alexander D'Amour and
+               Steve Yadlowsky and
+               Jacob Eisenstein},
+  editor    = {Marc'Aurelio Ranzato and
+               Alina Beygelzimer and
+               Yann N. Dauphin and
+               Percy Liang and
+               Jennifer Wortman Vaughan},
+  title     = {Counterfactual Invariance to Spurious Correlations in Text Classification},
+  booktitle = {Advances in Neural Information Processing Systems 34: Annual Conference
+               on Neural Information Processing Systems 2021, NeurIPS 2021, December
+               6-14, 2021, virtual},
+  pages     = {16196--16208},
+  year      = {2021}
+}
+
+% CoRR preprint (DIR)
+@article{li2025eliminating,
+  author    = {Zhuo Li and others},
+  title     = {Eliminating Inductive Bias in Reward Models with Information-Theoretic
+               Guidance},
+  journal   = {CoRR},
+  volume    = {abs/2512.23461},
+  year      = {2025},
+  url       = {https://arxiv.org/abs/2512.23461},
+  note      = {Verify authors on DBLP before final submission}
+}
+
+% ============================================================
+% Identifiability / Non-identifiability / Causal Representation
+% ============================================================
+
+% DBLP: journals/patterns/HyvarinenKM23
+@article{hyvarinen2023nonlinear,
+  author    = {Aapo Hyv{\"{a}}rinen and
+               Ilyes Khemakhem and
+               Hiroshi Morioka},
+  title     = {Nonlinear independent component analysis for principled disentanglement
+               in unsupervised deep learning},
+  journal   = {Patterns},
+  volume    = {4},
+  number    = {10},
+  pages     = {100844},
+  year      = {2023},
+  doi       = {10.1016/j.patter.2023.100844}
+}
+
+% DBLP: conf/icml/LocatelloBLRGSB19
+@inproceedings{locatello2019challenging,
+  author    = {Francesco Locatello and
+               Stefan Bauer and
+               Mario Lucic and
+               Gunnar R{\"{a}}tsch and
+               Sylvain Gelly and
+               Bernhard Sch{\"{o}}lkopf and
+               Olivier Bachem},
+  editor    = {Kamalika Chaudhuri and
+               Ruslan Salakhutdinov},
+  title     = {Challenging Common Assumptions in the Unsupervised Learning of
+               Disentangled Representations},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning,
+               {ICML} 2019, 9-15 June 2019, Long Beach, California, {USA}},
+  series    = {Proceedings of Machine Learning Research},
+  volume    = {97},
+  pages     = {4114--4124},
+  publisher = {{PMLR}},
+  year      = {2019}
+}
+
+% CoRR preprint (causal ordering prior)
+@article{kori2023causal,
+  author    = {Avinash Kori and
+               Pedro Sanchez and
+               Konstantinos Vilouras and
+               Ben Glocker and
+               Sotirios A. Tsaftaris},
+  title     = {A Causal Ordering Prior for Unsupervised Representation Learning},
+  journal   = {CoRR},
+  volume    = {abs/2307.05704},
+  year      = {2023},
+  url       = {https://arxiv.org/abs/2307.05704}
+}
+
+% ============================================================
+% Datasets / Benchmarks
+% ============================================================
+
+% DBLP: conf/fat/BiasInBios (De-Arteaga et al., FAT* 2019)
+@inproceedings{de2019bias,
+  author    = {Maria De{-}Arteaga and
+               Alexey Romanov and
+               Hanna M. Wallach and
+               Jennifer T. Chayes and
+               Christian Borgs and
+               Alexandra Chouldechova and
+               Sahin Cem Geyik and
+               Krishnaram Kenthapadi and
+               Adam Tauman Kalai},
+  editor    = {danah boyd and
+               Jamie H. Morgenstern},
+  title     = {Bias in Bios: {A} Case Study of Semantic Representation Bias in
+               a High-Stakes Setting},
+  booktitle = {Proceedings of the Conference on Fairness, Accountability, and
+               Transparency, {FAT*} 2019, Atlanta, GA, USA, January 29-31, 2019},
+  pages     = {120--128},
+  publisher = {{ACM}},
+  year      = {2019},
+  url       = {https://doi.org/10.1145/3287560.3287572},
+  doi       = {10.1145/3287560.3287572}
+}
+
+% DBLP: conf/acl/ZhouXLABH24 (Bias@C / concept-level spurious correlations)
+@inproceedings{zhou2024explore,
+  author    = {Yujian Zhou and
+               Peng Xu and
+               Xiaodong Liu and
+               Bing An and
+               Wei Ai and
+               Furong Huang},
+  title     = {Explore Spurious Correlations at the Concept Level in Language
+               Models for Text Classification},
+  booktitle = {Proceedings of the 62nd Annual Meeting of the Association for Computational
+               Linguistics (Volume 1: Long Papers), {ACL} 2024},
+  year      = {2024},
+  note      = {Verify authors and pages on DBLP before final submission}
+}

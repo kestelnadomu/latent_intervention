@@ -3,17 +3,10 @@ title: "Neurosymbolic Interventions on Text Latent Representations for Counterfa
 author:
   - name:
     - "Leonhard Kestel"
-    affiliation:
-    - "Ludwig-Maximilians-Universität München (LMU)"
-    - "Munich Center for Machine Learning (MCML)"
+    affiliation: "Ludwig-Maximilians-Universität München (LMU)"
   - name: "Philipp Boustani"
-    affiliation:
-    - "Ludwig-Maximilians-Universität München (LMU)"
-    - "Munich Center for Machine Learning (MCML)"
+    affiliation: "Munich Center for Machine Learning (MCML)"
   - name: "Christoph Kern"
-    affiliation:
-    - "Ludwig-Maximilians-Universität München (LMU)"
-    - "Munich Center for Machine Learning (MCML)"
 format:
   html:
     toc: true
@@ -24,6 +17,7 @@ format:
 bibliography: references.bib
 ---
 
+
 # Abstract
 
 - Problem: reward models and predictors on text exploit spurious correlations tied to sensitive attributes
@@ -31,6 +25,9 @@ bibliography: references.bib
 - Proposal: a LatPlan-inspired [@asai2022classical] modular neurosymbolic architecture for text where a frozen, general-purpose text VAE is paired with learned manipulators that mimic symbolic operators on tabular metadata
 - Contribution: four-phase pipeline (encoder → semantic decoder → neurosymbolic manipulator → counterfactual fairness mitigation) with interpretability, encoder reuse, and counterfactual explanation as first-class properties
 - Results preview: [empirical claims TBD]
+
+TODO:
+  - Counterfactual computation, normalizing flows
 
 # Introduction
 

@@ -26,7 +26,26 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
-</style>
+/* CSS for citations */
+div.csl-bib-body { }
+div.csl-entry {
+  clear: both;
+}
+.hanging-indent div.csl-entry {
+  margin-left:2em;
+  text-indent:-2em;
+}
+div.csl-left-margin {
+  min-width:2em;
+  float:left;
+}
+div.csl-right-inline {
+  margin-left:2em;
+  padding-left:1em;
+}
+div.csl-indent {
+  margin-left: 2em;
+}</style>
 
 
 <script src="paper_outline_files/libs/clipboard/clipboard.min.js"></script>
@@ -167,17 +186,11 @@ window.Quarto = {
         <p class="affiliation">
             Ludwig-Maximilians-Universität München (LMU)
           </p>
-        <p class="affiliation">
-            Munich Center for Machine Learning (MCML)
-          </p>
       </div>
     <div class="quarto-title-meta-contents">
     <p class="author">Philipp Boustani </p>
   </div>
   <div class="quarto-title-meta-contents">
-        <p class="affiliation">
-            Ludwig-Maximilians-Universität München (LMU)
-          </p>
         <p class="affiliation">
             Munich Center for Machine Learning (MCML)
           </p>
@@ -186,12 +199,6 @@ window.Quarto = {
     <p class="author">Christoph Kern </p>
   </div>
   <div class="quarto-title-meta-contents">
-        <p class="affiliation">
-            Ludwig-Maximilians-Universität München (LMU)
-          </p>
-        <p class="affiliation">
-            Munich Center for Machine Learning (MCML)
-          </p>
       </div>
   </div>
 
@@ -211,11 +218,12 @@ window.Quarto = {
 <h1>Abstract</h1>
 <ul>
 <li>Problem: reward models and predictors on text exploit spurious correlations tied to sensitive attributes</li>
-<li>Gap: existing debiasing approaches either (a) bake bias-specific constraints into the encoder (HSIC-based, <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>) or (b) require full retraining per new attribute</li>
-<li>Proposal: a LatPlan-inspired <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span> modular neurosymbolic architecture for text where a frozen, general-purpose text VAE is paired with learned manipulators that mimic symbolic operators on tabular metadata</li>
+<li>Gap: existing debiasing approaches either (a) bake bias-specific constraints into the encoder (HSIC-based, <span class="citation" data-cites="ng2025debiasing">Ng et al. (<a href="#ref-ng2025debiasing" role="doc-biblioref">2025</a>)</span>) or (b) require full retraining per new attribute</li>
+<li>Proposal: a LatPlan-inspired <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref">Asai et al. 2022</a>)</span> modular neurosymbolic architecture for text where a frozen, general-purpose text VAE is paired with learned manipulators that mimic symbolic operators on tabular metadata</li>
 <li>Contribution: four-phase pipeline (encoder → semantic decoder → neurosymbolic manipulator → counterfactual fairness mitigation) with interpretability, encoder reuse, and counterfactual explanation as first-class properties</li>
 <li>Results preview: [empirical claims TBD]</li>
 </ul>
+<p>TODO: - Counterfactual computation, normalizing flows</p>
 </section>
 <section id="introduction" class="level1">
 <h1>Introduction</h1>
@@ -223,14 +231,14 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="motivation">Motivation</h2>
 <ul>
 <li>Fairness in text-based prediction systems (hiring, content moderation, reward modeling) requires mitigating sensitive-attribute influence</li>
-<li>Counterfactual fairness <span class="citation" data-cites="kusner2017counterfactual">(<a href="#ref-kusner2017counterfactual" role="doc-biblioref"><strong>kusner2017counterfactual?</strong></a>)</span> as the target criterion: predictions should be stable under interventions on sensitive attributes</li>
+<li>Counterfactual fairness <span class="citation" data-cites="kusner2017counterfactual">(<a href="#ref-kusner2017counterfactual" role="doc-biblioref">Kusner et al. 2017</a>)</span> as the target criterion: predictions should be stable under interventions on sensitive attributes</li>
 <li>Standard approaches either require invasive encoder training or lack interpretability</li>
 </ul>
 </section>
 <section id="the-latplan-analogy" class="level2">
 <h2 class="anchored" data-anchor-id="the-latplan-analogy">The LatPlan analogy</h2>
 <ul>
-<li>LatPlan <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span> learns discrete latent states and symbolic action operators from images</li>
+<li>LatPlan <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref">Asai et al. 2022</a>)</span> learns discrete latent states and symbolic action operators from images</li>
 <li>Our work ports this neurosymbolic architecture to text, replacing planning with counterfactual fairness as the downstream objective</li>
 <li>Key adaptation: continuous (or quantized) text latents instead of binary propositional symbols; learned manipulators instead of PDDL operators</li>
 </ul>
@@ -242,7 +250,7 @@ window.Quarto = {
 <li>A training objective for latent space manipulators / interventions using a frozen semantic decoder as a neurosymbolic consistency bridge</li>
 <li>Empirical demonstration of the approach on synthetic and real-world datasets, showing competitive fairness-accuracy trade-offs
 <ul>
-<li>Empirical comparison against HSIC-based encoder-level debiasing <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span></li>
+<li>Empirical comparison against HSIC-based encoder-level debiasing <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref">Ng et al. 2025</a>)</span></li>
 </ul></li>
 <li>Analysis of trade-offs between identifiability guarantees and modularity/interpretability</li>
 </ul>
@@ -253,48 +261,48 @@ window.Quarto = {
 <section id="text-variational-autoencoders" class="level2">
 <h2 class="anchored" data-anchor-id="text-variational-autoencoders">Text Variational Autoencoders</h2>
 <ul>
-<li>Foundational work: <span class="citation" data-cites="bowman2016generating">(<a href="#ref-bowman2016generating" role="doc-biblioref"><strong>bowman2016generating?</strong></a>)</span> on LSTM-based text VAEs; posterior collapse problem</li>
-<li>Transformer-based VAEs: Optimus <span class="citation" data-cites="li2020optimus">(<a href="#ref-li2020optimus" role="doc-biblioref"><strong>li2020optimus?</strong></a>)</span> as the first pretrained LM-VAE</li>
-<li>Modern frameworks: LangVAE <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref"><strong>carvalho2025langvae?</strong></a>)</span> with KV-cache injection for frozen-decoder training</li>
-<li>Advances on LlaMaVAE <span class="citation" data-cites="zhang2023llamavae">(<a href="#ref-zhang2023llamavae" role="doc-biblioref"><strong>zhang2023llamavae?</strong></a>)</span>, T5VQVAE <span class="citation" data-cites="zhang2024improving">(<a href="#ref-zhang2024improving" role="doc-biblioref"><strong>zhang2024improving?</strong></a>)</span>, graph-induced VAEs <span class="citation" data-cites="zhang2024graph">(<a href="#ref-zhang2024graph" role="doc-biblioref"><strong>zhang2024graph?</strong></a>)</span></li>
-<li>Latent-space manipulability challenges: latent vacancy problem <span class="citation" data-cites="xu2020variational">(<a href="#ref-xu2020variational" role="doc-biblioref"><strong>xu2020variational?</strong></a>)</span></li>
+<li>Foundational work: <span class="citation" data-cites="bowman2016generating">Bowman et al. (<a href="#ref-bowman2016generating" role="doc-biblioref">2016</a>)</span> on LSTM-based text VAEs; posterior collapse problem</li>
+<li>Transformer-based VAEs: Optimus <span class="citation" data-cites="li2020optimus">(<a href="#ref-li2020optimus" role="doc-biblioref">Li et al. 2020</a>)</span> as the first pretrained LM-VAE</li>
+<li>Modern frameworks: LangVAE <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref">Carvalho et al. 2025</a>)</span> with KV-cache injection for frozen-decoder training</li>
+<li>Advances on LlaMaVAE <span class="citation" data-cites="zhang2023llamavae">(<a href="#ref-zhang2023llamavae" role="doc-biblioref">Zhang et al. 2023</a>)</span>, T5VQVAE <span class="citation" data-cites="zhang2024improving">(<a href="#ref-zhang2024improving" role="doc-biblioref">Zhang, Carvalho, et al. 2024</a>)</span>, graph-induced VAEs <span class="citation" data-cites="zhang2024graph">(<a href="#ref-zhang2024graph" role="doc-biblioref">Zhang, Valentino, et al. 2024</a>)</span></li>
+<li>Latent-space manipulability challenges: latent vacancy problem <span class="citation" data-cites="xu2020variational">(<a href="#ref-xu2020variational" role="doc-biblioref">Xu et al. 2020</a>)</span></li>
 </ul>
 </section>
 <section id="neurosymbolic-latent-space-reasoning" class="level2">
 <h2 class="anchored" data-anchor-id="neurosymbolic-latent-space-reasoning">Neurosymbolic Latent-space Reasoning</h2>
 <ul>
-<li>LatPlan original and JAIR version <span class="citation" data-cites="asai2018classical asai2022classical">(<a href="#ref-asai2018classical" role="doc-biblioref"><strong>asai2018classical?</strong></a>; <a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span></li>
+<li>LatPlan original and JAIR version <span class="citation" data-cites="asai2018classical asai2022classical">(<a href="#ref-asai2018classical" role="doc-biblioref">Asai and Fukunaga 2018</a>; <a href="#ref-asai2022classical" role="doc-biblioref">Asai et al. 2022</a>)</span></li>
 <li>State AutoEncoder and Action Model Acquisition (AMA)</li>
-<li>First-order extensions <span class="citation" data-cites="asai2019unsupervised">(<a href="#ref-asai2019unsupervised" role="doc-biblioref"><strong>asai2019unsupervised?</strong></a>)</span></li>
-<li>Plausibility heuristics for latent plan validation <span class="citation" data-cites="takata2023plausibility">(<a href="#ref-takata2023plausibility" role="doc-biblioref"><strong>takata2023plausibility?</strong></a>)</span></li>
+<li>First-order extensions <span class="citation" data-cites="asai2019unsupervised">(<a href="#ref-asai2019unsupervised" role="doc-biblioref">Asai 2019</a>)</span></li>
+<li>Plausibility heuristics for latent plan validation <span class="citation" data-cites="takata2023plausibility">(<a href="#ref-takata2023plausibility" role="doc-biblioref">Takata and Fukunaga 2023</a>)</span></li>
 <li>Relation to our Phase 2: manipulator as a learned, metadata-consistent action operator</li>
 </ul>
 </section>
 <section id="counterfactual-fairness" class="level2">
 <h2 class="anchored" data-anchor-id="counterfactual-fairness">Counterfactual Fairness</h2>
 <ul>
-<li>Foundational formulation <span class="citation" data-cites="kusner2017counterfactual">(<a href="#ref-kusner2017counterfactual" role="doc-biblioref"><strong>kusner2017counterfactual?</strong></a>)</span></li>
-<li>Path-specific refinements <span class="citation" data-cites="chiappa2019pathspecific">(<a href="#ref-chiappa2019pathspecific" role="doc-biblioref"><strong>chiappa2019pathspecific?</strong></a>)</span></li>
-<li>Latent-representation methods: CLAIRE <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref"><strong>ma2023clairelearning?</strong></a>)</span>, GCFN <span class="citation" data-cites="grari2023counterfactual">(<a href="#ref-grari2023counterfactual" role="doc-biblioref"><strong>grari2023counterfactual?</strong></a>)</span></li>
-<li>Fair latent space construction with frozen generators <span class="citation" data-cites="joo2024constructing">(<a href="#ref-joo2024constructing" role="doc-biblioref"><strong>joo2024constructing?</strong></a>)</span></li>
-<li>GAN-based latent de-biasing <span class="citation" data-cites="ramaswamy2021fair">(<a href="#ref-ramaswamy2021fair" role="doc-biblioref"><strong>ramaswamy2021fair?</strong></a>)</span></li>
+<li>Foundational formulation <span class="citation" data-cites="kusner2017counterfactual">(<a href="#ref-kusner2017counterfactual" role="doc-biblioref">Kusner et al. 2017</a>)</span></li>
+<li>Path-specific refinements <span class="citation" data-cites="chiappa2019pathspecific">(<a href="#ref-chiappa2019pathspecific" role="doc-biblioref">Chiappa 2019</a>)</span></li>
+<li>Latent-representation methods: CLAIRE <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref">Ma et al. 2023</a>)</span>, GCFN <span class="citation" data-cites="grari2023counterfactual">(<a href="#ref-grari2023counterfactual" role="doc-biblioref">Grari et al. 2023</a>)</span></li>
+<li>Fair latent space construction with frozen generators <span class="citation" data-cites="joo2024constructing">(<a href="#ref-joo2024constructing" role="doc-biblioref">Hong et al. 2024</a>)</span></li>
+<li>GAN-based latent de-biasing <span class="citation" data-cites="ramaswamy2021fair">(<a href="#ref-ramaswamy2021fair" role="doc-biblioref">Ramaswamy et al. 2021</a>)</span></li>
 </ul>
 </section>
 <section id="controllable-and-manipulable-text-generation" class="level2">
 <h2 class="anchored" data-anchor-id="controllable-and-manipulable-text-generation">Controllable and Manipulable Text Generation</h2>
 <ul>
-<li>Attribute-conditioned VAEs <span class="citation" data-cites="hu2017toward">(<a href="#ref-hu2017toward" role="doc-biblioref"><strong>hu2017toward?</strong></a>)</span></li>
-<li>LatentOps: composable operators via ODEs <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref"><strong>liu2022composable?</strong></a>)</span></li>
-<li>Unsupervised discovery of latent directions <span class="citation" data-cites="vechtomova2020unsupervised">(<a href="#ref-vechtomova2020unsupervised" role="doc-biblioref"><strong>vechtomova2020unsupervised?</strong></a>)</span></li>
-<li>Diffusion-based latent control: RegDiff <span class="citation" data-cites="vaeth2025regdiff">(<a href="#ref-vaeth2025regdiff" role="doc-biblioref"><strong>vaeth2025regdiff?</strong></a>)</span></li>
+<li>Attribute-conditioned VAEs <span class="citation" data-cites="hu2017toward">(<a href="#ref-hu2017toward" role="doc-biblioref">Hu et al. 2017</a>)</span></li>
+<li>LatentOps: composable operators via ODEs <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref">Liu et al. 2023</a>)</span></li>
+<li>Unsupervised discovery of latent directions <span class="citation" data-cites="vechtomova2020unsupervised">(<a href="#ref-vechtomova2020unsupervised" role="doc-biblioref">Anonymous 2020</a>)</span></li>
+<li>Diffusion-based latent control: RegDiff <span class="citation" data-cites="vaeth2025regdiff">(<a href="#ref-vaeth2025regdiff" role="doc-biblioref"><span class="nocase">Vaeth et al.</span> 2025</a>)</span></li>
 </ul>
 </section>
 <section id="reward-model-debiasing-via-causal-representation-learning" class="level2">
 <h2 class="anchored" data-anchor-id="reward-model-debiasing-via-causal-representation-learning">Reward Model Debiasing via Causal Representation Learning</h2>
 <ul>
-<li>Debiasing with theoretical guarantees via HSIC and surrogate conditioning <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span></li>
-<li>Counterfactual invariance framing <span class="citation" data-cites="veitch2021counterfactual">(<a href="#ref-veitch2021counterfactual" role="doc-biblioref"><strong>veitch2021counterfactual?</strong></a>)</span></li>
-<li>Information-theoretic approaches: DIR <span class="citation" data-cites="li2025eliminating">(<a href="#ref-li2025eliminating" role="doc-biblioref"><strong>li2025eliminating?</strong></a>)</span></li>
+<li>Debiasing with theoretical guarantees via HSIC and surrogate conditioning <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref">Ng et al. 2025</a>)</span></li>
+<li>Counterfactual invariance framing <span class="citation" data-cites="veitch2021counterfactual">(<a href="#ref-veitch2021counterfactual" role="doc-biblioref">Veitch et al. 2021</a>)</span></li>
+<li>Information-theoretic approaches: DIR <span class="citation" data-cites="li2025eliminating">(<a href="#ref-li2025eliminating" role="doc-biblioref"><span class="nocase">Li et al.</span> 2025</a>)</span></li>
 <li>Positioning: we target fairness rather than reward hacking, but share the causal-representation framing</li>
 </ul>
 </section>
@@ -312,7 +320,7 @@ window.Quarto = {
 <section id="the-identifiability-vs.-modularity-trade-off" class="level2">
 <h2 class="anchored" data-anchor-id="the-identifiability-vs.-modularity-trade-off">The identifiability vs.&nbsp;modularity trade-off</h2>
 <ul>
-<li>HSIC-based approaches <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>: bias-specific encoder training, formal identifiability (Theorems 1–2), but no encoder reuse</li>
+<li>HSIC-based approaches <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref">Ng et al. 2025</a>)</span>: bias-specific encoder training, formal identifiability (Theorems 1–2), but no encoder reuse</li>
 <li>Our claim: for many applications, encoder reuse, interpretability, and counterfactual explanation outweigh formal identifiability</li>
 <li>Discussion of when each trade-off is appropriate</li>
 </ul>
@@ -343,8 +351,8 @@ window.Quarto = {
 <section id="phase-0-text-vae-backbone" class="level2">
 <h2 class="anchored" data-anchor-id="phase-0-text-vae-backbone">Phase 0: Text VAE backbone</h2>
 <ul>
-<li>Choice of backbone: LangVAE <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref"><strong>carvalho2025langvae?</strong></a>)</span> for modularity and frozen-decoder efficiency</li>
-<li>Alternative: T5VQVAE <span class="citation" data-cites="zhang2024improving">(<a href="#ref-zhang2024improving" role="doc-biblioref"><strong>zhang2024improving?</strong></a>)</span> for discrete latents with tighter LatPlan analogy</li>
+<li>Choice of backbone: LangVAE <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref">Carvalho et al. 2025</a>)</span> for modularity and frozen-decoder efficiency</li>
+<li>Alternative: T5VQVAE <span class="citation" data-cites="zhang2024improving">(<a href="#ref-zhang2024improving" role="doc-biblioref">Zhang, Carvalho, et al. 2024</a>)</span> for discrete latents with tighter LatPlan analogy</li>
 <li>Training corpus and preprocessing details</li>
 </ul>
 </section>
@@ -363,7 +371,7 @@ window.Quarto = {
 <li>Output: manipulated latent <span class="math inline">\(z'\)</span> such that semantic_decoder(<span class="math inline">\(z'\)</span>) matches manipulated metadata</li>
 <li>Architecture options: linear direction, MLP, conditional normalizing flow</li>
 <li>Loss: consistency with symbolic manipulator + decoded-text plausibility + minimality of change</li>
-<li>Relation to LatPlan AMA <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span> and LatentOps plug-in operators <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref"><strong>liu2022composable?</strong></a>)</span></li>
+<li>Relation to LatPlan AMA <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref">Asai et al. 2022</a>)</span> and LatentOps plug-in operators <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref">Liu et al. 2023</a>)</span></li>
 </ul>
 </section>
 <section id="phase-3-predictor" class="level2">
@@ -377,7 +385,7 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="phase-4-counterfactual-fairness-mitigation">Phase 4: Counterfactual fairness mitigation</h2>
 <ul>
 <li>In-processing: consistency loss between <span class="math inline">\(\hat{y}(z)\)</span> and <span class="math inline">\(\hat{y}(z')\)</span> where <span class="math inline">\(z'\)</span> is counterfactually manipulated</li>
-<li>Closely related to CLAIRE <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref"><strong>ma2023clairelearning?</strong></a>)</span> objective</li>
+<li>Closely related to CLAIRE <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref">Ma et al. 2023</a>)</span> objective</li>
 </ul>
 </section>
 </section>
@@ -386,8 +394,8 @@ window.Quarto = {
 <section id="what-the-manipulator-approach-gives-up-vs.-hsic" class="level2">
 <h2 class="anchored" data-anchor-id="what-the-manipulator-approach-gives-up-vs.-hsic">What the manipulator approach gives up vs.&nbsp;HSIC</h2>
 <ul>
-<li>No identifiability guarantee in the sense of <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span> Theorems 1–2</li>
-<li>Non-identifiability of VAE latents <span class="citation" data-cites="hyvarinen2023nonlinear locatello2019challenging">(<a href="#ref-hyvarinen2023nonlinear" role="doc-biblioref"><strong>hyvarinen2023nonlinear?</strong></a>; <a href="#ref-locatello2019challenging" role="doc-biblioref"><strong>locatello2019challenging?</strong></a>)</span> carries over to counterfactual queries</li>
+<li>No identifiability guarantee in the sense of <span class="citation" data-cites="ng2025debiasing">Ng et al. (<a href="#ref-ng2025debiasing" role="doc-biblioref">2025</a>)</span> Theorems 1–2</li>
+<li>Non-identifiability of VAE latents <span class="citation" data-cites="hyvarinen2023nonlinear locatello2019challenging">(<a href="#ref-hyvarinen2023nonlinear" role="doc-biblioref">Hyvärinen et al. 2023</a>; <a href="#ref-locatello2019challenging" role="doc-biblioref">Locatello et al. 2019</a>)</span> carries over to counterfactual queries</li>
 <li>Discussion of residual correlation channels (bias leakage through unmanipulated dimensions)</li>
 </ul>
 </section>
@@ -404,7 +412,7 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="optional-partial-identifiability-analysis-for-the-manipulator">Optional: partial identifiability analysis for the manipulator</h2>
 <ul>
 <li>Conditions under which the learned manipulator recovers the “true” counterfactual direction</li>
-<li>Possible use of causal ordering assumptions <span class="citation" data-cites="kori2023causal">(<a href="#ref-kori2023causal" role="doc-biblioref"><strong>kori2023causal?</strong></a>)</span></li>
+<li>Possible use of causal ordering assumptions <span class="citation" data-cites="kori2023causal">(<a href="#ref-kori2023causal" role="doc-biblioref">Kori et al. 2023</a>)</span></li>
 <li>Honest acknowledgement of where guarantees end</li>
 </ul>
 </section>
@@ -415,18 +423,18 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="datasets">Datasets</h2>
 <ul>
 <li>Synthetic text data with controllable sensitive attributes (for sanity checks)</li>
-<li>Real-world dataset(s): [TBD — options include Bios <span class="citation" data-cites="de2019bias">(<a href="#ref-de2019bias" role="doc-biblioref"><strong>de2019bias?</strong></a>)</span>, Jigsaw Toxicity, resume data]</li>
-<li>Sycophancy and concept bias benchmarks from <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span> for direct comparison</li>
+<li>Real-world dataset(s): [TBD — options include Bios <span class="citation" data-cites="de2019bias">(<a href="#ref-de2019bias" role="doc-biblioref">De-Arteaga et al. 2019</a>)</span>, Jigsaw Toxicity, resume data]</li>
+<li>Sycophancy and concept bias benchmarks from <span class="citation" data-cites="ng2025debiasing">Ng et al. (<a href="#ref-ng2025debiasing" role="doc-biblioref">2025</a>)</span> for direct comparison</li>
 </ul>
 </section>
 <section id="baselines" class="level2">
 <h2 class="anchored" data-anchor-id="baselines">Baselines</h2>
 <ul>
 <li>Vanilla predictor on raw text embeddings</li>
-<li>HSIC-based debiased encoder (CARD, <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>)</li>
-<li>CLAIRE-style counterfactual augmentation <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref"><strong>ma2023clairelearning?</strong></a>)</span></li>
-<li>Unsupervised latent directions via PCA <span class="citation" data-cites="vechtomova2020unsupervised">(<a href="#ref-vechtomova2020unsupervised" role="doc-biblioref"><strong>vechtomova2020unsupervised?</strong></a>)</span></li>
-<li>LatentOps plug-in operator <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref"><strong>liu2022composable?</strong></a>)</span></li>
+<li>HSIC-based debiased encoder (CARD, <span class="citation" data-cites="ng2025debiasing">Ng et al. (<a href="#ref-ng2025debiasing" role="doc-biblioref">2025</a>)</span>)</li>
+<li>CLAIRE-style counterfactual augmentation <span class="citation" data-cites="ma2023clairelearning">(<a href="#ref-ma2023clairelearning" role="doc-biblioref">Ma et al. 2023</a>)</span></li>
+<li>Unsupervised latent directions via PCA <span class="citation" data-cites="vechtomova2020unsupervised">(<a href="#ref-vechtomova2020unsupervised" role="doc-biblioref">Anonymous 2020</a>)</span></li>
+<li>LatentOps plug-in operator <span class="citation" data-cites="liu2022composable">(<a href="#ref-liu2022composable" role="doc-biblioref">Liu et al. 2023</a>)</span></li>
 </ul>
 </section>
 <section id="evaluation-metrics" class="level2">
@@ -434,8 +442,8 @@ window.Quarto = {
 <ul>
 <li>Predictive accuracy and worst-case subgroup accuracy</li>
 <li>Counterfactual fairness metric (prediction invariance on manipulated inputs)</li>
-<li>Bias@C <span class="citation" data-cites="zhou2024explore">(<a href="#ref-zhou2024explore" role="doc-biblioref"><strong>zhou2024explore?</strong></a>)</span> for concept bias</li>
-<li>Disentanglement metrics from LangSpace <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref"><strong>carvalho2025langvae?</strong></a>)</span>: MIG, DCI, z-diff</li>
+<li>Bias@C <span class="citation" data-cites="zhou2024explore">(<a href="#ref-zhou2024explore" role="doc-biblioref">Zhou et al. 2024</a>)</span> for concept bias</li>
+<li>Disentanglement metrics from LangSpace <span class="citation" data-cites="carvalho2025langvae">(<a href="#ref-carvalho2025langvae" role="doc-biblioref">Carvalho et al. 2025</a>)</span>: MIG, DCI, z-diff</li>
 <li>Interpretability probes: linear probe recovery of metadata from manipulated vs.&nbsp;unmanipulated latents</li>
 <li>Counterfactual explanation quality (human or automated eval)</li>
 </ul>
@@ -456,7 +464,7 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="main-results">Main results</h2>
 <ul>
 <li>Headline fairness vs.&nbsp;accuracy trade-off curves</li>
-<li>Comparison against HSIC baseline <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span></li>
+<li>Comparison against HSIC baseline <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref">Ng et al. 2025</a>)</span></li>
 </ul>
 </section>
 <section id="modularity-demonstration" class="level2">
@@ -477,14 +485,14 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="counterfactual-explanation-case-studies">Counterfactual explanation case studies</h2>
 <ul>
 <li>Concrete examples of original vs.&nbsp;counterfactual text pairs</li>
-<li>Comparison with Joo et al. <span class="citation" data-cites="joo2024constructing">(<a href="#ref-joo2024constructing" role="doc-biblioref"><strong>joo2024constructing?</strong></a>)</span> style explanations</li>
+<li>Comparison with Joo et al. <span class="citation" data-cites="joo2024constructing">(<a href="#ref-joo2024constructing" role="doc-biblioref">Hong et al. 2024</a>)</span> style explanations</li>
 </ul>
 </section>
 <section id="robustness-and-failure-modes" class="level2">
 <h2 class="anchored" data-anchor-id="robustness-and-failure-modes">Robustness and failure modes</h2>
 <ul>
-<li>Behavior under distribution shift (analogous to sycophancy experiment in <span class="citation" data-cites="ng2025debiasing">(<a href="#ref-ng2025debiasing" role="doc-biblioref"><strong>ng2025debiasing?</strong></a>)</span>)</li>
-<li>Cases where the manipulator fails: latent vacancy <span class="citation" data-cites="xu2020variational">(<a href="#ref-xu2020variational" role="doc-biblioref"><strong>xu2020variational?</strong></a>)</span>, correlated bias-free dimensions</li>
+<li>Behavior under distribution shift (analogous to sycophancy experiment in <span class="citation" data-cites="ng2025debiasing">Ng et al. (<a href="#ref-ng2025debiasing" role="doc-biblioref">2025</a>)</span>)</li>
+<li>Cases where the manipulator fails: latent vacancy <span class="citation" data-cites="xu2020variational">(<a href="#ref-xu2020variational" role="doc-biblioref">Xu et al. 2020</a>)</span>, correlated bias-free dimensions</li>
 </ul>
 </section>
 </section>
@@ -500,7 +508,7 @@ window.Quarto = {
 <section id="connection-to-broader-neurosymbolic-ai" class="level2">
 <h2 class="anchored" data-anchor-id="connection-to-broader-neurosymbolic-ai">Connection to broader neurosymbolic AI</h2>
 <ul>
-<li>LatPlan’s vision for symbol grounding <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref"><strong>asai2022classical?</strong></a>)</span></li>
+<li>LatPlan’s vision for symbol grounding <span class="citation" data-cites="asai2022classical">(<a href="#ref-asai2022classical" role="doc-biblioref">Asai et al. 2022</a>)</span></li>
 <li>Our work as evidence that the LatPlan pattern ports beyond image-based planning</li>
 <li>Open question: can we extract genuinely symbolic (PDDL-like) operators from the learned manipulator?</li>
 </ul>
@@ -541,10 +549,99 @@ window.Quarto = {
 <ul>
 <li>Code, datasets, pretrained checkpoints</li>
 </ul>
+
 </section>
 </section>
 
-</main>
+<div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
+<div id="ref-vechtomova2020unsupervised" class="csl-entry" role="listitem">
+Anonymous. 2020. <em>Unsupervised Discovery of Interpretable Latent Manipulations in Language VAEs</em>. OpenReview.
+</div>
+<div id="ref-asai2019unsupervised" class="csl-entry" role="listitem">
+Asai, Masataro. 2019. <span>“Unsupervised Grounding of Plannable First-Order Logic Representation from Images.”</span> <em>Proceedings of the International Conference on Automated Planning and Scheduling, <span>ICAPS</span> 2019</em>.
+</div>
+<div id="ref-asai2018classical" class="csl-entry" role="listitem">
+Asai, Masataro, and Alex Fukunaga. 2018. <span>“Classical Planning in Deep Latent Space: Bridging the Subsymbolic-Symbolic Boundary.”</span> In <em>Proceedings of the Thirty-Second AAAI Conference on Artificial Intelligence, <span>AAAI-18</span>, New Orleans, Louisiana, USA, February 2-7, 2018</em>, edited by Sheila A. McIlraith and Kilian Q. Weinberger. <span>AAAI</span> Press. <a href="https://doi.org/10.1609/aaai.v32i1.12077">https://doi.org/10.1609/aaai.v32i1.12077</a>.
+</div>
+<div id="ref-asai2022classical" class="csl-entry" role="listitem">
+Asai, Masataro, Hiroshi Kajino, Alex Fukunaga, and Christian Muise. 2022. <span>“Classical Planning in Deep Latent Space.”</span> <em>J. Artif. Intell. Res.</em> 74: 1599–686. <a href="https://doi.org/10.1613/jair.1.13768">https://doi.org/10.1613/jair.1.13768</a>.
+</div>
+<div id="ref-bowman2016generating" class="csl-entry" role="listitem">
+Bowman, Samuel R., Luke Vilnis, Oriol Vinyals, Andrew M. Dai, Rafal Józefowicz, and Samy Bengio. 2016. <span>“Generating Sentences from a Continuous Space.”</span> In <em>Proceedings of the 20th <span>SIGNLL</span> Conference on Computational Natural Language Learning, CoNLL 2016, Berlin, Germany, August 11-12, 2016</em>, edited by Yoav Goldberg and Stefan Riezler. <span>ACL</span>. <a href="https://doi.org/10.18653/v1/k16-1002">https://doi.org/10.18653/v1/k16-1002</a>.
+</div>
+<div id="ref-carvalho2025langvae" class="csl-entry" role="listitem">
+Carvalho, Danilo S., Yingji Zhang, Harriet Unsworth, and André Freitas. 2025. <span>“LangVAE and LangSpace: Building and Probing for Language Model VAEs.”</span> <em>Proceedings of the 2025 Conference on Empirical Methods in Natural Language Processing: System Demonstrations, EMNLP 2025, Suzhou, China, November 2025</em>, 749–59. <a href="https://doi.org/10.18653/v1/2025.emnlp-demos.57">https://doi.org/10.18653/v1/2025.emnlp-demos.57</a>.
+</div>
+<div id="ref-chiappa2019pathspecific" class="csl-entry" role="listitem">
+Chiappa, Silvia. 2019. <span>“Path-Specific Counterfactual Fairness.”</span> <em>The Thirty-Third <span>AAAI</span> Conference on Artificial Intelligence, <span>AAAI</span> 2019, Honolulu, Hawaii, USA, January 27 - February 1, 2019</em>, 7801–8. <a href="https://doi.org/10.1609/aaai.v33i01.33017801">https://doi.org/10.1609/aaai.v33i01.33017801</a>.
+</div>
+<div id="ref-de2019bias" class="csl-entry" role="listitem">
+De-Arteaga, Maria, Alexey Romanov, Hanna M. Wallach, et al. 2019. <span>“Bias in Bios: <span>A</span> Case Study of Semantic Representation Bias in a High-Stakes Setting.”</span> In <em>Proceedings of the Conference on Fairness, Accountability, and Transparency, <span>FAT*</span> 2019, Atlanta, GA, USA, January 29-31, 2019</em>, <span class="nocase">edited by danah boyd and Jamie H. Morgenstern</span>. <span>ACM</span>. <a href="https://doi.org/10.1145/3287560.3287572">https://doi.org/10.1145/3287560.3287572</a>.
+</div>
+<div id="ref-grari2023counterfactual" class="csl-entry" role="listitem">
+Grari, Vincent, Manuel Quintero, Fabian Laumer, Bertrand Charpentier, Dennis Wei, and Stefan Feuerriegel. 2023. <span>“Counterfactual Fairness for Predictions Using Generative Adversarial Networks.”</span> <em>CoRR</em> abs/2310.17687. <a href="https://arxiv.org/abs/2310.17687">https://arxiv.org/abs/2310.17687</a>.
+</div>
+<div id="ref-joo2024constructing" class="csl-entry" role="listitem">
+Hong, Jinyung, Eun Som Jeon, Changhoon Kim, et al. 2024. <span>“Constructing Fair Latent Space for Intersection of Fairness and Explainability.”</span> <em>CoRR</em> abs/2412.17523. <a href="https://arxiv.org/abs/2412.17523">https://arxiv.org/abs/2412.17523</a>.
+</div>
+<div id="ref-hu2017toward" class="csl-entry" role="listitem">
+Hu, Zhiting, Zichao Yang, Xiaodan Liang, Ruslan Salakhutdinov, and Eric P. Xing. 2017. <span>“Toward Controlled Generation of Text.”</span> In <em>Proceedings of the 34th International Conference on Machine Learning, <span>ICML</span> 2017, Sydney, NSW, Australia, 6-11 August 2017</em>, edited by Doina Precup and Yee Whye Teh, vol. 70. Proceedings of Machine Learning Research. <span>PMLR</span>. <a href="http://proceedings.mlr.press/v70/hu17e.html">http://proceedings.mlr.press/v70/hu17e.html</a>.
+</div>
+<div id="ref-hyvarinen2023nonlinear" class="csl-entry" role="listitem">
+Hyvärinen, Aapo, Ilyes Khemakhem, and Hiroshi Morioka. 2023. <span>“Nonlinear Independent Component Analysis for Principled Disentanglement in Unsupervised Deep Learning.”</span> <em>Patterns</em> 4 (10): 100844. <a href="https://doi.org/10.1016/j.patter.2023.100844">https://doi.org/10.1016/j.patter.2023.100844</a>.
+</div>
+<div id="ref-kori2023causal" class="csl-entry" role="listitem">
+Kori, Avinash, Pedro Sanchez, Konstantinos Vilouras, Ben Glocker, and Sotirios A. Tsaftaris. 2023. <span>“A Causal Ordering Prior for Unsupervised Representation Learning.”</span> <em>CoRR</em> abs/2307.05704. <a href="https://arxiv.org/abs/2307.05704">https://arxiv.org/abs/2307.05704</a>.
+</div>
+<div id="ref-kusner2017counterfactual" class="csl-entry" role="listitem">
+Kusner, Matt J., Joshua R. Loftus, Chris Russell, and Ricardo Silva. 2017. <span>“Counterfactual Fairness.”</span> In <em>Advances in Neural Information Processing Systems 30: Annual Conference on Neural Information Processing Systems 2017, December 4-9, 2017, Long Beach, CA, <span>USA</span></em>, edited by Isabelle Guyon, Ulrike von Luxburg, Samy Bengio, et al.
+</div>
+<div id="ref-li2020optimus" class="csl-entry" role="listitem">
+Li, Chunyuan, Xiang Gao, Yuan Li, et al. 2020. <span>“Optimus: Organizing Sentences via Pre-Trained Modeling of a Latent Space.”</span> In <em>Proceedings of the 2020 Conference on Empirical Methods in Natural Language Processing, <span>EMNLP</span> 2020, Online, November 16-20, 2020</em>, edited by Bonnie Webber, Trevor Cohn, Yulan He, and Yang Liu. Association for Computational Linguistics. <a href="https://doi.org/10.18653/v1/2020.emnlp-main.378">https://doi.org/10.18653/v1/2020.emnlp-main.378</a>.
+</div>
+<div id="ref-li2025eliminating" class="csl-entry" role="listitem">
+<span class="nocase">Li, Zhuo et al.</span> 2025. <span>“Eliminating Inductive Bias in Reward Models with Information-Theoretic Guidance.”</span> <em>CoRR</em> abs/2512.23461. <a href="https://arxiv.org/abs/2512.23461">https://arxiv.org/abs/2512.23461</a>.
+</div>
+<div id="ref-liu2022composable" class="csl-entry" role="listitem">
+Liu, Guangyi, Zeyu Feng, Yuan Gao, et al. 2023. <span>“Composable Text Controls in Latent Space with ODEs.”</span> <em>Proceedings of the 2023 Conference on Empirical Methods in Natural Language Processing, <span>EMNLP</span> 2023</em>.
+</div>
+<div id="ref-locatello2019challenging" class="csl-entry" role="listitem">
+Locatello, Francesco, Stefan Bauer, Mario Lucic, et al. 2019. <span>“Challenging Common Assumptions in the Unsupervised Learning of Disentangled Representations.”</span> In <em>Proceedings of the 36th International Conference on Machine Learning, <span>ICML</span> 2019, 9-15 June 2019, Long Beach, California, <span>USA</span></em>, edited by Kamalika Chaudhuri and Ruslan Salakhutdinov, vol. 97. Proceedings of Machine Learning Research. <span>PMLR</span>.
+</div>
+<div id="ref-ma2023clairelearning" class="csl-entry" role="listitem">
+Ma, Jing, Ruocheng Guo, Aidong Zhang, and Jundong Li. 2023. <span>“Learning for Counterfactual Fairness from Observational Data.”</span> <em>Proceedings of the 29th <span>ACM</span> <span>SIGKDD</span> Conference on Knowledge Discovery and Data Mining, <span>KDD</span> 2023, Long Beach, CA, USA, August 6-10, 2023</em>.
+</div>
+<div id="ref-ng2025debiasing" class="csl-entry" role="listitem">
+Ng, Ignavier, Patrick Blöbaum, Siddharth Bhandari, Kun Zhang, and Shiva Kasiviswanathan. 2025. <span>“Debiasing Reward Models by Representation Learning with Guarantees.”</span> <em>CoRR</em> abs/2510.23751. <a href="https://arxiv.org/abs/2510.23751">https://arxiv.org/abs/2510.23751</a>.
+</div>
+<div id="ref-ramaswamy2021fair" class="csl-entry" role="listitem">
+Ramaswamy, Vikram V., Sunnie S. Y. Kim, and Olga Russakovsky. 2021. <span>“Fair Attribute Classification Through Latent Space de-Biasing.”</span> <em><span>IEEE</span> Conference on Computer Vision and Pattern Recognition, <span>CVPR</span> 2021, Virtual, June 19-25, 2021</em>, 9301–10.
+</div>
+<div id="ref-takata2023plausibility" class="csl-entry" role="listitem">
+Takata, Yuta, and Alex Fukunaga. 2023. <span>“Plausibility-Based Heuristics for Latent Space Classical Planning.”</span> <em><span>ICAPS</span> 2023 Workshop on Reliable Data-Driven Planning and Scheduling (RDDPS)</em>.
+</div>
+<div id="ref-vaeth2025regdiff" class="csl-entry" role="listitem">
+<span class="nocase">Vaeth et al.</span> 2025. <span>“RegDiff: Controllable Stylistic Text Generation with Train-Time Attribute-Regularized Diffusion.”</span> <em>CoRR</em> abs/2510.06386.
+</div>
+<div id="ref-veitch2021counterfactual" class="csl-entry" role="listitem">
+Veitch, Victor, Alexander D’Amour, Steve Yadlowsky, and Jacob Eisenstein. 2021. <span>“Counterfactual Invariance to Spurious Correlations in Text Classification.”</span> In <em>Advances in Neural Information Processing Systems 34: Annual Conference on Neural Information Processing Systems 2021, NeurIPS 2021, December 6-14, 2021, Virtual</em>, edited by Marc’Aurelio Ranzato, Alina Beygelzimer, Yann N. Dauphin, Percy Liang, and Jennifer Wortman Vaughan.
+</div>
+<div id="ref-xu2020variational" class="csl-entry" role="listitem">
+Xu, Peng, Jackie Chi Kit Cheung, and Yanshuai Cao. 2020. <em>On Variational Learning of Controllable Representations for Text Without Supervision</em>. Proceedings of machine learning research, vol. 119: 10534–43. <a href="http://proceedings.mlr.press/v119/xu20a.html">http://proceedings.mlr.press/v119/xu20a.html</a>.
+</div>
+<div id="ref-zhang2023llamavae" class="csl-entry" role="listitem">
+Zhang, Yingji, Danilo S. Carvalho, Ian Pratt-Hartmann, and André Freitas. 2023. <span>“LlaMaVAE: Guiding Large Language Model Generation via Continuous Latent Sentence Spaces.”</span> <em>CoRR</em> abs/2312.13208. <a href="https://arxiv.org/abs/2312.13208">https://arxiv.org/abs/2312.13208</a>.
+</div>
+<div id="ref-zhang2024improving" class="csl-entry" role="listitem">
+Zhang, Yingji, Danilo S. Carvalho, Marco Valentino, Ian Pratt-Hartmann, and André Freitas. 2024. <span>“Improving Semantic Control in Discrete Latent Spaces with Transformer Quantized Variational Autoencoders.”</span> In <em>Findings of the Association for Computational Linguistics: EACL 2024, St. Julian’s, Malta, March 17-22, 2024</em>, edited by Yvette Graham and Matthew Purver. Association for Computational Linguistics. <a href="https://aclanthology.org/2024.findings-eacl.97">https://aclanthology.org/2024.findings-eacl.97</a>.
+</div>
+<div id="ref-zhang2024graph" class="csl-entry" role="listitem">
+Zhang, Yingji, Marco Valentino, Danilo S. Carvalho, Ian Pratt-Hartmann, and André Freitas. 2024. <span>“Graph-Induced Syntactic-Semantic Spaces in Transformer-Based Variational AutoEncoders.”</span> <em>Findings of the Association for Computational Linguistics: NAACL 2024, Mexico City, Mexico, June 16-21, 2024</em>, 474–89. <a href="https://aclanthology.org/2024.findings-naacl.32">https://aclanthology.org/2024.findings-naacl.32</a>.
+</div>
+<div id="ref-zhou2024explore" class="csl-entry" role="listitem">
+Zhou, Yujian, Peng Xu, Xiaodong Liu, Bing An, Wei Ai, and Furong Huang. 2024. <span>“Explore Spurious Correlations at the Concept Level in Language Models for Text Classification.”</span> <em>Proceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers), <span>ACL</span> 2024</em>.
+</div>
+</div></section></div></main>
 <!-- /main column -->
 <script id="quarto-html-after-body" type="application/javascript">
   window.document.addEventListener("DOMContentLoaded", function (event) {
