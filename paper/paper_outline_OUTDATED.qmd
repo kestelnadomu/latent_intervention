@@ -17,10 +17,12 @@ format:
 bibliography: references.bib
 ---
 
+THIS IS OUTDATED
+
 
 # Abstract
 
-- Problem: reward models and predictors on text exploit spurious correlations tied to sensitive attributes
+- Problem: bias mitigation for multimodal data
 - Gap: existing debiasing approaches either (a) bake bias-specific constraints into the encoder (HSIC-based, @ng2025debiasing) or (b) require full retraining per new attribute
 - Proposal: a LatPlan-inspired [@asai2022classical] modular neurosymbolic architecture for text where a frozen, general-purpose text VAE is paired with learned manipulators that mimic symbolic operators on tabular metadata
 - Contribution: four-phase pipeline (encoder → semantic decoder → neurosymbolic manipulator → counterfactual fairness mitigation) with interpretability, encoder reuse, and counterfactual explanation as first-class properties
