@@ -1,0 +1,64 @@
+---
+title: Using the MPI-M quarto theme
+format:
+  mpim-revealjs: default
+author:
+  - name: Tobias Kölling
+  - name: Lukas Kluft
+date: 2025-12-15
+---
+
+## Introduction
+
+The MPI-M Quarto theme is demonstrated in this example, which also provides examples of additional functionality that extends the usual Quarto options.
+
+## Polaroid effect for images
+
+You can add a polaroid effect to embedded images:
+
+```{markdown}
+![Alt text](image.png){.polaroid}
+```
+
+::::{.columns}
+:::{.column}
+![MPG logo in plain style](MPG_Minerva_mpg-green.png){height=300px}
+:::
+
+:::{.column}
+![MPG logo with polaroid effect](MPG_Minerva_mpg-green.png){height=300px .polaroid}
+:::
+::::
+
+## Colors
+
+* You can use pre-defined colors that adhere to the MPI-M design guidelines
+* To apply a color, add the relevant CSS class:
+  ```{markdown}
+  This is a sentence with [colored words]{.green} in between.
+  ```
+* The available colors are [**darkgreen**]{.darkgreen}, [**green**]{.green}, [**lightgreen**]{.lightgreen}, and [**orange**]{.orange}
+
+## Transition slides
+
+You can insert a transition slide by adding the `{.separator}` class to the heading:
+
+```{markdown}
+# New chapter {.separator}
+```
+
+In addition, there are twelve numbered section separators available:
+
+```{markdown}
+# Chapter 01 {.separator-01}
+```
+
+_see next slides_
+
+# New chapter {.separator}
+
+# Chapter 01 {.separator-01}
+
+## More Information
+
+You can learn more about controlling the appearance of RevealJS output here: <https://quarto.org/docs/presentations/revealjs/>
