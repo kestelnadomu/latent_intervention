@@ -72,9 +72,16 @@ Methodology to generate a counterfactual latent representation of a text input
 - $M$ - structural causal model over $S$ that captures the causal effect of $A$ on a task.
 
 
+# Procedure { .col6 .row2 .note }
+::: {.columns}
+::: {.column width="50%"}
+![](img/demo.svg)
+:::
+::: {.column width="5%"}
+:::
+::: {.column width="45%"}
 
-
-# Procedure { .col3 .row2 .note }
+<!-- # Procedure { .col3 .row2 .note } -->
 
 ## 0. Pre-trained encoder $f: X \rightarrow Z$
 
@@ -99,9 +106,8 @@ Methodology to generate a counterfactual latent representation of a text input
 ## 3. Downstream Task
 - E.g., a predictor $p$ with constraint $p(Z) \neq p(Z')$
 
-# Illustration { .col3 .row2 }
-![](img/demo.png)
-
+:::
+:::
 
 # Data & Experiments { .col3 .row2 }
 
