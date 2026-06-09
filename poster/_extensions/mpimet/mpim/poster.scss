@@ -86,9 +86,9 @@ div.page-layout-custom { // a page
   page-break-after: always;
   width: $pagewidth;
   height: $pageheight;
-  padding: 20mm 35mm 16mm 35mm;
+  padding: 20mm 35mm 20mm 35mm; // bottom matches .poster-footer height
 
-  border-width: 25mm 0 16mm 0;
+  border-width: 25mm 0 0 0;
   border-color: $deepblue;
   border-style: solid;
 
@@ -177,6 +177,26 @@ header#kestel-header {
             flex-basis: 0;
             flex-grow: 1;
         }
+    }
+}
+
+.poster-footer {
+    position: absolute;
+    left: 0;
+    bottom: 0; // fills the 16mm reserved at the page bottom (padding-bottom)
+    width: 100%;
+    height: 20mm;
+    background-color: $deepblue;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $yellow;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 20pt;
+
+    a {
+        color: $yellow;
+        text-decoration: none;
     }
 }
 
