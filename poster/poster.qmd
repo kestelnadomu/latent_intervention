@@ -10,7 +10,7 @@ author:
       - id: mcml
         name: Munich Center for Machine Learning
       - id: bidt
-        name: Bavarian Institute for Digital Transformation
+        name: Bavarian Research Institute for Digital Transformation
   - name: Christoph Kern
     affiliation:
       - ref: lmu
@@ -44,8 +44,8 @@ Counterfactual fairness, i.e., asking how a prediction would change under interv
 ## Contribution 
 Methodology to generate a counterfactual latent representation of a text input
 
-- **Modular**: Pre-trained VAE to map text to a latent representation + neurosymbolic manipulator (NSM) model to transform these representations
-- **Causal-aware**: NSM learns a latent transformation analogously to a causal intervention (abduction-action-prediction) on observable data w.r.t. a sensitive attribute.
+- **Modular**: Pre-trained VAE to map text to a latent representation + neurosymbolic manipulator model to transform these representations
+- **Causal-aware**: Manipulator learns a latent transformation analogously to a causal intervention (abduction-action-prediction) on observable data w.r.t. a sensitive attribute.
 
 
 # Problem Formulation { .col3 .row1 }
@@ -74,12 +74,12 @@ Methodology to generate a counterfactual latent representation of a text input
 
 # Procedure { .col6 .row2 .note }
 ::: {.columns}
+::: {.column width="47%"}
+![](img/demo_framed.svg)
+:::
+::: {.column width="3%"}
+:::
 ::: {.column width="50%"}
-![](img/demo.svg)
-:::
-::: {.column width="5%"}
-:::
-::: {.column width="45%"}
 
 <!-- # Procedure { .col3 .row2 .note } -->
 
@@ -109,20 +109,63 @@ Methodology to generate a counterfactual latent representation of a text input
 :::
 :::
 
-# Data & Experiments { .col3 .row2 }
+# Data & Hypotheses { .col3 .row2 }
 
 ## Synthetic Data
+::: {.columns}
+::: {.column width=30%}
+* Approach simliar to @toker_liberty_2026
 * Dataset with matching $X$ and $S$ to train the semantic decoder $g$
-<!-- * **Hypothesis**: neural manipulator model $h_Z$ is trainable as a latent analogy to a symbolic operation $h_S$. -->
-  1. SCM $M$ modeling some causal paths from $A$ and involving $S$ as descendants
-  2. Sample a $S$ from $M$
-  3. Use LLM to generate $X$ from $S$.
+:::
 
-## Real World Data
-* *Bias in Bios* CV dataset [@arteaga_biasbios_2019],
+::: {.column width=70%}
+![](img/data1.svg){width=100% fig-alt="1. SCM $M$ models some causal paths from $A$ and involving $S$ as descendants. 2. Tabular data $S$ is sampled from $M$. 3. LLM generates $X$ from each instance of $S$."}
+:::
+
+:::
+
+
+
+<!-- ::: {.columns}
+::: {.column width=48%}
+  1. SCM $M$ modeling some causal paths from $A$ and involving $S$ as descendants
+  2. Sample tabular data $S$ from $M$
+  3. Use LLM to generate $X$ from $S$.
+:::
+::: {.column width=4%}
+:::
+::: {.column width=48%}
+  <br>
+  ![](img/data1.svg)
+:::
+::: -->
+
 * **Challenges**:
-  * Strong causal assumptions
-  * $S$ unknown $\rightarrow$ Semantic Decoder pre-trained on synthetic data
+  * LLM may introduce additional hidden confounders descending from $A$
+  * External validty
+
+
+::: {.columns}
+::: {.column width=60%}
+## Real World Data
+* CV dataset, e.g., *Bias in Bios* [@arteaga_biasbios_2019]
+* **Challenges**:
+  * SCM requires strong causal assumptions
+  * Tabular representation $S$ is unknown
+:::
+::: {.column width=30%}
+![](img/data2.svg){fig-alt="1. An SCM is constructed fo an existing CV dataset. 2. The dataset is annotated with a tabular entry in $S$ for each CV."}
+:::
+
+:::
+
+
+
+## Hypotheses { .col3 .row1 }
+1. **Analogy**: $h_Z$ can be trained to generate the counterfactual of $Z$ analoguously to $h_S$
+2. **Sparsity**: $h_Z$ only adjusts observed confounders
+3. **Effectiveness**: $Z'$ and $Z$ can be used to debias a prediction model
+4. **Meaningfulness**: There exists a decoder that can retrieve the counterfactual $X'$ to $X$ from $Z'$
 
 
 # Related Work { .col3 .row1 }
@@ -135,20 +178,32 @@ Methodology to generate a counterfactual latent representation of a text input
 <!-- a modular, neurosymbolic architecture that approximates counterfactual interventions in the latent space of a VAE. -->
 
  
-# Discussion { .col3 .row2 }
-<!-- We propose a modular framework that separates representation learning from causal intervention: a pretrained text encoder produces a latent representation, and a neural manipulator transforms it analogously to a symbolic counterfactual operation on a structured decoding. This decomposition trades end-to-end debiasing for a more auditable inference pipeline, in which the causal assumptions live in an explicit, inspectable subgraph rather than implicitly inside an encoder. -->
+# Discussion { .col3 .row1 }
+::: {.columns}
+::: {.column width=55%}
+## Advantage: Modularity
+- Flexibile, auditable and composable
+- Independence from encoder training
 
-- Framework inherits assumptions from SCMs: no hidden confounders and full observability of $S$
-- **Central open question**: Does the latent manipulator learn a faithful analogue of the symbolic operation in practice
-- **If yes**: decomposition delivers on the flexibility and auditability that motivated the design.
+## Limitations: SCM Assumptions
+- No hidden confounders $\rightarrow$ $M$ is accurate
+- Full observability of $S$ $\rightarrow$ $g$ is well-fit
 
-# Results { .col3 .row1 }
+## Scope
+- Value beyond fairness, e.g., privacy or safety<br>
+$\rightarrow$ **Latent Symbolic Interventions**
+:::
 
+::: {.column width=45%}
+![](img/demo_discussion.svg)
+:::
+:::
+
+- **Central open question**:<br>Can a latent manipulator learn a faithful analogue of the symbolic operation in practice?
 
 ::: {.poster-footer}
 [leo.kestel@lmu.de](mailto:leo.kestel@lmu.de) · [leokestel.de](https://leokestel.de)
 :::
-
 
 <!-- # Extra Scholary Information { .col3 }
 
