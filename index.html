@@ -88,7 +88,7 @@ window.Quarto = {
                         <div class="affiliations">
                         <span class="affiliation"><span class="affiliation-number">1</span>Ludwig-Maximilians-Universität München</span>
                         <span class="affiliation"><span class="affiliation-number">2</span>Munich Center for Machine Learning</span>
-                        <span class="affiliation"><span class="affiliation-number">3</span>Bavarian Institute for Digital Transformation</span>
+                        <span class="affiliation"><span class="affiliation-number">3</span>Bavarian Research Institute for Digital Transformation</span>
                     </div>
                         
     </div>
@@ -124,8 +124,8 @@ Counterfactual fairness, i.e., asking how a prediction would change under interv
 <h2 data-anchor-id="contribution">Contribution</h2>
 <p>Methodology to generate a counterfactual latent representation of a text input</p>
 <ul>
-<li><strong>Modular</strong>: Pre-trained VAE to map text to a latent representation + neurosymbolic manipulator (NSM) model to transform these representations</li>
-<li><strong>Causal-aware</strong>: NSM learns a latent transformation analogously to a causal intervention (abduction-action-prediction) on observable data w.r.t. a sensitive attribute.</li>
+<li><strong>Modular</strong>: Pre-trained VAE to map text to a latent representation + neurosymbolic manipulator model to transform these representations</li>
+<li><strong>Causal-aware</strong>: Manipulator learns a latent transformation analogously to a causal intervention (abduction-action-prediction) on observable data w.r.t. a sensitive attribute.</li>
 </ul>
 </section>
 </section>
@@ -167,11 +167,11 @@ Counterfactual fairness, i.e., asking how a prediction would change under interv
 <section id="procedure" class="level1 col6 row2 note">
 <h1 class="col6 row2 note">Procedure</h1>
 <div class="columns">
-<div class="column" style="width:50%;">
-<p><img src="img/demo.svg" class="img-fluid"></p>
-</div><div class="column" style="width:5%;">
+<div class="column" style="width:47%;">
+<p><img src="img/demo_framed.svg" class="img-fluid"></p>
+</div><div class="column" style="width:3%;">
 
-</div><div class="column" style="width:45%;">
+</div><div class="column" style="width:50%;">
 <!-- # Procedure { .col3 .row2 .note } -->
 <section id="pre-trained-encoder-f-x-rightarrow-z" class="level2">
 <h2 data-anchor-id="pre-trained-encoder-f-x-rightarrow-z">0. Pre-trained encoder <span class="math inline">\(f: X \rightarrow Z\)</span></h2>
@@ -205,29 +205,66 @@ h_S(g(Z)) = g(h_Z(Z))
 </div>
 </div>
 </section>
-<section id="data-experiments" class="level1 col3 row2">
-<h1 class="col3 row2">Data &amp; Experiments</h1>
+<section id="data-hypotheses" class="level1 col3 row2">
+<h1 class="col3 row2">Data &amp; Hypotheses</h1>
 <section id="synthetic-data" class="level2">
 <h2 data-anchor-id="synthetic-data">Synthetic Data</h2>
+<div class="columns">
+<div class="column" style="width:30%;">
 <ul>
-<li>Dataset with matching <span class="math inline">\(X\)</span> and <span class="math inline">\(S\)</span> to train the semantic decoder <span class="math inline">\(g\)</span> <!-- * **Hypothesis**: neural manipulator model $h_Z$ is trainable as a latent analogy to a symbolic operation $h_S$. -->
-<ol type="1">
-<li>SCM <span class="math inline">\(M\)</span> modeling some causal paths from <span class="math inline">\(A\)</span> and involving <span class="math inline">\(S\)</span> as descendants</li>
-<li>Sample a <span class="math inline">\(S\)</span> from <span class="math inline">\(M\)</span></li>
-<li>Use LLM to generate <span class="math inline">\(X\)</span> from <span class="math inline">\(S\)</span>.</li>
-</ol></li>
+<li>Approach simliar to <span class="citation" data-cites="toker_liberty_2026">Toker et al. (2026)</span></li>
+<li>Dataset with matching <span class="math inline">\(X\)</span> and <span class="math inline">\(S\)</span> to train the semantic decoder <span class="math inline">\(g\)</span></li>
+</ul>
+</div><div class="column" style="width:70%;">
+<p><img src="img/data1.svg" class="img-fluid" style="width:100.0%" alt="1. SCM $M$ models some causal paths from $A$ and involving $S$ as descendants. 2. Tabular data $S$ is sampled from $M$. 3. LLM generates $X$ from each instance of $S$."></p>
+</div>
+</div>
+<!-- ::: {.columns}
+::: {.column width=48%}
+  1. SCM $M$ modeling some causal paths from $A$ and involving $S$ as descendants
+  2. Sample tabular data $S$ from $M$
+  3. Use LLM to generate $X$ from $S$.
+:::
+::: {.column width=4%}
+:::
+::: {.column width=48%}
+  <br>
+  ![](img/data1.svg)
+:::
+::: -->
+<ul>
+<li><strong>Challenges</strong>:
+<ul>
+<li>LLM may introduce additional hidden confounders descending from <span class="math inline">\(A\)</span></li>
+<li>External validty</li>
+</ul></li>
 </ul>
 </section>
+<div class="columns">
+<div class="column" style="width:60%;">
 <section id="real-world-data" class="level2">
 <h2 data-anchor-id="real-world-data">Real World Data</h2>
 <ul>
-<li><em>Bias in Bios</em> CV dataset <span class="citation" data-cites="arteaga_biasbios_2019">(De-Arteaga et al. 2019)</span>,</li>
+<li>CV dataset, e.g., <em>Bias in Bios</em> <span class="citation" data-cites="arteaga_biasbios_2019">(De-Arteaga et al. 2019)</span></li>
 <li><strong>Challenges</strong>:
 <ul>
-<li>Strong causal assumptions</li>
-<li><span class="math inline">\(S\)</span> unknown <span class="math inline">\(\rightarrow\)</span> Semantic Decoder pre-trained on synthetic data</li>
+<li>SCM requires strong causal assumptions</li>
+<li>Tabular representation <span class="math inline">\(S\)</span> is unknown</li>
 </ul></li>
 </ul>
+</section>
+</div><div class="column" style="width:30%;">
+<p><img src="img/data2.svg" class="img-fluid" alt="1. An SCM is constructed fo an existing CV dataset. 2. The dataset is annotated with a tabular entry in $S$ for each CV."></p>
+</div>
+</div>
+<section id="hypotheses" class="level2 col3 row1">
+<h2 class="col3 row1" data-anchor-id="hypotheses">Hypotheses</h2>
+<ol type="1">
+<li><strong>Analogy</strong>: <span class="math inline">\(h_Z\)</span> can be trained to generate the counterfactual of <span class="math inline">\(Z\)</span> analoguously to <span class="math inline">\(h_S\)</span></li>
+<li><strong>Sparsity</strong>: <span class="math inline">\(h_Z\)</span> only adjusts observed confounders</li>
+<li><strong>Effectiveness</strong>: <span class="math inline">\(Z'\)</span> and <span class="math inline">\(Z\)</span> can be used to debias a prediction model</li>
+<li><strong>Meaningfulness</strong>: There exists a decoder that can retrieve the counterfactual <span class="math inline">\(X'\)</span> to <span class="math inline">\(X\)</span> from <span class="math inline">\(Z'\)</span></li>
+</ol>
 </section>
 </section>
 <section id="related-work" class="level1 col3 row1">
@@ -241,17 +278,37 @@ h_S(g(Z)) = g(h_Z(Z))
 <!-- $\rightarrow$ Our contribution sits at the **intersection** of these threads. -->
 <!-- a modular, neurosymbolic architecture that approximates counterfactual interventions in the latent space of a VAE. -->
 </section>
-<section id="discussion" class="level1 col3 row2">
-<h1 class="col3 row2">Discussion</h1>
-<!-- We propose a modular framework that separates representation learning from causal intervention: a pretrained text encoder produces a latent representation, and a neural manipulator transforms it analogously to a symbolic counterfactual operation on a structured decoding. This decomposition trades end-to-end debiasing for a more auditable inference pipeline, in which the causal assumptions live in an explicit, inspectable subgraph rather than implicitly inside an encoder. -->
+<section id="discussion" class="level1 col3 row1">
+<h1 class="col3 row1">Discussion</h1>
+<div class="columns">
+<div class="column" style="width:55%;">
+<section id="advantage-modularity" class="level2">
+<h2 data-anchor-id="advantage-modularity">Advantage: Modularity</h2>
 <ul>
-<li>Framework inherits assumptions from SCMs: no hidden confounders and full observability of <span class="math inline">\(S\)</span></li>
-<li><strong>Central open question</strong>: Does the latent manipulator learn a faithful analogue of the symbolic operation in practice</li>
-<li><strong>If yes</strong>: decomposition delivers on the flexibility and auditability that motivated the design.</li>
+<li>Flexibile, auditable and composable</li>
+<li>Independence from encoder training</li>
 </ul>
 </section>
-<section id="results" class="level1 col3 row1">
-<h1 class="col3 row1">Results</h1>
+<section id="limitations-scm-assumptions" class="level2">
+<h2 data-anchor-id="limitations-scm-assumptions">Limitations: SCM Assumptions</h2>
+<ul>
+<li>No hidden confounders <span class="math inline">\(\rightarrow\)</span> <span class="math inline">\(M\)</span> is accurate</li>
+<li>Full observability of <span class="math inline">\(S\)</span> <span class="math inline">\(\rightarrow\)</span> <span class="math inline">\(g\)</span> is well-fit</li>
+</ul>
+</section>
+<section id="scope" class="level2">
+<h2 data-anchor-id="scope">Scope</h2>
+<ul>
+<li>Value beyond fairness, e.g., privacy or safety<br> <span class="math inline">\(\rightarrow\)</span> <strong>Latent Symbolic Interventions</strong></li>
+</ul>
+</section>
+</div><div class="column" style="width:45%;">
+<p><img src="img/demo_discussion.svg" class="img-fluid"></p>
+</div>
+</div>
+<ul>
+<li><strong>Central open question</strong>:<br>Can a latent manipulator learn a faithful analogue of the symbolic operation in practice?</li>
+</ul>
 <div class="poster-footer">
 <p><a href="mailto:leo.kestel@lmu.de">leo.kestel@lmu.de</a> · <a href="https://leokestel.de">leokestel.de</a></p>
 </div>
