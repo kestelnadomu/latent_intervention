@@ -1,8 +1,9 @@
 # SCM simulation runner --------------------------------------------------------
 #
-# This script generates factual and counterfactual data from the configured SCM
-# and optionally writes both datasets to CSV files. Supporting inputs and helper
-# functions are defined in the scripts stored under `src/R/utils/`.
+# This script generates factual, counterfactual, and optional epsilon data from
+# the configured SCM and optionally writes the datasets to CSV files. Supporting
+# inputs and helper functions are defined in the scripts stored under
+# `src/R/utils/`.
 
 # Set project working directory ------------------------------------------------
 wd <- getwd()

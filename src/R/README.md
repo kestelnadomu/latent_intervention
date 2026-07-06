@@ -27,11 +27,12 @@ Rscript src/R/sim_main.R
 
 By default, this generates factual and counterfactual datasets with `n = 1000`.
 The default counterfactual intervention is `do(G = 1)`, where `G` is the gender
-node and `1` represents male. The script writes two CSV files:
+node and `1` represents male. The script writes three CSV files:
 
 ```text
 data/sim/sim_data_factual.csv
 data/sim/sim_data_counterfactual.csv
+data/sim/sim_data_espilon.csv
 ```
 
 Generated simulation outputs under `data/sim/` are ignored by Git.
@@ -55,7 +56,8 @@ Available options:
   `G`.
 - `intervention_value`: scalar value assigned to `intervention_node`. Default:
   `1`.
-- `include_noise`: whether to include `eps_<node>` columns. Default: `TRUE`.
+- `include_noise`: whether to write/return a separate `espilon` dataset with
+  `eps_<node>` columns. Default: `TRUE`.
 - `include_id`: whether to include an `id` column. Default: `FALSE`.
 
 If `out_path=data/sim/example.csv`, the script writes:
@@ -63,6 +65,7 @@ If `out_path=data/sim/example.csv`, the script writes:
 ```text
 data/sim/example_factual.csv
 data/sim/example_counterfactual.csv
+data/sim/example_espilon.csv
 ```
 
 ## In-Memory Use
@@ -78,6 +81,7 @@ The script invisibly returns `sim_df`, a named list with:
 ```r
 sim_df$factual
 sim_df$counterfactual
+sim_df$espilon
 ```
 
 For custom adjacency matrices, SCM functions, interventions, or noise
