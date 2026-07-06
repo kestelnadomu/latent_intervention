@@ -18,7 +18,9 @@ sim_defaults <- list(
   n = 1000L,
   seed = NULL,
   save = TRUE,
-  out_path = file.path("data", "sim", "scm", "sim_data.csv"),
+  out_path = file.path("data", "sim", "sim_data.csv"),
+  intervention_node = "G",
+  intervention_value = 1L,
   include_noise = TRUE,
   include_id = FALSE
 )
@@ -29,6 +31,9 @@ n <- sim_validate_positive_integer(sim_args$n, name = "n")
 seed <- sim_as_nullable_integer(sim_args$seed, name = "seed")
 save <- sim_as_logical(sim_args$save, name = "save")
 out_path <- as.character(sim_args$out_path)[[1]]
+intervention_node <- as.character(sim_args$intervention_node)[[1]]
+intervention_value <- sim_as_integer(sim_args$intervention_value,
+                                     name = "intervention_value")
 include_noise <- sim_as_logical(sim_args$include_noise, name = "include_noise")
 include_id <- sim_as_logical(sim_args$include_id, name = "include_id")
 
@@ -41,6 +46,8 @@ if (!isTRUE(grepl("^([A-Za-z]:)?[\\\\/]", out_path))) {
 sim_df <- sim_data(
   n = n,
   seed = seed,
+  intervention_nodes = intervention_node,
+  intervention_values = setNames(list(intervention_value), intervention_node),
   include_noise = include_noise,
   include_id = include_id
 )
