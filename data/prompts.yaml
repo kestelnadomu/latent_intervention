@@ -1,26 +1,35 @@
 # Prompt templates for text generation
 # Each prompt can be a simple string or include metadata for model configuration
 
-- template: "Expand on the following text: {text}"
+prompt:
+  system: |
+    You are an AI assistant tasked with crafting a CV Personal Statement for a specific candidate’s job application. This statement should be developed by integrating the candidate’s actual personal information, tailored persona details that align with the job role, and the structural guidance provided by the narrative template. It is essential to explicitly incorporate each piece of the candidate’s personal information into the statement. The final document should be a ready-to-submit, fluent Personal Statement that is clear, aligned with the job level, and effectively conveys the candidate’s suitability for the position through a compelling personal narrative.
+  user: |
+    Create an engaging CV Personal Statement for a job application using the following elements:
+    **1. Narrative Template**: Use the provided template as an internal guide. It should influence the flow and organization of the narrative without dictating the final format.
+    **2. Candidate’s Personal Information**: This is the most crucial component. Ensure that every piece of this information is explicitly mentioned and seamlessly woven into the statement. Adjust persona or template details if needed for coherence.
+    **3. Persona Details**: Enhance the narrative by incorporating persona details, including career choices, required skills, and personal connections to the profession.
+    **Narrative Template**: {cv_template}
+    **Candidate’s Personal Information**: {candidate_info}
+    **Persona Details**: {persona_details}
+    Please ensure the final output is a fully-prepared Personal Statement that is fluent and engaging. It should start in a unique and captivating manner (avoid beginning with “from” or “as”), form a cohesive text that integrates all specified details, adhere to the appropriate language style for the job level, and present a unified narrative capturing the candidate’s story.
   metadata:
     model: "mistral-medium-latest"
     max_tokens: 500
-    temperature: 0.7
+    temperature: 0
 
-- template: "Summarize the following text in one sentence: {text}"
-  metadata:
-    model: "mistral-medium-latest"
-    max_tokens: 200
-    temperature: 0.3
+cv_template: |
+  [Introduction]
+  Begin with a compelling opening that captures the reader's attention and introduces the candidate's professional identity.
 
-- template: "Generate a creative title for this text: {text}"
-  metadata:
-    model: "mistral-medium-latest"
-    max_tokens: 100
-    temperature: 0.9
+  [Professional Background]
+  Detail the candidate's relevant work experience, highlighting key achievements and responsibilities that demonstrate their expertise in the field.
 
-- template: "Classify the following text and explain your reasoning: {text}"
-  metadata:
-    model: "mistral-medium-latest"
-    max_tokens: 300
-    temperature: 0.5
+  [Skills and Competencies]
+  Outline the candidate's core skills and competencies, emphasizing those that are most relevant to the job role they are applying for.
+
+  [Career Goals]
+  Discuss the candidate's career aspirations and how they align with the position they are seeking, showcasing their motivation and commitment to professional growth.
+
+  [Conclusion]
+  Conclude with a strong closing statement that reinforces the candidate's suitability for the role and leaves a lasting impression on the reader.
