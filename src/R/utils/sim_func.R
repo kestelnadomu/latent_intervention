@@ -646,13 +646,10 @@ sim_generate_counterfactual_nodes <- function(factual_data,
 
 #' Format generated SCM data
 #'
-#' Converts named node and noise lists into a data frame with optional `id` and
-#' `eps_<node>` columns.
+#' Converts a named node list into a data frame with an optional `id` column.
 #'
 #' @param data Named list of node vectors.
-#' @param noise Named list of exogenous noise vectors.
 #' @param nodes Character vector of node names in output order.
-#' @param include_noise Logical. Whether to include exogenous noise columns.
 #' @param include_id Logical. Whether to include an `id` column.
 #' @param n Number of observations.
 #'
@@ -660,9 +657,7 @@ sim_generate_counterfactual_nodes <- function(factual_data,
 #'
 #' @noRd
 sim_format_dataset <- function(data,
-                               noise,
                                nodes,
-                               include_noise,
                                include_id,
                                n) {
   sim_df <- as.data.frame(data[nodes], optional = FALSE)
@@ -671,11 +666,32 @@ sim_format_dataset <- function(data,
     sim_df <- data.frame(id = seq_len(n), sim_df)
   }
 
-  if (include_noise) {
-    noise_df <- as.data.frame(noise[nodes], optional = FALSE)
-    names(noise_df) <- paste0("eps_", nodes)
-    sim_df <- cbind(sim_df, noise_df)
+  sim_df
+}
+
+#' Format generated SCM noise
+#'
+#' Converts a named noise list into a data frame with `eps_<node>` columns and
+#' an optional `id` column.
+#'
+#' @param noise Named list of exogenous noise vectors.
+#' @param nodes Character vector of node names in output order.
+#' @param include_id Logical. Whether to include an `id` column.
+#' @param n Number of observations.
+#'
+#' @return A `data.frame`.
+#'
+#' @noRd
+sim_format_noise_dataset <- function(noise,
+                                     nodes,
+                                     include_id,
+                                     n) {
+  noise_df <- as.data.frame(noise[nodes], optional = FALSE)
+  names(noise_df) <- paste0("eps_", nodes)
+
+  if (include_id) {
+    noise_df <- data.frame(id = seq_len(n), noise_df)
   }
 
-  sim_df
+  noise_df
 }

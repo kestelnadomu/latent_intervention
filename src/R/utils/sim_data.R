@@ -31,14 +31,15 @@
 #'   scalar intervention values. Any node in `intervention_nodes` without an
 #'   explicit value is set to the factual mode of that node; ties use the
 #'   smallest tied mode after sorting.
-#' @param include_noise Logical. If `TRUE`, include the exogenous/noise columns
-#'   named `eps_<node>`.
+#' @param include_noise Logical. If `TRUE`, return a separate `espilon`
+#'   data frame with exogenous/noise columns named `eps_<node>`.
 #' @param include_id Logical. If `TRUE`, include an integer row identifier column
 #'   named `id`.
 #'
-#' @return A named list with two `data.frame`s: `factual` and `counterfactual`.
-#'   Each data frame contains observed SCM variables in adjacency node order and
-#'   optionally an `id` column and exogenous/noise columns.
+#' @return A named list with two observed-variable `data.frame`s: `factual`
+#'   and `counterfactual`. If `include_noise` is `TRUE`, the list also contains
+#'   an `espilon` data frame with exogenous/noise columns. All data frames
+#'   optionally include an `id` column.
 #'
 #' @export
 #'
@@ -114,23 +115,30 @@ sim_data <- function(n = 1000L,
     n = n
   )
 
-  list(
+  result <- list(
     factual = sim_format_dataset(
       data = factual_data,
-      noise = noise,
       nodes = nodes,
-      include_noise = include_noise,
       include_id = include_id,
       n = n
     ),
     counterfactual = sim_format_dataset(
       data = counterfactual_data,
-      noise = noise,
       nodes = nodes,
-      include_noise = include_noise,
       include_id = include_id,
       n = n
     )
   )
+
+  if (include_noise) {
+    result$espilon <- sim_format_noise_dataset(
+      noise = noise,
+      nodes = nodes,
+      include_id = include_id,
+      n = n
+    )
+  }
+
+  result
 }
 
