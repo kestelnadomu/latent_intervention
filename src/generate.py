@@ -1,145 +1,146 @@
 """
-Text generation from tabular samples using LLM APIs.
+Text generation from tabular samples via an OpenAI-compatible chat API.
 
-Functions:
-1. load_samples(csv_path) - Load samples from CSV
-2. load_prompts(yaml_path) - Load chat prompts + template definitions from YAML
-3. generate_text(sample, prompt, templates, api_key) - Generate text via OpenAI client
-4. generate_batch(csv_path, yaml_path, api_key) - Batch processing convenience
-5. load_personas(yaml_path) / sample_persona(personas) - Persona details sampling
-6. load_templates(yaml_path) / sample_template(templates) - CV template sampling
-7. sample_candidate(samples) - Pick a candidate row and return it as a JSON string
-
-YAML can be a list of entries or a single mapping with 'prompt' and template keys.
-Templates from YAML are merged with sample data during formatting.
+The pipeline has three stages:
+1. Load pools: load_samples (CSV rows), load_prompts (chat prompt YAML),
+   load_personas / load_templates (YAML string lists).
+2. Sample inputs: sample_candidate (row as JSON string), sample_persona,
+   sample_template.
+3. Generate: generate_text (one API call, placeholders in the prompt are
+   filled from the sample dict), or generate_batch (samples x prompts).
 """
 
 import json
 import os
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import pandas as pd
 import yaml
+from openai import OpenAI
 
-Sample = Dict[str, Any]
-PromptTemplate = Dict[str, Any]
-Message = Dict[str, str]
+Sample = dict[str, Any]
+PromptTemplate = dict[str, Any]
+Message = dict[str, str]
+
+DEFAULT_MODEL = "mistral-medium-latest"
+DEFAULT_BASE_URL = "https://api.mistral.ai/v1"
 
 
-def load_samples(csv_path: Union[str, Path], **kwargs: Any) -> List[Sample]:
-    """Load samples from CSV into list of dicts."""
+# ---------------------------------------------------------------------------
+# Loading
+# ---------------------------------------------------------------------------
+
+def _load_yaml(yaml_path: str | Path) -> Any:
+    path = Path(yaml_path)
+    if not path.exists():
+        raise FileNotFoundError(f"YAML file not found: {yaml_path}")
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f)
+
+
+def _load_string_list(yaml_path: str | Path, what: str) -> list[str]:
+    data = _load_yaml(yaml_path)
+    if not isinstance(data, list) or not all(isinstance(p, str) for p in data):
+        raise ValueError(f"{what} YAML must be a list of strings, got {type(data)}")
+    return data
+
+
+def load_samples(csv_path: str | Path, **kwargs: Any) -> list[Sample]:
+    """Load samples from CSV into a list of dicts (one per row)."""
     path = Path(csv_path)
     if not path.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
     return pd.read_csv(path, **kwargs).to_dict(orient="records")
 
 
-def load_prompts(yaml_path: Union[str, Path]) -> Dict[str, Any]:
+def load_personas(yaml_path: str | Path) -> list[str]:
+    """Load persona_details entries from a YAML file containing a list of strings."""
+    return _load_string_list(yaml_path, "Persona")
+
+
+def load_templates(yaml_path: str | Path) -> list[str]:
+    """Load cv_template entries from a YAML file containing a list of strings."""
+    return _load_string_list(yaml_path, "Template")
+
+
+def _prompt_messages(pdict: Any) -> list[Message]:
+    """Build chat messages from a {system: ..., user: ...} mapping."""
+    msgs = []
+    if isinstance(pdict, dict):
+        for role in ("system", "user"):
+            if role in pdict:
+                msgs.append({"role": role, "content": pdict[role]})
+    return msgs
+
+
+def load_prompts(yaml_path: str | Path) -> dict[str, Any]:
     """
-    Load prompts and templates from YAML.
-    Returns {'prompts': [...], 'templates': {...}}
-    
+    Load chat prompts and global templates from YAML.
+    Returns {'prompts': [{'messages': [...], 'metadata': {...}}, ...], 'templates': {...}}
+
     Handles two structures:
-    - List: [{prompt: {system: ..., user: ...}, metadata: ...}, cv_template: "..."]
-    - Dict: {prompt: {system: ..., user: ...}, metadata: ..., cv_template: "..."}
+    - Dict: {prompt: {system: ..., user: ..., metadata: ...}, <name>: "<template>", ...}
+    - List: [{prompt: {system: ..., user: ...}, metadata: ...}, {<name>: "<template>"}, "bare user prompt", ...]
     """
-    path = Path(yaml_path)
-    if not path.exists():
-        raise FileNotFoundError(f"YAML file not found: {yaml_path}")
-    
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-    
-    prompts = []
-    templates: Dict[str, str] = {}
-    
+    data = _load_yaml(yaml_path)
+
+    prompts: list[PromptTemplate] = []
+    templates: dict[str, str] = {}
+
     if isinstance(data, list):
         for entry in data:
             if isinstance(entry, str):
                 prompts.append({"messages": [{"role": "user", "content": entry}], "metadata": {}})
             elif isinstance(entry, dict):
                 if "prompt" in entry:
-                    pdict = entry["prompt"]
-                    msgs = []
-                    if isinstance(pdict, dict):
-                        if "system" in pdict:
-                            msgs.append({"role": "system", "content": pdict["system"]})
-                        if "user" in pdict:
-                            msgs.append({"role": "user", "content": pdict["user"]})
-                    prompts.append({"messages": msgs, "metadata": entry.get("metadata", {})})
+                    prompts.append({
+                        "messages": _prompt_messages(entry["prompt"]),
+                        "metadata": entry.get("metadata", {}),
+                    })
                 else:
-                    for key, value in entry.items():
-                        if isinstance(value, str):
-                            templates[key] = value
+                    templates.update({k: v for k, v in entry.items() if isinstance(v, str)})
             else:
                 raise ValueError(f"Invalid YAML entry type: {type(entry)}")
-    
+
     elif isinstance(data, dict):
         if "prompt" in data:
             pdict = data["prompt"]
-            msgs = []
-            metadata = {}
-            if isinstance(pdict, dict):
-                if "system" in pdict:
-                    msgs.append({"role": "system", "content": pdict["system"]})
-                if "user" in pdict:
-                    msgs.append({"role": "user", "content": pdict["user"]})
-                if "metadata" in pdict:
-                    metadata = pdict["metadata"]
-            prompts.append({"messages": msgs, "metadata": metadata})
-        for key, value in data.items():
-            if key != "prompt" and isinstance(value, str):
-                templates[key] = value
+            metadata = pdict.get("metadata", {}) if isinstance(pdict, dict) else {}
+            prompts.append({"messages": _prompt_messages(pdict), "metadata": metadata})
+        templates.update({k: v for k, v in data.items() if k != "prompt" and isinstance(v, str)})
+
     else:
         raise ValueError(f"YAML must be list or dict, got {type(data)}")
-    
+
     return {"prompts": prompts, "templates": templates}
 
 
-def _load_string_list(yaml_path: Union[str, Path], what: str) -> List[str]:
-    """Load a YAML file expected to contain a list of strings."""
-    path = Path(yaml_path)
-    if not path.exists():
-        raise FileNotFoundError(f"YAML file not found: {yaml_path}")
+# ---------------------------------------------------------------------------
+# Sampling
+# ---------------------------------------------------------------------------
 
-    with open(path, "r", encoding="utf-8") as f:
-        data = yaml.safe_load(f)
-
-    if not isinstance(data, list) or not all(isinstance(p, str) for p in data):
-        raise ValueError(f"{what} YAML must be a list of strings, got {type(data)}")
-    return data
+def _choice(items: list[str], what: str, seed: int | None) -> str:
+    if not items:
+        raise ValueError(f"{what} list is empty.")
+    return random.Random(seed).choice(items)
 
 
-def load_personas(yaml_path: Union[str, Path]) -> List[str]:
-    """Load persona_details entries from a YAML file containing a list of strings."""
-    return _load_string_list(yaml_path, "Persona")
-
-
-def load_templates(yaml_path: Union[str, Path]) -> List[str]:
-    """Load cv_template entries from a YAML file containing a list of strings."""
-    return _load_string_list(yaml_path, "Template")
-
-
-def sample_persona(personas: List[str], seed: Optional[int] = None) -> str:
+def sample_persona(personas: list[str], seed: int | None = None) -> str:
     """Draw one persona_details entry uniformly at random."""
-    if not personas:
-        raise ValueError("Persona list is empty.")
-    return random.Random(seed).choice(personas)
+    return _choice(personas, "Persona", seed)
 
 
-def sample_template(templates: List[str], seed: Optional[int] = None) -> str:
+def sample_template(templates: list[str], seed: int | None = None) -> str:
     """Draw one cv_template entry uniformly at random."""
-    if not templates:
-        raise ValueError("Template list is empty.")
-    return random.Random(seed).choice(templates)
+    return _choice(templates, "Template", seed)
 
 
 def sample_candidate(
-    samples: List[Sample],
-    index: Optional[int] = None,
-    seed: Optional[int] = None,
+    samples: list[Sample],
+    index: int | None = None,
+    seed: int | None = None,
 ) -> str:
     """
     Pick one row from tabular samples (see load_samples) and return it as a JSON string.
@@ -156,13 +157,17 @@ def sample_candidate(
     return json.dumps(samples[index], ensure_ascii=False)
 
 
-def format_messages(msgs: List[Message], sample: Sample, templates: Optional[Dict[str, str]] = None) -> List[Message]:
-    """Format message templates with sample data + global templates."""
-    data = sample.copy()
-    if templates:
-        for k, v in templates.items():
-            if k not in data:
-                data[k] = v
+# ---------------------------------------------------------------------------
+# Generation
+# ---------------------------------------------------------------------------
+
+def format_messages(
+    msgs: list[Message],
+    sample: Sample,
+    templates: dict[str, str] | None = None,
+) -> list[Message]:
+    """Fill {placeholder} fields in messages from sample data, then global templates."""
+    data = {**(templates or {}), **sample}
     result = []
     for msg in msgs:
         role = msg.get("role", "user")
@@ -177,30 +182,34 @@ def format_messages(msgs: List[Message], sample: Sample, templates: Optional[Dic
 def generate_text(
     sample: Sample,
     prompt_template: PromptTemplate,
-    templates: Optional[Dict[str, str]] = None,
-    api_key: Optional[str] = None,
-    model: str = "mistral-medium-latest",
-    base_url: str = "https://api.mistral.ai/v1",
+    templates: dict[str, str] | None = None,
+    api_key: str | None = None,
+    model: str = DEFAULT_MODEL,
+    base_url: str = DEFAULT_BASE_URL,
     max_tokens: int = 500,
     temperature: float = 0.7,
     **kwargs: Any,
 ) -> str:
-    """Generate text via an OpenAI-compatible chat completions API."""
+    """
+    Generate text via an OpenAI-compatible chat completions API.
+
+    Per-prompt `metadata` (model, max_tokens, temperature) overrides the
+    function defaults. The API key falls back to the OPENAI_API_KEY or
+    MISTRAL_API_KEY environment variable.
+    """
     if api_key is None:
         api_key = os.getenv("OPENAI_API_KEY") or os.getenv("MISTRAL_API_KEY")
     if api_key is None:
         raise ValueError("API key required. Set OPENAI_API_KEY / MISTRAL_API_KEY or pass api_key.")
-    
+
     msgs = prompt_template.get("messages", [])
     if not msgs:
         raise ValueError("Prompt template must contain 'messages' key.")
-    
+
     formatted = format_messages(msgs, sample, templates)
     metadata = prompt_template.get("metadata", {})
-    
-    from openai import OpenAI
-    client = OpenAI(api_key=api_key, base_url=base_url)
 
+    client = OpenAI(api_key=api_key, base_url=base_url)
     try:
         response = client.chat.completions.create(
             model=metadata.get("model", model),
@@ -217,19 +226,20 @@ def generate_text(
 
 
 def generate_batch(
-    csv_path: Union[str, Path],
-    yaml_path: Union[str, Path],
-    api_key: Optional[str] = None,
-    output_path: Optional[Union[str, Path]] = None,
+    csv_path: str | Path,
+    yaml_path: str | Path,
+    api_key: str | None = None,
+    output_path: str | Path | None = None,
     **kwargs: Any,
-) -> List[str]:
-    """Batch generate text for all samples x prompts."""
+) -> list[str]:
+    """Generate text for the cross product of all samples x prompts."""
     samples = load_samples(csv_path)
     data = load_prompts(yaml_path)
-    results = []
-    for sample in samples:
-        for prompt in data["prompts"]:
-            results.append(generate_text(sample, prompt, data["templates"], api_key, **kwargs))
+    results = [
+        generate_text(sample, prompt, data["templates"], api_key, **kwargs)
+        for sample in samples
+        for prompt in data["prompts"]
+    ]
     if output_path:
         pd.DataFrame({"generated_text": results}).to_csv(Path(output_path), index=False)
     return results
@@ -237,6 +247,7 @@ def generate_batch(
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) < 3:
         print("Usage: python generate.py <samples.csv> <prompts.yaml> [output.csv]")
         sys.exit(1)
