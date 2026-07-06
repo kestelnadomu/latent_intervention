@@ -1,0 +1,26 @@
+# Prompt templates for text generation
+# Each prompt can be a simple string or include metadata for model configuration
+
+- template: "Expand on the following text: {text}"
+  metadata:
+    model: "mistral-medium-latest"
+    max_tokens: 500
+    temperature: 0.7
+
+- template: "Summarize the following text in one sentence: {text}"
+  metadata:
+    model: "mistral-medium-latest"
+    max_tokens: 200
+    temperature: 0.3
+
+- template: "Generate a creative title for this text: {text}"
+  metadata:
+    model: "mistral-medium-latest"
+    max_tokens: 100
+    temperature: 0.9
+
+- template: "Classify the following text and explain your reasoning: {text}"
+  metadata:
+    model: "mistral-medium-latest"
+    max_tokens: 300
+    temperature: 0.5
