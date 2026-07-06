@@ -4,14 +4,19 @@ Text generation from tabular samples using LLM APIs.
 Functions:
 1. load_samples(csv_path) - Load samples from CSV
 2. load_prompts(yaml_path) - Load chat prompts + template definitions from YAML
-3. generate_text(sample, prompt, templates, api_key) - Generate text using Mistral API
+3. generate_text(sample, prompt, templates, api_key) - Generate text via OpenAI client
 4. generate_batch(csv_path, yaml_path, api_key) - Batch processing convenience
+5. load_personas(yaml_path) / sample_persona(personas) - Persona details sampling
+6. load_templates(yaml_path) / sample_template(templates) - CV template sampling
+7. sample_candidate(samples) - Pick a candidate row and return it as a JSON string
 
 YAML can be a list of entries or a single mapping with 'prompt' and template keys.
 Templates from YAML are merged with sample data during formatting.
 """
 
+import json
 import os
+import random
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
@@ -93,6 +98,64 @@ def load_prompts(yaml_path: Union[str, Path]) -> Dict[str, Any]:
     return {"prompts": prompts, "templates": templates}
 
 
+def _load_string_list(yaml_path: Union[str, Path], what: str) -> List[str]:
+    """Load a YAML file expected to contain a list of strings."""
+    path = Path(yaml_path)
+    if not path.exists():
+        raise FileNotFoundError(f"YAML file not found: {yaml_path}")
+
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f)
+
+    if not isinstance(data, list) or not all(isinstance(p, str) for p in data):
+        raise ValueError(f"{what} YAML must be a list of strings, got {type(data)}")
+    return data
+
+
+def load_personas(yaml_path: Union[str, Path]) -> List[str]:
+    """Load persona_details entries from a YAML file containing a list of strings."""
+    return _load_string_list(yaml_path, "Persona")
+
+
+def load_templates(yaml_path: Union[str, Path]) -> List[str]:
+    """Load cv_template entries from a YAML file containing a list of strings."""
+    return _load_string_list(yaml_path, "Template")
+
+
+def sample_persona(personas: List[str], seed: Optional[int] = None) -> str:
+    """Draw one persona_details entry uniformly at random."""
+    if not personas:
+        raise ValueError("Persona list is empty.")
+    return random.Random(seed).choice(personas)
+
+
+def sample_template(templates: List[str], seed: Optional[int] = None) -> str:
+    """Draw one cv_template entry uniformly at random."""
+    if not templates:
+        raise ValueError("Template list is empty.")
+    return random.Random(seed).choice(templates)
+
+
+def sample_candidate(
+    samples: List[Sample],
+    index: Optional[int] = None,
+    seed: Optional[int] = None,
+) -> str:
+    """
+    Pick one row from tabular samples (see load_samples) and return it as a JSON string.
+
+    Selects the row at `index` if given, otherwise draws uniformly at random
+    (optionally seeded).
+    """
+    if not samples:
+        raise ValueError("Sample list is empty.")
+    if index is None:
+        index = random.Random(seed).randrange(len(samples))
+    if not 0 <= index < len(samples):
+        raise ValueError(f"Index {index} out of range for {len(samples)} samples.")
+    return json.dumps(samples[index], ensure_ascii=False)
+
+
 def format_messages(msgs: List[Message], sample: Sample, templates: Optional[Dict[str, str]] = None) -> List[Message]:
     """Format message templates with sample data + global templates."""
     data = sample.copy()
@@ -122,11 +185,11 @@ def generate_text(
     temperature: float = 0.7,
     **kwargs: Any,
 ) -> str:
-    """Generate text via Mistral API."""
+    """Generate text via an OpenAI-compatible chat completions API."""
     if api_key is None:
-        api_key = os.getenv("MISTRAL_API_KEY")
+        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("MISTRAL_API_KEY")
     if api_key is None:
-        raise ValueError("API key required. Set MISTRAL_API_KEY or pass api_key.")
+        raise ValueError("API key required. Set OPENAI_API_KEY / MISTRAL_API_KEY or pass api_key.")
     
     msgs = prompt_template.get("messages", [])
     if not msgs:
@@ -135,11 +198,11 @@ def generate_text(
     formatted = format_messages(msgs, sample, templates)
     metadata = prompt_template.get("metadata", {})
     
-    from mistralai.client import MistralClient
-    client = MistralClient(api_key=api_key, endpoint=base_url)
-    
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key, base_url=base_url)
+
     try:
-        response = client.chat(
+        response = client.chat.completions.create(
             model=metadata.get("model", model),
             messages=formatted,
             max_tokens=metadata.get("max_tokens", max_tokens),
