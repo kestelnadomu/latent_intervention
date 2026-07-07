@@ -1,0 +1,19 @@
+# Data generation pipeline configuration (exp/sim/run.py).
+# LLM settings (model, max_tokens, temperature) live in prompts.yaml metadata.
+
+n: 1000
+seed: 1
+
+# do() intervention for the counterfactual dataset, e.g. do(G=1): male.
+intervention:
+  G: 1
+
+paths:
+  sim_dir: data/sim            # sim_data_{factual,counterfactual,epsilon}.csv
+  texts: data/text/cv_factual.csv
+
+codebook: exp/sim/codebook.yaml
+prompts: exp/sim/prompts.yaml
+
+generation:
+  limit: null   # max rows to verbalize per run (each is a billed API call); null = all
