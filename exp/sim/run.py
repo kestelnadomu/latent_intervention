@@ -21,7 +21,7 @@ import pandas as pd
 import yaml
 
 from exp.sim import scm
-from src.generate_text import (
+from exp.sim.generate_text import (
     generate_text,
     load_codebook,
     load_prompts,
