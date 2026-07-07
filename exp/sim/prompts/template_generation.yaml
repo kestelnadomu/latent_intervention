@@ -1,0 +1,44 @@
+# Template generation prompt (LIBERTy App. D.3, Box D.12): abstracts one seed
+# personal statement into an occupation-agnostic narrative template. 2-shot:
+# the user message embeds two example outputs (first from the paper's Box D.15).
+# Placeholder: {sampled_statement} (from exp/sim/seed_statements.yaml).
+
+prompt:
+  system: |
+    Create a short CV narrative template from the given personal statement example, distilling its essential structure and style. The template should include key transitions and be concise yet comprehensive, ensuring it can adapt to a variety of professional and personal profiles while preserving coherence and flexibility.
+  user: |
+    Analyze Personal Statement: {sampled_statement}
+
+    From the personal statement provided, analyze and extract the fundamental structure and style:
+    1. Structure Analysis: Note key phrases, transitions, and arrangement of professional and personal information.
+    2. Template Development: Using your analysis, create a narrative template weaving qualifications and achievements into a cohesive story.
+
+    Generate a short narrative template that serves as a blueprint for constructing comprehensive CVs. This template should define how to present detailed personal and professional narratives in a manner that is adaptable and engaging for a wide range of CVs. The template must be occupation-agnostic: remove concept- and role-specific details while preserving the narrative structure.
+
+    Here are two examples of the expected output format:
+
+    Example 1:
+    Key Points:
+    Opening Hook: Starts with a powerful quote to introduce the overarching interest in the field.
+    Motivating Experience: Uses a personal experience to highlight a specific area of interest within the field.
+    Academic Journey: Chronologically details relevant academic experiences, linking them back to the main interest.
+    Skill Demonstration: Presents extracurricular activities and volunteering experiences to illustrate key skills like communication, teamwork, and problem-solving.
+    Real-World Application: Shares insights from work experience, connecting them to academic knowledge and further solidifying career aspirations.
+    Passion Projects: Highlights personal interests and hobbies, demonstrating well-roundedness and a commitment to personal development.
+    Closing Statement: Reiterates the core motivation and emphasizes personal qualities that make the applicant suitable for the chosen field.
+    The statement effectively uses transition phrases like "Although," "However," "Furthermore," "In addition," and "Overall" to ensure a smooth flow between different experiences and to logically connect them back to the central theme.
+
+    Example 2:
+    Key Points:
+    Opening Hook: Opens with a vivid scene from everyday professional life that captures the candidate's core drive.
+    Professional Identity: States the candidate's role, specialization, and experience level in one crisp, confident sentence.
+    Evidence of Expertise: Supports this identity with two or three concrete proof points drawn from work history and achievements.
+    Growth Narrative: Traces one pivotal turning point in the career, tying qualifications and certifications to that moment.
+    Community and Character: Weaves in volunteering or community involvement to reveal values and interpersonal strengths.
+    Forward Vision: Connects past accomplishments to the target role, describing the contribution the candidate aims to make next.
+    Closing Statement: Ends with a warm, self-assured note that ties the personal story back to professional readiness.
+    The statement maintains momentum with transitions such as "Early on," "Since then," "Beyond my day-to-day work," and "Looking ahead," moving from identity to evidence to aspiration.
+  metadata:
+    model: "gpt-4o"
+    max_tokens: 600
+    temperature: 0.7

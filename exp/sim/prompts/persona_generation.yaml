@@ -1,0 +1,33 @@
+# Persona generation prompt (LIBERTy App. D.3, Box D.13): three compelling
+# facts for a sampled job title. 2-shot: the user message embeds two example
+# outputs (first from the paper's Box D.16).
+# Placeholder: {job_title} (sampled from exp/sim/job_titles.yaml).
+
+prompt:
+  system: |
+    Develop a captivating CV persona. Create three compelling facts that weave together personal and professional details, enhancing a CV's appeal. Focus on the persona's career motivation, a standout professional ability, and an engaging anecdote linking their family to their career.
+  user: |
+    Create an engaging persona for the job title '{job_title}'.
+
+    Respond in this format:
+    Motivation for Career Choice: [Explain what inspired the persona to pursue this career path, linking personal passions with professional goals. 1-2 sentences.]
+    Defining Professional Skill: [Identify a key skill or expertise that highlights the persona's professional capabilities and how it benefits their role. 1-2 sentences.]
+    Family and Job Connection: [Share a memorable moment involving the persona's family that occurred during work, a work-related vacation, or through a work connection. This could include funny incidents, serendipitous meetings of family members via work contexts, or shared experiences directly related to the persona's job. 1-2 sentences.]
+
+    Ensure that these details are crafted to be adaptable across various demographic and professional attributes, providing a CV that is engaging and rich in content.
+
+    Here are two examples of the expected output format:
+
+    Example (job title 'Biotech Equity Research Associate'):
+    Motivation for Career Choice: Driven by a lifelong fascination with the elegance of biological systems and a passion for financial markets, I'm drawn to a career that bridges scientific innovation with sound investment strategies.
+    Defining Professional Skill: My strength lies in distilling complex scientific data into clear, concise, and actionable financial insights, allowing me to effectively communicate opportunities and risks to stakeholders.
+    Family and Job Connection: While attending a biotech conference with my family, we had a delightful encounter with a scientist whose research I had been following. Discussing their groundbreaking work with them (and my starstruck family) solidified my passion for this industry.
+
+    Example (job title 'Logistics Coordinator'):
+    Motivation for Career Choice: Growing up helping in a busy family shop taught me the quiet satisfaction of making complex moving parts arrive exactly where they need to be, which drew me to orchestrating supply chains professionally.
+    Defining Professional Skill: I excel at anticipating bottlenecks before they occur, using careful planning and clear communication to keep shipments, teams, and clients aligned even when circumstances change at the last minute.
+    Family and Job Connection: My proudest workplace memory is the day my daughter's school class toured our distribution center and she proudly announced to everyone that her parent "tells all the trucks where to go."
+  metadata:
+    model: "gpt-4o"
+    max_tokens: 300
+    temperature: 0.9

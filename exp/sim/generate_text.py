@@ -1,13 +1,17 @@
 """
 Text generation from tabular samples via an OpenAI-compatible chat API.
 
-The pipeline has three stages:
-1. Load pools: load_samples (CSV rows), load_prompts (chat prompt YAML),
-   load_personas / load_templates (YAML string lists).
-2. Sample inputs: sample_candidate (row as JSON string), sample_persona,
-   sample_template.
+LLM plumbing for the LIBERTy-style generation pipeline (exp/sim/run.py):
+1. Load inputs: load_samples (CSV rows), load_prompts (chat prompt YAML),
+   load_codebook_spec (column phrases + labels + bins).
+2. Verbalize: candidate_info_from_row (row -> paper-style candidate info list,
+   concrete values sampled inside binned columns), verbalize_row (row ->
+   {col}_text placeholders).
 3. Generate: generate_text (one API call, placeholders in the prompt are
-   filled from the sample dict), or generate_batch (samples x prompts).
+   filled from the sample dict).
+
+load_personas / load_templates / sample_* / generate_batch belong to the older
+pool-sampling workflow around data/prompts.yaml and are kept for compatibility.
 """
 
 import json
@@ -16,6 +20,7 @@ import random
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 import yaml
 from openai import OpenAI
@@ -63,13 +68,37 @@ def load_codebook(yaml_path: str | Path) -> dict[str, dict[int, str]]:
     """
     Load a codebook mapping tabular columns to {category index: phrase}.
 
-    Expected YAML structure: {column: {0: "phrase", 1: "phrase", ...}, ...}
-    (see exp/sim/codebook.yaml).
+    Accepts both a flat {column: {0: "phrase", ...}, ...} YAML and the nested
+    layout of exp/sim/codebook.yaml (columns under a top-level `columns:` key);
+    returns only the column-to-phrase mapping either way.
     """
     data = _load_yaml(yaml_path)
+    if isinstance(data, dict) and "columns" in data:
+        data = data["columns"]
     if not isinstance(data, dict) or not all(isinstance(v, dict) for v in data.values()):
         raise ValueError(f"Codebook YAML must map columns to {{index: phrase}} dicts, got {type(data)}")
     return {str(col): {int(k): str(v) for k, v in levels.items()} for col, levels in data.items()}
+
+
+def load_codebook_spec(yaml_path: str | Path) -> dict[str, Any]:
+    """
+    Load the full codebook spec (exp/sim/codebook.yaml).
+
+    Returns {"columns": {col: {index: phrase}}, "labels": {col: display name},
+    "bins": {col: {index: (lo, hi)}}}; `labels` and `bins` are optional in the
+    YAML and default to empty.
+    """
+    data = _load_yaml(yaml_path)
+    if not isinstance(data, dict) or "columns" not in data:
+        raise ValueError(f"Codebook YAML must have a top-level 'columns' key, got {type(data)}")
+    columns = {str(col): {int(k): str(v) for k, v in levels.items()} for col, levels in data["columns"].items()}
+    labels = {str(col): str(label) for col, label in data.get("labels", {}).items()}
+    bins: dict[str, dict[int, tuple[int, int]]] = {}
+    for col, ranges in data.get("bins", {}).items():
+        if str(col) not in columns:
+            raise ValueError(f"bins column '{col}' not in codebook columns {list(columns)}")
+        bins[str(col)] = {int(k): (int(lo), int(hi)) for k, (lo, hi) in ranges.items()}
+    return {"columns": columns, "labels": labels, "bins": bins}
 
 
 def verbalize_row(row: Sample, codebook: dict[str, dict[int, str]]) -> dict[str, str]:
@@ -88,6 +117,38 @@ def verbalize_row(row: Sample, codebook: dict[str, dict[int, str]]) -> dict[str,
             raise ValueError(f"No codebook phrase for {col}={value}. Available: {sorted(levels)}")
         verbalized[f"{col}_text"] = levels[value]
     return verbalized
+
+
+def candidate_info_from_row(
+    row: Sample,
+    spec: dict[str, Any],
+    rng: np.random.Generator,
+) -> tuple[str, dict[str, int]]:
+    """
+    Build the candidate information list for one row (LIBERTy App. D.3 style).
+
+    Every codebook column is included, e.g. "[Race: White, Gender: Female,
+    Age: 41, ...]". Binned columns (see load_codebook_spec) are rendered as a
+    concrete integer sampled uniformly inside the row's bin via `rng` — pass a
+    per-row seeded generator for reproducibility; the draws happen in codebook
+    column order. Returns (info string, {binned column: sampled value}).
+    """
+    parts = []
+    concrete: dict[str, int] = {}
+    for col, levels in spec["columns"].items():
+        if col not in row:
+            raise ValueError(f"Row is missing column '{col}'. Available: {list(row)}")
+        value = int(row[col])
+        if value not in levels:
+            raise ValueError(f"No codebook phrase for {col}={value}. Available: {sorted(levels)}")
+        label = spec["labels"].get(col, col)
+        if col in spec["bins"]:
+            lo, hi = spec["bins"][col][value]
+            concrete[col] = int(rng.integers(lo, hi + 1))
+            parts.append(f"{label}: {concrete[col]}")
+        else:
+            parts.append(f"{label}: {levels[value]}")
+    return "[" + ", ".join(parts) + "]", concrete
 
 
 def load_personas(yaml_path: str | Path) -> list[str]:

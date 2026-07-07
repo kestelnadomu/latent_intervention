@@ -1,45 +1,63 @@
-# Codebook: maps each SCM column level to a natural-language phrase used to
-# verbalize simulated rows into CV text (placeholders {R_text}, {G_text}, ...).
-# Q is the downstream outcome and is deliberately absent.
+# Codebook: level semantics of the SCM columns, aligned with Table 9 of the
+# LIBERTy paper (arXiv 2601.10700, App. D.3.1) whose CV Screening SCM this
+# simulation reproduces. Q is the downstream outcome and is deliberately absent.
 #
-# NOTE: the semantic reading of each node (R = ethnicity, A = age, etc.) is a
-# working draft — review and adjust the phrases to your intended scenario.
+# columns: {column: {level index: phrase}} — used to verbalize a row into the
+#   candidate information list (candidate_info_from_row in generate_text.py).
+# labels:  display name per column in that list.
+# bins:    numeric ranges for binned columns; a concrete value is sampled
+#   uniformly inside the row's bin (paper's examples: "Age: 41",
+#   "Relevant Work Experience: 9").
 
-R:
-  0: "of Western European descent"
-  1: "of Sub-Saharan African descent"
-  2: "of East Asian descent"
-  3: "of Middle Eastern descent"
+columns:
+  R:
+    0: "Black or African American"
+    1: "Hispanic or Latino"
+    2: "White"
+    3: "Asian"
+  G:
+    0: "Female"
+    1: "Male"
+  A:
+    0: "24-32 years"
+    1: "33-44 years"
+    2: "45-55 years"
+  E:
+    0: "High School"
+    1: "Bachelor's"
+    2: "Master's"
+    3: "Doctorate"
+  S:
+    0: "Low"
+    1: "Medium"
+    2: "High"
+  W:
+    0: "2-5 years"
+    1: "6-10 years"
+    2: "11-25 years"
+  V:
+    0: "No"
+    1: "Yes"
+  C:
+    0: "No"
+    1: "Yes"
 
-G:
-  0: "female"
-  1: "male"
+labels:
+  R: "Race"
+  G: "Gender"
+  A: "Age"
+  E: "Education Level"
+  S: "Socioeconomic Status"
+  W: "Relevant Work Experience"
+  V: "Volunteering"
+  C: "Professional Certificates"
 
-A:
-  0: "at an early career stage, in their mid-20s"
-  1: "mid-career, in their late 30s"
-  2: "at a late career stage, in their mid-50s"
-
-E:
-  0: "no formal educational degree"
-  1: "a secondary school diploma"
-  2: "a bachelor's degree"
-  3: "a master's degree"
-
-S:
-  0: "basic proficiency in the core skills of the field"
-  1: "solid, demonstrable professional skills"
-  2: "an outstanding, expert-level skill set"
-
-W:
-  0: "little to no prior work experience"
-  1: "several years of relevant work experience"
-  2: "extensive, long-standing work experience"
-
-V:
-  0: "no volunteering activities"
-  1: "active volunteering engagement alongside their profession"
-
-C:
-  0: "no additional professional certificates"
-  1: "additional professional certificates in their field"
+bins:
+  A:
+    0: [24, 32]
+    1: [33, 44]
+    2: [45, 55]
+  W:
+    0: [2, 5]
+    1: [6, 10]
+    2: [11, 25]

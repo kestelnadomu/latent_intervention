@@ -1,11 +1,13 @@
 # Data generation pipeline configuration (exp/sim/run.py).
-# Sampling params (model, max_tokens, temperature) live in prompts.yaml metadata;
-# for Azure, `model` there must be the deployment name.
+# Text generation follows LIBERTy App. D.3 (arXiv 2601.10700): templates <-
+# seed statements, personas <- job titles, CVs <- template + candidate info +
+# persona. Sampling params (model, max_tokens, temperature) live in the prompt
+# YAMLs' metadata; for Azure, `model` there must be the deployment name.
 
 # OpenAI-compatible chat endpoint. For Azure OpenAI use the v1 endpoint of your
 # resource; for Mistral: https://api.mistral.ai/v1 with MISTRAL_API_KEY.
 llm:
-  base_url: https://soda-counterfactual-cv.openai.azure.com/openai/v1/   # TODO: fill in your Azure resource
+  base_url: https://soda-counterfactual-cv.openai.azure.com/openai/v1/
   api_key_env: AZURE_OPENAI_API_KEY   # env var holding the key (never put the key itself here)
 
 n: 1000
@@ -16,11 +18,21 @@ intervention:
   G: 1
 
 paths:
-  sim_dir: data/sim            # sim_data_{factual,counterfactual,epsilon}.csv
-  texts: data/text/cv_factual.csv
+  sim_dir: data/sim                    # sim_data_{factual,counterfactual,epsilon}.csv
+  templates: data/text/templates.csv   # generated template pool (tracked: costs API credits)
+  personas: data/text/personas.csv     # generated persona pool (tracked: costs API credits)
+  texts: data/text/cv_factual.csv      # generated CV statements (tracked: costs API credits)
 
 codebook: exp/sim/codebook.yaml
-prompts: exp/sim/prompts.yaml
+prompts:
+  templates: exp/sim/prompts/template_generation.yaml
+  personas: exp/sim/prompts/persona_generation.yaml
+  cv: exp/sim/prompts/cv_generation.yaml
+pools:
+  seed_statements: exp/sim/seed_statements.yaml
+  job_titles: exp/sim/job_titles.yaml
 
 generation:
-  limit: null   # max rows to verbalize per run (each is a billed API call); null = all
+  n_templates: 50    # template pool size (one billed call each)
+  n_personas: 100    # persona pool size (one billed call each)
+  limit: null        # max rows to generate per stage run (billed calls); null = all
