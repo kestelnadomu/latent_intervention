@@ -2,7 +2,7 @@
 
 This folder contains the R entry point for generating simulated SCM data. The
 main script is `sim_main.R`; supporting libraries, helper functions, SCM
-definitions, and the data-generation function are stored in `src/R/utils/`.
+definitions, and the data-generation function are stored in `exp/sim/R/utils/`.
 
 ## Before Running
 
@@ -22,7 +22,7 @@ managed separately and is not needed for the R simulation runner.
 Run all commands from the repository root:
 
 ```bash
-Rscript src/R/sim_main.R
+Rscript exp/sim/R/sim_main.R
 ```
 
 By default, this generates factual and counterfactual datasets with `n = 1000`.
@@ -42,7 +42,7 @@ Generated simulation outputs under `data/sim/` are ignored by Git.
 The script accepts simple `key=value` arguments:
 
 ```bash
-Rscript src/R/sim_main.R n=5000 seed=123 save=TRUE intervention_node=G intervention_value=1 include_noise=TRUE include_id=FALSE
+Rscript exp/sim/R/sim_main.R n=5000 seed=123 save=TRUE intervention_node=G intervention_value=1 include_noise=TRUE include_id=FALSE
 ```
 
 Available options:
@@ -73,7 +73,7 @@ data/sim/example_espilon.csv
 To run the same simulation from an interactive R session:
 
 ```r
-source("src/R/sim_main.R")
+source("exp/sim/R/sim_main.R")
 ```
 
 The script invisibly returns `sim_df`, a named list with:

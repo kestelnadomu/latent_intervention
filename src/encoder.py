@@ -8,6 +8,8 @@ TextEncoder wraps a LangVAE checkpoint from the HuggingFace hub and exposes:
 Pre-trained checkpoints: https://huggingface.co/neuro-symbolic-ai
 """
 
+from pathlib import Path
+
 import torch
 
 from langvae import LangVAE
@@ -23,16 +25,23 @@ class TextEncoder:
         self,
         model_name: str = DEFAULT_MODEL,
         device: str | torch.device | None = None,
-        max_len: int = 64,
+        max_len: int = 512,
+        local_checkpoint: str | Path | None = None,
     ) -> None:
+        """Load a LangVAE checkpoint from the HF hub, or from a local folder
+        (e.g. produced by src/finetune_vae.py) if `local_checkpoint` is given."""
         self.device = torch.device(device) if device is not None else torch.device("cpu")
         self.max_len = max_len
-        self.model = LangVAE.load_from_hf_hub(model_name)
+        if local_checkpoint is not None:
+            self.model = LangVAE.load_from_folder(str(local_checkpoint))
+        else:
+            self.model = LangVAE.load_from_hf_hub(model_name)
         self.model.eval()
         self.model.to(self.device)
 
     @property
     def latent_dim(self) -> int:
+        """Dimensionality of the latent space."""
         return self.model.model_config.latent_dim
 
     @torch.no_grad()

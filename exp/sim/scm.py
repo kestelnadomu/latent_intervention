@@ -1,5 +1,5 @@
 """
-Python port of the SCM simulation in src/R/utils/{sim_scm.R, sim_data.R}.
+Python port of the SCM simulation in exp/sim/R/utils/{sim_scm.R, sim_data.R}.
 
 Generates factual data, and counterfactual data under a do() intervention by
 reusing the stored exogenous noise (Pearl's abduction step is exact because the

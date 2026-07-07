@@ -24,9 +24,13 @@ Sample = dict[str, Any]
 PromptTemplate = dict[str, Any]
 Message = dict[str, str]
 
+# Any OpenAI-compatible chat endpoint works, e.g. Mistral (default) or Azure
+# OpenAI's v1 endpoint (https://<resource>.openai.azure.com/openai/v1/ with an
+# AZURE_OPENAI_API_KEY and the deployment name as `model`). The endpoint is
+# configured in exp/sim/config.yaml (`llm:` section).
 DEFAULT_MODEL = "mistral-medium-latest"
 DEFAULT_BASE_URL = "https://api.mistral.ai/v1"
-
+API_KEY_ENV_VARS = ("AZURE_OPENAI_API_KEY", "OPENAI_API_KEY", "MISTRAL_API_KEY")
 
 # ---------------------------------------------------------------------------
 # Loading
@@ -53,6 +57,37 @@ def load_samples(csv_path: str | Path, **kwargs: Any) -> list[Sample]:
     if not path.exists():
         raise FileNotFoundError(f"CSV file not found: {csv_path}")
     return pd.read_csv(path, **kwargs).to_dict(orient="records")
+
+
+def load_codebook(yaml_path: str | Path) -> dict[str, dict[int, str]]:
+    """
+    Load a codebook mapping tabular columns to {category index: phrase}.
+
+    Expected YAML structure: {column: {0: "phrase", 1: "phrase", ...}, ...}
+    (see exp/sim/codebook.yaml).
+    """
+    data = _load_yaml(yaml_path)
+    if not isinstance(data, dict) or not all(isinstance(v, dict) for v in data.values()):
+        raise ValueError(f"Codebook YAML must map columns to {{index: phrase}} dicts, got {type(data)}")
+    return {str(col): {int(k): str(v) for k, v in levels.items()} for col, levels in data.items()}
+
+
+def verbalize_row(row: Sample, codebook: dict[str, dict[int, str]]) -> dict[str, str]:
+    """
+    Map one integer-coded tabular row to phrases via the codebook.
+
+    Returns {"<column>_text": phrase} for every codebook column, ready to fill
+    prompt placeholders like {E_text}.
+    """
+    verbalized = {}
+    for col, levels in codebook.items():
+        if col not in row:
+            raise ValueError(f"Row is missing column '{col}'. Available: {list(row)}")
+        value = int(row[col])
+        if value not in levels:
+            raise ValueError(f"No codebook phrase for {col}={value}. Available: {sorted(levels)}")
+        verbalized[f"{col}_text"] = levels[value]
+    return verbalized
 
 
 def load_personas(yaml_path: str | Path) -> list[str]:
@@ -191,16 +226,21 @@ def generate_text(
     **kwargs: Any,
 ) -> str:
     """
-    Generate text via an OpenAI-compatible chat completions API.
+    Generate text via an OpenAI-compatible chat completions API
+    (Mistral by default; Azure OpenAI via its /openai/v1/ base_url, where
+    `model` is the deployment name).
 
     Per-prompt `metadata` (model, max_tokens, temperature) overrides the
-    function defaults. The API key falls back to the OPENAI_API_KEY or
-    MISTRAL_API_KEY environment variable.
+    function defaults. The API key falls back to the environment variables
+    in API_KEY_ENV_VARS.
     """
     if api_key is None:
-        api_key = os.getenv("OPENAI_API_KEY") or os.getenv("MISTRAL_API_KEY")
-    if api_key is None:
-        raise ValueError("API key required. Set OPENAI_API_KEY / MISTRAL_API_KEY or pass api_key.")
+        for env_var in API_KEY_ENV_VARS:
+            api_key = os.getenv(env_var)
+            if api_key:
+                break
+    if not api_key:
+        raise ValueError(f"API key required. Set one of {'/'.join(API_KEY_ENV_VARS)} or pass api_key.")
 
     msgs = prompt_template.get("messages", [])
     if not msgs:

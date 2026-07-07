@@ -2,15 +2,16 @@
 
 Research code and publication materials for the *latent intervention* project.
 
-The current pipeline generates synthetic CV personal statements: candidate attributes, persona details, and narrative templates are sampled from small pools and combined into a prompt, which is sent to an LLM through an OpenAI-compatible chat API (Mistral by default).
+The pipeline builds counterfactual latent representations of text: an SCM simulates factual and counterfactual candidate attributes, an LLM verbalizes the factual rows into CV personal statements, a frozen LangVAE encodes them into latents, a semantic decoder grounds the latents in the SCM variables, and a latent manipulator learns to transform latents analogously to the SCM's counterfactual operation.
 
 ## Repository layout
 
 | Path | Contents |
 | --- | --- |
-| `src/` | Python generation pipeline (`generate.py`: loading, sampling, API calls) |
-| `src/R/` | SCM simulation in R: generates factual and counterfactual data (documented in its own README) |
-| `data/` | Sampling pools (`personas.yaml`, `candidates.csv`, `templates.yaml`) and the chat prompt (`prompts.yaml`) |
+| `exp/sim/` | Data generation pipeline: Python SCM, codebook, verbalization prompt, LLM plumbing, runner, `config.yaml` |
+| `exp/sim/R/` | Original SCM simulation in R, kept as the reference implementation (own README, renv) |
+| `src/` | Encoder, semantic decoder, latent manipulator, training/eval pipeline, `config.yaml` (per-module hyperparameters) |
+| `data/` | Generated artifacts (`sim/`, `text/`, `latents/` — only `text/` is tracked) and the older sampling pools |
 | `poster/` | Quarto poster and slides |
 
 ## Setup
@@ -19,37 +20,30 @@ Requires Python ≥ 3.12 and [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv sync
-export MISTRAL_API_KEY=...   # or OPENAI_API_KEY
+export AZURE_OPENAI_API_KEY=...   # key for the endpoint configured in exp/sim/config.yaml (llm:)
 ```
 
-## Usage
+Text generation talks to any OpenAI-compatible chat endpoint. Set `llm.base_url` in `exp/sim/config.yaml` (e.g. your Azure OpenAI resource's `/openai/v1/` endpoint, with the deployment name as `model` in `exp/sim/prompts.yaml`) and `llm.api_key_env` to the environment variable holding the key.
 
-Sample one input combination and generate a statement:
+## Pipeline
 
-```python
-from src.generate import (load_personas, load_templates, load_samples, load_prompts,
-                          sample_persona, sample_template, sample_candidate, generate_text)
-
-sample = {
-    "persona_details": sample_persona(load_personas("data/personas.yaml")),
-    "candidate_info": sample_candidate(load_samples("data/candidates.csv")),
-    "cv_template": sample_template(load_templates("data/templates.yaml")),
-}
-prompts = load_prompts("data/prompts.yaml")
-text = generate_text(sample, prompts["prompts"][0], prompts["templates"])
-```
-
-Or run the batch CLI over a CSV (one generation per row × prompt; every prompt placeholder must be a CSV column):
+Data generation (configured by `exp/sim/config.yaml`; the intervention defaults to do(G=1)):
 
 ```bash
-uv run python src/generate.py data/samples_cv.csv data/prompts.yaml [output.csv]
+uv run python -m exp.sim.run simulate         # SCM -> data/sim/sim_data_{factual,counterfactual,epsilon}.csv
+uv run python -m exp.sim.run generate-texts   # LLM -> data/text/cv_factual.csv (billed API calls; resumable)
 ```
 
-Note that each generation is a billed API call.
+Training and evaluation (hyperparameters in `src/config.yaml`):
 
-## Simulation
+```bash
+uv run python -m src.pipeline encode             # texts -> latents (downloads the LangVAE checkpoint on first use)
+uv run python -m src.pipeline train-decoder      # semantic decoder g: Z -> S
+uv run python -m src.pipeline train-manipulator  # manipulator h_Z against frozen g and counterfactual targets
+uv run python -m src.pipeline evaluate           # consistency accuracy + latent shift -> reports/eval.json
+```
 
-The R code under `src/R/` simulates factual and counterfactual data from a structural causal model (entry point: `sim_main.R`, run from the repository root). See the README there for details.
+Optionally fine-tune the LangVAE on the generated CVs first (`uv run python -m src.finetune_vae`), then point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder.
 
 ## Publish
 

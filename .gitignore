@@ -10,6 +10,12 @@
 *.Rproj*
 .Rhistory
 
+# Generated pipeline artifacts (regenerable; data/text/ stays tracked: texts cost API credits)
+data/sim/
+data/latents/
+models/
+reports/
+
 # Overleaf repo
 overleaf*
 
@@ -38,6 +44,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+.ruff*
 
 # Virtual environments
 .env
@@ -68,3 +75,4 @@ dmypy.json
 .vibe/
 AGENTS.md
 CLAUDE.md
+PLAN.md

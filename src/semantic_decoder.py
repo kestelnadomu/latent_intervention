@@ -2,7 +2,7 @@
 Semantic decoder: maps latent text representations to a tabular representation.
 
 The target schema defaults to the SCM simulation variables produced by
-src/R (all discrete, small cardinality), each predicted by a categorical head:
+exp/sim/scm.py (all discrete, small cardinality), each predicted by a categorical head:
 
     SemanticDecoder: z (latent_dim) -> {column: logits (n_categories)}
 
@@ -10,6 +10,7 @@ Train with train_semantic_decoder on (latents, tabular targets) pairs.
 """
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -26,7 +27,9 @@ class ColumnSpec:
     n_categories: int
 
 
-# Variables of the default SCM in src/R/utils/sim_scm.R with their cardinalities.
+# Structured features S of the SCM (exp/sim/scm.py, reference exp/sim/R/utils/sim_scm.R)
+# with their cardinalities. Q is the downstream outcome Y, not part of S: it gets
+# no decoder head and does not appear in the consistency loss or generated text.
 SCM_COLUMNS: list[ColumnSpec] = [
     ColumnSpec("R", 4),
     ColumnSpec("G", 2),
@@ -36,8 +39,8 @@ SCM_COLUMNS: list[ColumnSpec] = [
     ColumnSpec("W", 3),
     ColumnSpec("V", 2),
     ColumnSpec("C", 2),
-    ColumnSpec("Q", 3),
 ]
+OUTCOME_COLUMN = ColumnSpec("Q", 3)
 
 
 class SemanticDecoder(nn.Module):
@@ -53,6 +56,13 @@ class SemanticDecoder(nn.Module):
     ) -> None:
         super().__init__()
         self.columns = columns
+        self._config = {
+            "latent_dim": latent_dim,
+            "columns": [(col.name, col.n_categories) for col in columns],
+            "hidden_dim": hidden_dim,
+            "n_hidden": n_hidden,
+            "dropout": dropout,
+        }
         layers: list[nn.Module] = []
         in_dim = latent_dim
         for _ in range(n_hidden):
@@ -81,6 +91,23 @@ class SemanticDecoder(nn.Module):
         """Mean cross-entropy over all columns."""
         losses = [F.cross_entropy(logits[col.name], targets[col.name]) for col in self.columns]
         return torch.stack(losses).mean()
+
+    def save(self, path: str | Path) -> None:
+        """Persist constructor config + weights in one file (see SemanticDecoder.load)."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"config": self._config, "state_dict": self.state_dict()}, path)
+
+    @classmethod
+    def load(cls, path: str | Path, device: str | torch.device | None = None) -> "SemanticDecoder":
+        """Restore a decoder saved with save(); returns it in eval mode."""
+        payload = torch.load(Path(path), map_location=device or "cpu", weights_only=True)
+        config = dict(payload["config"])
+        config["columns"] = [ColumnSpec(name, card) for name, card in config["columns"]]
+        model = cls(**config)
+        model.load_state_dict(payload["state_dict"])
+        model.eval()
+        return model
 
 
 def targets_from_dataframe(

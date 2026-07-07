@@ -3,16 +3,16 @@
 # This script generates factual, counterfactual, and optional epsilon data from
 # the configured SCM and optionally writes the datasets to CSV files. Supporting
 # inputs and helper functions are defined in the scripts stored under
-# `src/R/utils/`.
+# `exp/sim/R/utils/`.
 
 # Set project working directory ------------------------------------------------
 wd <- getwd()
 
 # Load simulation utilities ----------------------------------------------------
-source(file.path(wd, "src", "R", "utils", "libraries.R"))
-source(file.path(wd, "src", "R", "utils", "sim_func.R"))
-source(file.path(wd, "src", "R", "utils", "sim_scm.R"))
-source(file.path(wd, "src", "R", "utils", "sim_data.R"))
+source(file.path(wd, "exp", "sim", "R", "utils", "libraries.R"))
+source(file.path(wd, "exp", "sim", "R", "utils", "sim_func.R"))
+source(file.path(wd, "exp", "sim", "R", "utils", "sim_scm.R"))
+source(file.path(wd, "exp", "sim", "R", "utils", "sim_data.R"))
 
 # Define and parse runtime configuration --------------------------------------
 sim_defaults <- list(

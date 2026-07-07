@@ -14,6 +14,7 @@ Run from the repository root:
 
 import argparse
 import csv
+import os
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,7 @@ import yaml
 
 from exp.sim import scm
 from exp.sim.generate_text import (
+    DEFAULT_BASE_URL,
     generate_text,
     load_codebook,
     load_prompts,
@@ -64,6 +66,16 @@ def stage_generate_texts(config: dict[str, Any]) -> None:
     prompts = load_prompts(config["prompts"])
     prompt = prompts["prompts"][0]
 
+    llm = config.get("llm", {})
+    base_url = llm.get("base_url", DEFAULT_BASE_URL)
+    if "<resource-name>" in base_url:
+        raise ValueError("Fill in llm.base_url in exp/sim/config.yaml (placeholder resource name).")
+    api_key = None
+    if llm.get("api_key_env"):
+        api_key = os.getenv(llm["api_key_env"])
+        if not api_key:
+            raise ValueError(f"Environment variable {llm['api_key_env']} (llm.api_key_env) is not set.")
+
     done_ids: set[int] = set()
     if out_path.exists():
         done_ids = set(pd.read_csv(out_path, usecols=["id"])["id"].astype(int))
@@ -85,7 +97,9 @@ def stage_generate_texts(config: dict[str, Any]) -> None:
             writer.writerow(["id", "text"])
         for i, row in enumerate(todo, 1):
             sample = verbalize_row(row, codebook)
-            text = generate_text(sample, prompt, prompts["templates"])
+            text = generate_text(
+                sample, prompt, prompts["templates"], api_key=api_key, base_url=base_url
+            )
             writer.writerow([int(row["id"]), text])
             f.flush()
             if i % 25 == 0 or i == len(todo):
