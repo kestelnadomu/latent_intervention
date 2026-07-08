@@ -20,6 +20,7 @@ import random
 from pathlib import Path
 from typing import Any
 
+import dotenv
 import numpy as np
 import pandas as pd
 import yaml
@@ -36,6 +37,7 @@ Message = dict[str, str]
 DEFAULT_MODEL = "mistral-medium-latest"
 DEFAULT_BASE_URL = "https://api.mistral.ai/v1"
 API_KEY_ENV_VARS = ("AZURE_OPENAI_API_KEY", "OPENAI_API_KEY", "MISTRAL_API_KEY")
+dotenv.load_dotenv()  # load .env file if present
 
 # ---------------------------------------------------------------------------
 # Loading
@@ -282,7 +284,7 @@ def generate_text(
     api_key: str | None = None,
     model: str = DEFAULT_MODEL,
     base_url: str = DEFAULT_BASE_URL,
-    max_tokens: int = 500,
+    max_completion_tokens: int = 500,
     temperature: float = 0.7,
     **kwargs: Any,
 ) -> str:
@@ -291,7 +293,7 @@ def generate_text(
     (Mistral by default; Azure OpenAI via its /openai/v1/ base_url, where
     `model` is the deployment name).
 
-    Per-prompt `metadata` (model, max_tokens, temperature) overrides the
+    Per-prompt `metadata` (model, max_completion_tokens, temperature) overrides the
     function defaults. The API key falls back to the environment variables
     in API_KEY_ENV_VARS.
     """
@@ -315,7 +317,7 @@ def generate_text(
         response = client.chat.completions.create(
             model=metadata.get("model", model),
             messages=formatted,
-            max_tokens=metadata.get("max_tokens", max_tokens),
+            max_completion_tokens=metadata.get("max_completion_tokens", max_completion_tokens),
             temperature=metadata.get("temperature", temperature),
             **kwargs,
         )
