@@ -47,26 +47,142 @@ This pairing is the source of identification. The old method only finds a nearby
 
 ## How the revised training works
 
-1. Freeze the encoder and cache the embedding of every orbit world.
-2. Train the regime-aware semantic kernel
-   \[
-   G_e^a(\mathbf S\mid Z)
-   \]
-   on genuine embeddings from all supported regimes.
-3. Implement the shared SCM kernel
-   \[
-   K_S^{a\to b}(\mathbf S^b\mid\mathbf S^a).
-   \]
-   Stored simulator noise gives an oracle version. A new CV requires a deployable version that averages over unknown noise compatible with its observed state.
-4. Train the latent editor
-   \[
-   Q_e(Z^b\mid Z^a,\mathbf S^b,a,b)
-   \]
-   directly against the matched target \(Z^b\).
-5. Keep the existing semantic-consistency+\(L_1/L_2\) editor as the original-method baseline.
-6. Evaluate \(G_e\), \(K_S\), and \(Q_e\) separately before evaluating the complete \(G\to K\to Q\) pipeline and downstream fairness.
+1. **Freeze and cache the encoder.**
+
+   - **Input:** every generated text \(X_i^r\), where \(i\) is the unit and \(r\) is its intervention regime.
+   - **Output:** the fixed embedding \(Z_i^r=e(X_i^r)\), keyed by unit, regime, and renderer replicate.
+   - **Loss/objective:** none. The encoder is not trained. Use one fixed representation—initially the LangVAE posterior mean—and record the checkpoint and preprocessing.
+
+2. **Train the regime-aware semantic kernel \(G_e\).**
+
+   - **Input:** \(Z_i^r\) and regime label \(r\).
+   - **Training target:** the simulator state \(\mathbf S_i^r\).
+   - **Output:** \(G_e(\mathbf S\mid Z,r)\), a calibrated distribution over the structured state in regime \(r\).
+   - **Loss/objective:** a proper supervised loss, initially joint or per-variable categorical cross-entropy:
+
+     \[
+     \mathcal L_G
+     =
+     -\mathbb E\log g_\eta(\mathbf S_i^r\mid Z_i^r,r).
+     \]
+
+3. **Fit or calculate the shared SCM kernel \(K_S\).**
+
+   - **Input:** factual state \(\mathbf S_i^a\), source regime \(a\), and requested target regime \(b\).
+   - **Training target:** the matched structured counterfactual \(\mathbf S_i^b\).
+   - **Output:** \(K_S^{a\to b}(\mathbf S^b\mid\mathbf S^a)\), which represents uncertainty about the target state when the unit’s hidden SCM noise is unavailable.
+   - **Loss/objective:** the stored-noise oracle requires no training loss. A deployable table or model minimizes a proper transition loss such as
+
+     \[
+     \mathcal L_K
+     =
+     -\mathbb E\log k_\phi(\mathbf S_i^b\mid\mathbf S_i^a,a,b),
+     \]
+
+     and is validated against held-out stored-noise oracle transitions.
+
+4. **Train the paired latent editor \(Q_e\).**
+
+   - **Input:** factual embedding \(Z_i^a\), factual state \(\mathbf S_i^a\), target state \(\mathbf S_i^b\), and regime labels \(a,b\).
+   - **Training target:** the matched target embedding \(Z_i^b=e(X_i^b)\).
+   - **Output:** \(Q_e(Z^b\mid Z^a,\mathbf S^a,\mathbf S^b,a,b)\), a conditional distribution over target embeddings. The version omitting \(\mathbf S^a\) is an ablation testing whether \(Z^a\) already contains all useful factual semantics.
+   - **Loss/objective:** a strictly proper conditional distributional score:
+
+     \[
+     \mathcal L_Q
+     =
+     \mathbb E\,
+     \mathcal S_{\mathrm{dist}}
+     \left(
+       Q_\theta(\cdot\mid Z_i^a,\mathbf S_i^a,\mathbf S_i^b,a,b),
+       Z_i^b
+     \right).
+     \]
+
+     Conditional negative log-likelihood is appropriate only for an explicit density or smoothed target; an energy score can be used when the target law is singular. Semantic and identity losses are auxiliaries, not the identifying objective.
+
+5. **Retain the original deterministic editor as a baseline.**
+
+   - **Input:** \(Z_i^a\) and the intervention encoding for \(a\to b\).
+   - **Training target:** \(\mathbf S_i^b\), used by the frozen semantic model to score the edited point; it is supervision, not a direct input to the current editor.
+   - **Output:** one edited point \(\widehat Z_i^b\).
+   - **Loss/objective:** the original semantic-consistency loss plus latent displacement penalties,
+
+     \[
+     \mathcal L_{\mathrm{old}}
+     =
+     \mathcal L_{\mathrm{sem}}
+     +\alpha\lVert\widehat Z_i^b-Z_i^a\rVert_1
+     +\beta\lVert\widehat Z_i^b-Z_i^a\rVert_2^2.
+     \]
+
+6. **Evaluate the modules and their composition.**
+
+   - **Input:** held-out complete orbits grouped by unit.
+   - **Output:** separate results for \(G_e\), deployable versus oracle \(K_S\), oracle-target \(Q_e\), and the complete \(G\to K\to Q\) pipeline.
+   - **Loss/objective:** no parameter updates. Report proper scores and calibration, semantic and support validity, paired target accuracy, persona/style preservation, downstream utility, and the declared fairness measure.
+
+## Inference: input, output, and required controls
+
+For a new CV, inference receives:
+
+- the factual text \(x\);
+- the known or declared source regime \(a\);
+- the requested target regime \(b\);
+- optionally, explicit persona/renderer context if the method is designed to control it separately.
+
+It then performs
+
+\[
+z=e(x),\qquad
+\mathbf S^a_m\sim G_e(\cdot\mid z,a),\qquad
+\mathbf S^b_m\sim K_S^{a\to b}(\cdot\mid\mathbf S^a_m),\qquad
+Z^b_m\sim Q_e(\cdot\mid z,\mathbf S^a_m,\mathbf S^b_m,a,b).
+\]
+
+The output is a sample \(\{Z^b_m\}_{m=1}^M\) approximating the counterfactual latent distribution \(H_e^{a\to b}(\cdot\mid z)\). A downstream predictor can turn these into a predictive distribution or fairness statistic. The core method does **not** automatically output a counterfactual text; that would require a separately validated text decoder.
+
+For component evaluation only, an oracle mode may replace \(G_e\) and \(K_S\) with the simulator’s true \(\mathbf S^a,\mathbf S^b\). That isolates \(Q_e\), but it is not the deployable inference procedure.
+
+The following must be controlled:
+
+- **Encoder:** use exactly the frozen checkpoint and preprocessing used during training.
+- **Causal query:** \(a\), \(b\), and total-versus-path-specific semantics must match a supported training query.
+- **Causal closure:** \(K_S\) determines which structured variables and descendants are allowed to change; \(Q_e\) should realize that target state rather than independently choosing causal changes.
+- **Same-unit information:** retain the complete factual embedding \(z\) as an input to \(Q_e\); it carries observable person and presentation information not contained in \(\mathbf S\).
+- **Renderer invariants:** persona, template, and causally irrelevant renderer choices must have been coupled correctly in the training orbits. If one of them must be explicitly controlled at inference, it must be recorded and added as a model input; an unobserved variable cannot be guaranteed fixed.
+- **Unknown SCM noise:** do not use the stored-noise oracle for a new CV. The deployable \(K_S\) must average over SCM noises compatible with the inferred factual state.
+- **Support:** reject or flag source states and target transitions outside the training support.
+- **Monte Carlo:** fix and report the number of samples and random seed for reproducible evaluation, while retaining the full sample distribution rather than only its mean.
 
 A stochastic kernel may turn out to be almost deterministic. We should test that rather than force artificial variance. If deterministic texts and embeddings make the target distribution singular, use a proper distributional score that supports such laws, or explicitly state that a Gaussian model estimates a smoothed approximation.
+
+## Which editor is the actual method—and why train three?
+
+The three editors are trained **separately on the same unit splits**. They are not combined:
+
+| Editor | What it learns from | Role |
+|---|---|---|
+| Original deterministic editor | Target semantics plus \(L_1/L_2\) proximity; it never sees the matched \(Z^b\) | Historical baseline representing the original proposal |
+| Deterministic paired regressor | The matched \(Z^b\), but predicts one point | Strong safety baseline and test of whether paired supervision alone is sufficient |
+| Stochastic paired editor \(Q_e\) | The matched \(Z^b\) and predicts its conditional distribution | Proposed method |
+
+The comparisons answer two different questions:
+
+1. **Original versus deterministic paired:** does direct supervision by the true paired \(Z^b\) improve on semantic proximity?
+2. **Deterministic paired versus stochastic \(Q_e\):** is there meaningful counterfactual ambiguity that requires a distribution?
+
+The population target we expect to exist is
+
+\[
+Q_e^*
+=
+P(Z^b\mid Z^a,\mathbf S^a,\mathbf S^b,a,b).
+\]
+
+An exact deterministic editor exists only when this distribution is effectively a point mass. Otherwise, paired squared-error regression approaches a conditional mean, which may average incompatible targets. The original \(L_1/L_2\) editor only approaches a minimizer of its semantic-distance objective; that point is not identified as the paired counterfactual.
+
+Therefore \(Q_e\) is the method we propose, the deterministic paired model is the important safety/falsification baseline, and the old editor is the historical baseline. We should claim a practically important stochastic editor only if \(Q_e\) beats the deterministic paired model on a common held-out proper score and produces calibrated, supported variation. If it collapses to one point or offers no improvement, the honest result is that the identified kernel is effectively deterministic for this simulator and encoder.
 
 ## What this lets us claim
 
