@@ -79,14 +79,91 @@ Two sub-questions, to be reported separately:
      the stochastic claim is actually tested.
 4. Split **by unit**: all worlds of one simulated candidate stay in the same split.
 
-### Training
+### Function Derivation
 
-1. Obtain $h_S$. Available in **closed form** from the SCM: abduction gives an interval for
-   each continuous $\varepsilon$, and $h_S$ is the induced pushforward. Fit nothing;
-   validate against the stored-noise oracle.
-2. Train $g$ on factual pairs $(f(X), \mathbf S)$ only.
-3. Freeze $f, g, h_S$; train $h_Z$ on the objective above. The noise input to $h_Z$ lets it
-   internalise $h_S$'s ambiguity, so **no SCM is needed at inference**.
+#### 1. Symbolic intervention $h_S$
+
+- Available in closed form
+- No sampling error, no fitting.
+- empirical numbers above are then a validation check, not the source
+
+##### Noise Abduction
+
+- given the full factual state $\mathbf s$, every parent of every node is observed, so the noise posterior factorises,
+
+$$p(\varepsilon \mid \mathbf s) = \prod_i \mathrm{TruncNormal}\big(\varepsilon_i;\ \mu_i,\ \sigma_i,\ [l_i, u_i)\big)$$
+
+- with the interval obtained by inverting clip_round against the node's mechanism $m_i = m_i(\mathbf{pa}_i)$:
+  - interior, $0 < s_i < k_i - 1$: $\varepsilon_i \in [,s_i - m_i - 0.5,\ s_i - m_i + 0.5,)$
+  - floor, $s_i = 0$: $\varepsilon_i \in (-\infty,\ 0.5 - m_i)$
+  - ceiling, $s_i = k_i - 1$: $\varepsilon_i \in [,k_i - 1.5 - m_i,\ \infty)$
+- Clipping is what makes the boundary categories carry unbounded noise mass, which is why $\texttt{E}=0$ and $\texttt{E}=3$ rows behave differently from interior ones
+
+##### Action and Prediction
+- Then $\mathbf s' = F(\varepsilon, \delta)$ is deterministic, so push the factorised posterior forward in topological order by exact enumeration.
+- With $\lvert\mathcal S\rvert = 3456$ you can precompute the whole thing as a sparse $3456 \times 3456$ transition matrix per $\delta$ — mean 5.8 nonzeros per row, so a few MB — and $h_S$ becomes a lookup at train time
+
+
+#### 2. Semantic bridge $g$
+
+- Train on factual pairs $(f(X), \mathbf S)$ only.
+
+##### OLD Approach: Independent per-column Softmaxes
+- asserts $\texttt{E},\texttt{S},\texttt{W},\texttt{V},\texttt{C}$ are conditionally independent given $z$ (not true)
+- KL objective compares distributions over $\mathcal S$, so a wrong joint corrupts the loss itself, not just a reported metric.
+
+##### Approach A: Flat Joint Softmax
+
+- Flat softmax with a head for each element of the power set of the tabular features
+- Correct joint, trivially
+- spends capacity on all impossible states
+- few effectively-populated classes to learn from however many texts you generate
+- Sparse tails, poor calibration where it matters.
+
+##### Approach B: Autoregressive over the Topological Order (preferred) 
+
+- $\texttt{R},\texttt{G},\texttt{A},\texttt{E},\texttt{S},\texttt{W},\texttt{V},\texttt{C}$: $p(\mathbf s \mid z) = \prod_i p(s_i \mid s_{<i}, z)$
+- Exact — no independence assumption — but with one small heads for each feature
+- Impossible states get zero mass structurally rather than by being learned
+- Keep the existing trunk, feed embeddings of the already-decoded prefix.
+
+- Possible trap:
+  - condition each head on the full prefix, not on the node's SCM parents.
+  - Given $z$, the variables are all coupled — the posterior does not inherit the SCM's factorisation
+  - Restricting to parents would be a second, subtler independence error.
+
+Both forms let you enumerate $\mathcal S$ exactly for the KL, and the autoregressive one still permits exact enumeration by expanding the product over the 2263 supported states.
+
+#### 3. Latent intervention $h_Z$
+
+- Freeze $f, g, h_S$
+- train $h_Z$ on the objective above
+- noise input to $h_Z$ lets it internalise $h_S$'s ambiguity
+- **no SCM is needed at inference**
+
+- discrete ambiguity (is $\texttt{E}'$ 1 or 2)
+- induces distinct, separated regions of latent space
+- residual Gaussian $z' = z + \mu_\theta + \sigma_\theta \odot u$ will place mass between the modes —-> "averaging incompatible targets" failure
+
+$$h_Z(z' \mid z, \delta) = \sum_{\mathbf s'} w_\theta(\mathbf s' \mid z, \delta); q_\phi(z' \mid z, \mathbf s')$$
+
+- $w_\theta$ is an internal head with the same autoregressive architecture as $g$
+- $q_\phi$ is a residual realiser, $z' = z + \Delta_\phi(z, \mathbf s')$.
+- At inference: sample $\mathbf s' \sim w_\theta$, then $z'$
+- Only $z$ and $\delta$ are inputs — $h_S$ is internalised in $w_\theta$'s weights, so nothing from Design B leaks into deployment.
+
+- Objective decomposes:
+$$(g \circ h_Z)(\cdot \mid z,\delta) = \sum_{\mathbf s'} w_\theta(\mathbf s' \mid z,\delta)\ \mathbb E_{q_\phi}\big[g(\cdot \mid z')\big]$$
+
+- Good realiser gives $\mathbb E_{q_\phi}[g(\cdot \mid z')] \approx \delta_{\mathbf s'}$ --> KL collapses to $D_{\mathrm{KL}}\big((h_S \circ g),|,w_\theta\big)$
+- --> splits one hard bilevel problem into two ordinary supervised ones:
+  - $w_\theta$: distil the exact 3456-vector $(h_S \circ g)(\cdot \mid z, \delta)$. Dense target, no sampling, no gradient-through-samples variance. Top-$k$ truncation at $k=16$ is lossless given the max of 14.
+  - $q_\phi$: minimise $-\log g(\mathbf s' \mid z + \Delta_\phi(z,\mathbf s')) + \alpha\lVert\Delta\rVert_1 + \beta\lVert\Delta\rVert_2^2$ against frozen $g$. Then fine-tune end-to-end on the true KL to absorb the $\approx$. Pretrain-then-joint, not either alone.
+
+- structurally close to GPT's $G \to K \to Q$, with $w_\theta$ playing $K_S$'s role
+- Two differences that matter both survive
+  - **$Z'$ never enters a loss**
+  - **inference needs no SCM**
 
 ### Baselines and ablations
 
@@ -126,16 +203,17 @@ Does the method work when $\mathbf S$ comes from a real corpus rather than a ren
 i.e. when $g$ must be learned against human-assigned labels and the text distribution is not
 generated from $\mathbf S$?
 
-> **Open problem:** this study still needs an $h_S$, which needs a *causal model of the real
-> domain*. That is a harder dependency than the annotations, and the previous draft's
-> with-$g$ / without-$g$ split does not capture it. Three things can be given or missing —
-> texts, annotations, SCM — and the SCM is the binding constraint. Candidate resolutions:
-> borrow an SCM from the fairness literature for the domain, or restrict to domains where a
-> defensible one exists.
+> **Open problem:** this study still needs an $h_S$, which needs a *causal model of the real domain*.
+> That is a harder dependency than the annotations, and the previous draft's with-$g$ / without-$g$ split does not capture it. Three things can be given or missing — texts, annotations, SCM — and the SCM is the binding constraint. Candidate resolutions:
+> borrow an SCM from the fairness literature for the domain, or restrict to domains where a defensible one exists.
 
 ### Data
 
 Real dataset with text + structured attributes. To be selected.
+
+### Function Derivation
+
+For Studies 2/3 there is no known SCM, so $h_S$ must be learned there. Design the interface so the analytic and learned versions are interchangeable — same signature, h_S(s, delta) -> sparse vector over S.
 
 ### Evaluation
 
@@ -252,10 +330,7 @@ Dashed = supervision.
 
 ## Open decisions
 
-1. **Query set.** One intervention ($do(\texttt{G}{=}1)$) or a grid? A grid needs
-   $h_Z$ conditioned on $\delta$ (the architecture already supports it) and multiplies
-   generation cost.
-2. **Sample size** from transition support: count rare transitions in a large cheap tabular
-   run before committing to billed text generation.
+1. **Query set.** One intervention ($do(\texttt{G}{=}1)$) or a grid? A grid needs $h_Z$ conditioned on $\delta$ (the architecture already supports it) and multiplies generation cost.
+2. **Sample size** from transition support: count rare transitions in a large cheap tabular run before committing to billed text generation.
 3. **Study 2/3 domain**, driven by where a defensible SCM exists.
 4. **Fairness measure** to be declared before results are computed.
