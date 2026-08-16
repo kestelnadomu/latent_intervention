@@ -1220,8 +1220,7 @@ For a new CV \(x\):
    \]
 2. Sample or estimate the factual structured state:
    \[
-   s_m\sim G_e^a(\cdot\mid z)
-   =
+   s_m\sim G_e^a(\cdot\mid z) =
    G_e(\cdot\mid z,a).
    \]
 3. Perform symbolic counterfactual inference:
