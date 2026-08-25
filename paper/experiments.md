@@ -1,53 +1,12 @@
 # Experiments
 
-## Notation
+Study design only. **Notation, model definitions and the training objective live in
+`architecture.md`** — $f$ (frozen encoder), $g$ (semantic kernel), $h_S$ (symbolic
+counterfactual kernel), $h_Z$ (latent editor, the method), and the consistency objective
+$D_{\mathrm{KL}}(h_S \circ g \,\|\, g \circ h_Z)$. Symbols are used here as defined there.
 
-Fixed once here; used consistently below.
-
-| Symbol | Meaning |
-|---|---|
-| $\mathcal X, \mathcal Z, \mathcal S$ | text space, latent space ($\mathbb R^{128}$), structured state space |
-| $\mathbf S = (\texttt{R},\texttt{G},\texttt{A},\texttt{E},\texttt{S},\texttt{W},\texttt{V},\texttt{C})$ | structured state; $\lvert\mathcal S\rvert = 4\cdot2\cdot3\cdot4\cdot3\cdot3\cdot2\cdot2 = 3456$ |
-| $\texttt{Q}$ | downstream outcome, excluded from $\mathbf S$ |
-| $\delta$ | intervention spec, e.g. $\delta = do(\texttt{G}=1)$ |
-| $'$ | counterfactual under $\delta$ (so $\mathbf S'$, $X'$, $Z'$) |
-| $f: \mathcal X \to \mathcal Z$ | encoder, **frozen** |
-| $g(\mathbf s \mid z)$ | semantic kernel, $\mathcal Z \to \Delta(\mathcal S)$ |
-| $h_S(\mathbf s' \mid \mathbf s, \delta)$ | symbolic counterfactual kernel, $\mathcal S \to \Delta(\mathcal S)$ |
-| $h_Z(z' \mid z, \delta)$ | latent editor, $\mathcal Z \to \Delta(\mathcal Z)$ — **the method** |
-
-Three notation fixes over the previous draft:
-
-- **$f$, not $e$**, for the encoder (matches the extended abstract). And $h_Z$ consumes a
-  latent, so the composition is $h_Z(f(X))$ — never $f(h_Z(X))$.
-- **Kernels are written as conditionals, not as arrows into a density.** Write
-  $g(\mathbf s \mid z)$, not $g: Z \to p(S \mid Z)$; the arrow form should name *spaces*
-  ($\mathcal Z \to \Delta(\mathcal S)$), not elements.
-- **Bold $\mathbf S$ for the state vector**, upright $\texttt{S}$ for the SCM node of the same
-  name. These are different objects and the collision is otherwise unreadable.
-
-### The two composed distributions
-
-Both live on $\mathcal S$, which is why they are directly comparable — and $\lvert\mathcal S\rvert = 3456$
-is small enough to **enumerate exactly**, so no sampling approximation and no per-column
-independence assumption is needed:
-
-$$(h_S \circ g)(\mathbf s' \mid z, \delta) = \sum_{\mathbf s \in \mathcal S} h_S(\mathbf s' \mid \mathbf s, \delta)\, g(\mathbf s \mid z)$$
-
-$$(g \circ h_Z)(\mathbf s' \mid z, \delta) = \mathbb E_{z' \sim h_Z(\cdot \mid z, \delta)}\big[\,g(\mathbf s' \mid z')\,\big]$$
-
-Training objective for $h_Z$ (frozen $f$, $g$, $h_S$):
-
-$$\mathcal L = \mathbb E_{z}\Big[\, D_{\mathrm{KL}}\big(\,(h_S \circ g)(\cdot \mid z,\delta)\ \big\|\ (g \circ h_Z)(\cdot \mid z,\delta)\,\big) \,\Big] + \alpha \lVert z' - z\rVert_1 + \beta \lVert z' - z \rVert_2^2$$
-
-Direction matters: **forward** KL is mass-covering, which is what we want — $h_Z$ must not
-collapse onto one mode when the symbolic counterfactual is genuinely ambiguous.
-
-### Guiding principle
-
-$Z'$ **never enters a loss.** It is the evaluation target only. $g$ exists precisely because
-$Z'$ is unavailable outside the simulator; supervising on $Z'$ would make the method
-untransferable and $g$ redundant. See `notes/leo/idea.md`.
+The one commitment that drives every study design below: **$Z'$ never enters a loss.** It is the
+evaluation target only.
 
 ---
 
@@ -81,89 +40,22 @@ Two sub-questions, to be reported separately:
 
 ### Function Derivation
 
-#### 1. Symbolic intervention $h_S$
+See `architecture.md`. For this study: $h_S$ is **closed form** (abduction gives a factorised
+truncated-normal noise posterior, pushed forward by exact enumeration into a sparse
+$3456\times3456$ transition matrix per $\delta$), $g$ is the **autoregressive** kernel trained
+on factual pairs $(f(X), \mathbf S)$ only, and $h_Z$ is the **discrete mixture** — with
+pre-additive engression as the alternative under test (see the ablation table).
 
-- Available in closed form
-- No sampling error, no fitting.
-- empirical numbers above are then a validation check, not the source
+Two things to settle empirically before committing:
 
-##### Noise Abduction
+- **Top-$k$ truncation of the distillation target.** $(h_S \circ g)$ is a $g$-weighted mixture,
+  so its support can reach $14K$ for $g$-support $K$; the max-14 figure is a property of a single
+  row of $M_\delta$, not of the composed target. Measure the composed support per stratum before
+  fixing $k$ — it will be widest in exactly the ambiguous rows this study is about.
+- **Adversarial drift.** $\Delta_\phi$ is fit against a frozen $g$, which is the
+  adversarial-example construction. The identity check and RQ1b must be read before any RQ1a
+  number is trusted.
 
-- given the full factual state $\mathbf s$, every parent of every node is observed, so the noise posterior factorises,
-
-$$p(\varepsilon \mid \mathbf s) = \prod_i \mathrm{TruncNormal}\big(\varepsilon_i;\ \mu_i,\ \sigma_i,\ [l_i, u_i)\big)$$
-
-- with the interval obtained by inverting clip_round against the node's mechanism $m_i = m_i(\mathbf{pa}_i)$:
-  - interior, $0 < s_i < k_i - 1$: $\varepsilon_i \in [,s_i - m_i - 0.5,\ s_i - m_i + 0.5,)$
-  - floor, $s_i = 0$: $\varepsilon_i \in (-\infty,\ 0.5 - m_i)$
-  - ceiling, $s_i = k_i - 1$: $\varepsilon_i \in [,k_i - 1.5 - m_i,\ \infty)$
-- Clipping is what makes the boundary categories carry unbounded noise mass, which is why $\texttt{E}=0$ and $\texttt{E}=3$ rows behave differently from interior ones
-
-##### Action and Prediction
-- Then $\mathbf s' = F(\varepsilon, \delta)$ is deterministic, so push the factorised posterior forward in topological order by exact enumeration.
-- With $\lvert\mathcal S\rvert = 3456$ you can precompute the whole thing as a sparse $3456 \times 3456$ transition matrix per $\delta$ — mean 5.8 nonzeros per row, so a few MB — and $h_S$ becomes a lookup at train time
-
-
-#### 2. Semantic bridge $g$
-
-- Train on factual pairs $(f(X), \mathbf S)$ only.
-
-##### OLD Approach: Independent per-column Softmaxes
-- asserts $\texttt{E},\texttt{S},\texttt{W},\texttt{V},\texttt{C}$ are conditionally independent given $z$ (not true)
-- KL objective compares distributions over $\mathcal S$, so a wrong joint corrupts the loss itself, not just a reported metric.
-
-##### Approach A: Flat Joint Softmax
-
-- Flat softmax with a head for each element of the power set of the tabular features
-- Correct joint, trivially
-- spends capacity on all impossible states
-- few effectively-populated classes to learn from however many texts you generate
-- Sparse tails, poor calibration where it matters.
-
-##### Approach B: Autoregressive over the Topological Order (preferred) 
-
-- $\texttt{R},\texttt{G},\texttt{A},\texttt{E},\texttt{S},\texttt{W},\texttt{V},\texttt{C}$: $p(\mathbf s \mid z) = \prod_i p(s_i \mid s_{<i}, z)$
-- Exact — no independence assumption — but with one small heads for each feature
-- Impossible states get zero mass structurally rather than by being learned
-- Keep the existing trunk, feed embeddings of the already-decoded prefix.
-
-- Possible trap:
-  - condition each head on the full prefix, not on the node's SCM parents.
-  - Given $z$, the variables are all coupled — the posterior does not inherit the SCM's factorisation
-  - Restricting to parents would be a second, subtler independence error.
-
-Both forms let you enumerate $\mathcal S$ exactly for the KL, and the autoregressive one still permits exact enumeration by expanding the product over the 2263 supported states.
-
-#### 3. Latent intervention $h_Z$
-
-- Freeze $f, g, h_S$
-- train $h_Z$ on the objective above
-- noise input to $h_Z$ lets it internalise $h_S$'s ambiguity
-- **no SCM is needed at inference**
-
-- discrete ambiguity (is $\texttt{E}'$ 1 or 2)
-- induces distinct, separated regions of latent space
-- residual Gaussian $z' = z + \mu_\theta + \sigma_\theta \odot u$ will place mass between the modes —-> "averaging incompatible targets" failure
-
-$$h_Z(z' \mid z, \delta) = \sum_{\mathbf s'} w_\theta(\mathbf s' \mid z, \delta); q_\phi(z' \mid z, \mathbf s')$$
-
-- $w_\theta$ is an internal head with the same autoregressive architecture as $g$
-- $q_\phi$ is a residual realiser, $z' = z + \Delta_\phi(z, \mathbf s')$.
-- At inference: sample $\mathbf s' \sim w_\theta$, then $z'$
-- Only $z$ and $\delta$ are inputs — $h_S$ is internalised in $w_\theta$'s weights, so nothing from Design B leaks into deployment.
-
-- Objective decomposes:
-$$(g \circ h_Z)(\cdot \mid z,\delta) = \sum_{\mathbf s'} w_\theta(\mathbf s' \mid z,\delta)\ \mathbb E_{q_\phi}\big[g(\cdot \mid z')\big]$$
-
-- Good realiser gives $\mathbb E_{q_\phi}[g(\cdot \mid z')] \approx \delta_{\mathbf s'}$ --> KL collapses to $D_{\mathrm{KL}}\big((h_S \circ g),|,w_\theta\big)$
-- --> splits one hard bilevel problem into two ordinary supervised ones:
-  - $w_\theta$: distil the exact 3456-vector $(h_S \circ g)(\cdot \mid z, \delta)$. Dense target, no sampling, no gradient-through-samples variance. Top-$k$ truncation at $k=16$ is lossless given the max of 14.
-  - $q_\phi$: minimise $-\log g(\mathbf s' \mid z + \Delta_\phi(z,\mathbf s')) + \alpha\lVert\Delta\rVert_1 + \beta\lVert\Delta\rVert_2^2$ against frozen $g$. Then fine-tune end-to-end on the true KL to absorb the $\approx$. Pretrain-then-joint, not either alone.
-
-- structurally close to GPT's $G \to K \to Q$, with $w_\theta$ playing $K_S$'s role
-- Two differences that matter both survive
-  - **$Z'$ never enters a loss**
-  - **inference needs no SCM**
 
 ### Baselines and ablations
 
@@ -174,6 +66,7 @@ floor and a ceiling.
 |---|---|
 | Identity, $z' = z$ | floor: how much does *any* edit help |
 | Deterministic $h_Z$ (current `src/latent_intervention.py`) | is the stochastic kernel needed at all |
+| Pre-additive engression $h_Z$ (Design A) | does explicit discrete-mode structure beat implicit noise-folding |
 | Oracle-$\mathbf S'$ editor (fed the true $\mathbf S'$) | separates *causal reasoning* error from *realisation* error |
 | Paired regressor trained on $Z'$ | ceiling: uses information the real method cannot have |
 | $\alpha = \beta = 0$ | is proximity carrying the identification |
