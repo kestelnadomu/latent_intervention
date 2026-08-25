@@ -1,9 +1,10 @@
 # Agent Handoff: Frozen-Backbone Stochastic Counterfactual Latent Editing
 
 **Project:** *Counterfactual Latent Representations: A Neurosymbolic Approach*  
-**Status:** Conceptual and theoretical redesign agreed; a fresh full-orbit LIBERTy-style DGP is judged sufficient for simulator-relative identification, but the required orbit data contract and \(G_e/K_S/Q_e\) pipeline are not yet implemented  
+**Status:** Conceptual and theoretical redesign agreed; a fresh full-orbit LIBERTy-style DGP is judged sufficient for simulator-relative identification, but the required orbit data contract, modular \(G_e/K_S/Q_e\) path, and direct \(H_e^{\mathrm{dir}}\) path are not yet implemented
+
 **Audience:** Next research/writing/coding agent  
-**Primary design decision:** Preserve **frozen-backbone modularity**. A downloaded encoder is never fine-tuned, but small encoder-specific post-hoc modules are trained from simulator-generated paired counterfactual data.
+**Primary design decision:** Preserve **frozen-backbone modularity**. A downloaded encoder is never fine-tuned. Train an interpretable modular \(G_e\to K_S\to Q_e\) model and a direct symbolic-free \(H_e^{\mathrm{dir}}\) model from the same simulator-generated paired counterfactual data.
 
 > **Repository-grounding note (2026-08-10).** The conceptual handoff has now been cross-checked against the live manuscript source in `paper/ecaf26-template.tex`, the LIBERTy source in `literature/Toker et al. - 2026 - LIBERTy A Causal Framework for Benchmarking Concept-Based Explanations of LLMs with Structural Coun.md`, the Python simulator and text generator in `exp/sim/`, the current encoder/semantic-decoder/manipulator pipeline in `src/`, the R fairness estimators in `exp/estim/R/`, and the current configuration and artifact state. The repository-specific findings and implementation cautions below supersede any older implication that matched counterfactual texts or the stochastic editor already exist in code.
 
@@ -54,30 +55,35 @@ The minimal viable redesign is:
 3. Train an encoder-specific regime-conditioned semantic analysis model \(G_e^a\) on the fixed embeddings.
 4. Replace the deterministic map \(h_Z\) by an encoder-specific **stochastic conditional editor**
    \[
-   Q_e(dz'\mid z,s',a,b),
+   Q_e(dz'\mid z,s,s',a,b),
    \]
    trained directly on paired targets
    \[
    Z_e^b=e(X^b)
    \quad\text{given}\quad
-   (Z_e^a,S^b,a,b).
+   (Z_e^a,S^a,S^b,a,b).
    \]
 5. Compose semantic analysis, the symbolic SCM counterfactual, and latent synthesis into the counterfactual kernel
    \[
    \boxed{
-   H_{Z,e}^{a\to b}(dz'\mid z)
+   H_e^{\mathrm{comp},a\to b}(dz'\mid z)
    =
    \int G_e^a(ds\mid z)
    \int K_S^{a\to b}(ds'\mid s)
-   Q_e(dz'\mid z,s',a,b).
+   Q_e(dz'\mid z,s,s',a,b).
    }
    \]
+6. When deployment must avoid the symbolic space, separately fit the direct student
+   \[
+   \widehat H_{e,\psi}^{\mathrm{dir},a\to b}(dz'\mid z)
+   \]
+   from genuine paired \((Z_e^a,Z_e^b,a,b)\). The modular system can be a teacher or diagnostic, but paired \(Z_e^b\) remains the student's primary supervision.
 
-The final object is therefore not necessarily one point \(z'\). It is a simulator-induced conditional law over plausible paired counterfactual embeddings. A deterministic editor is a special case in which this law is almost surely a Dirac measure.
+The final object is therefore not necessarily one point \(z'\). It is a simulator-induced conditional law over plausible paired counterfactual embeddings. A deterministic editor is a special case in which this law is almost surely a Dirac measure. The composed and direct estimators target the same paired law only under the counterfactual-sufficiency condition stated below; otherwise their discrepancy is scientifically informative.
 
-Fresh complete LIBERTy-style orbits are sufficient at the **population DGP level**: they identify the regular conditional laws \(G_e^{a,*}\), \(K_S^{a\to b,*}\), \(Q_e^{a\to b,*}\), and the direct oracle kernel \(H_e^{a\to b,*}\), almost surely on the support of the actual simulator coupling. This positive result does not mean that the current repository already creates those orbits, that a finite neural estimator is automatically consistent, or that the synthetic kernels transport to real CVs.
+Fresh complete LIBERTy-style orbits are sufficient at the **population DGP level**: they identify the regular conditional laws \(G_e^{a,*}\), \(K_S^{a\to b,*}\), \(Q_e^{a\to b,*}\), and the direct paired population kernel \(H_e^{\mathrm{dir},a\to b,*}\), almost surely on the support of the actual simulator coupling. This positive result does not mean that the current repository already creates those orbits, that a finite neural estimator is automatically consistent, or that the synthetic kernels transport to real CVs.
 
-This preserves the intended modularity: replacing the encoder requires recomputing simulator embeddings and fitting new lightweight modules \((G_e,Q_e)\), but it does **not** require changing the encoder weights or the SCM.
+This preserves the intended modularity: replacing the encoder requires recomputing simulator embeddings and fitting new lightweight modules \((G_e,Q_e,\widehat H_e^{\mathrm{dir}})\), but it does **not** require changing the encoder weights or the SCM. The modular \(G_e\to K_S\to Q_e\) path is the interpretable scientific/reference model; the direct \(\widehat H_e^{\mathrm{dir}}\) path is the symbolic-free deployment option.
 
 ---
 
@@ -108,8 +114,8 @@ The repository was audited on **2026-08-10** on branch `dev_philip` at commit `3
 | `src/encoder.py` | Wraps LangVAE. `encode(..., deterministic=True)` returns `.embedding`, documented as the posterior mean; stochastic sampling is optional. It also exposes text decoding for diagnostics. | The default already matches the recommended fixed posterior-mean representation, but encoder/checkpoint and preprocessing fingerprints must be stored with caches. |
 | `src/semantic_decoder.py` | MLP with independent categorical heads for eight discrete SCM variables; mean cross-entropy loss. Outcome column `Q` is excluded. | This is a reusable first \(G_e\), but its softmax heads are only a factored approximation to a joint structured-state kernel and currently lack calibration diagnostics. |
 | `src/latent_intervention.py` | Deterministic residual transformer conditioned on \(z\) and intervention-value tokens. It is trained through frozen semantic-decoder cross-entropy plus \(L_1/L_2\). | Preserve it as the exact original-method baseline; add a separate probabilistic editor rather than silently changing its semantics. |
-| `src/pipeline.py` | Encodes only factual texts, performs a row-wise random split, trains the semantic decoder on factual latents, trains the old manipulator against tabular \(S^b\), and evaluates semantic consistency plus latent shift. | It needs orbit-aware records, grouped splits, paired \(Z^b\), staged \(G_e/Q_e\) training, sampled inference, and distributional evaluation. |
-| `src/finetune_vae.py` | Optionally fine-tunes LangVAE on factual CV texts. | Fine-tuning is outside the locked primary method. If used as an upper bound, finish it first, freeze the resulting checkpoint, and fit fresh \((G_e,Q_e)\). Never jointly tune it with the editor in the main experiment. |
+| `src/pipeline.py` | Encodes only factual texts, performs a row-wise random split, trains the semantic decoder on factual latents, trains the old manipulator against tabular \(S^b\), and evaluates semantic consistency plus latent shift. | It needs orbit-aware records, grouped splits, paired \(Z^b\), staged \(G_e/Q_e/H_e^{\mathrm{dir}}\) training, two inference paths, and distributional evaluation. |
+| `src/finetune_vae.py` | Optionally fine-tunes LangVAE on factual CV texts. | Fine-tuning is outside the locked primary method. If used as an upper bound, finish it first, freeze the resulting checkpoint, and fit fresh \((G_e,Q_e,H_e^{\mathrm{dir}})\). Never jointly tune it with the editor in the main experiment. |
 | `exp/estim/R/` | Implements separate structured-data counterfactually fair predictors (Level One, Fair Add, Fair K). | These are not currently connected to the latent editor. They may supply downstream baselines, but should not be presented as the implemented distributional latent-fairness stage. |
 
 The manuscript mentions transfer to Bias in Bios, but no real-data ingestion, semantic calibration, SCM-abduction, editor, or transport-evaluation pipeline for that dataset exists in this checkout. Treat real-data use as a later transport study, not part of the implemented prototype.
@@ -134,7 +140,7 @@ paired tabular SCM rows (S^a, S^b, known shared noise)
                           + L1/L2 displacement penalties
 ```
 
-There is no \(X^b\), no \(Z^b=e(X^b)\), no conditional density \(q_e(Z^b\mid Z^a,S^b)\), no sampled counterfactual inference, and no distributional fairness objective in the current Python code.
+There is no \(X^b\), no \(Z^b=e(X^b)\), no modular conditional law \(q_e(Z^b\mid Z^a,S^a,S^b,a,b)\), no direct \(H_e^{\mathrm{dir}}(Z^b\mid Z^a,a,b)\), no sampled counterfactual inference, and no distributional fairness objective in the current Python code.
 
 ### 0A.4 What is already reusable
 
@@ -300,16 +306,16 @@ P(\mathbf S^b\in d\mathbf s'\mid
 \]
 
 \[
-Q_e^{a\to b,*}(dz'\mid z,\mathbf s')
+Q_e^{a\to b,*}(dz'\mid z,\mathbf s,\mathbf s')
 =
 P(Z_e^b\in dz'\mid
-Z_e^a=z,\mathbf S^b=\mathbf s',a,b),
+Z_e^a=z,\mathbf S^a=\mathbf s,\mathbf S^b=\mathbf s',a,b),
 \]
 
-and the direct oracle latent law
+and the direct paired population law
 
 \[
-H_e^{a\to b,*}(dz'\mid z)
+H_e^{\mathrm{dir},a\to b,*}(dz'\mid z)
 =
 P(Z_e^b\in dz'\mid Z_e^a=z,a,b).
 \]
@@ -318,17 +324,17 @@ These laws are unique almost surely on their respective simulator supports. Repe
 
 Source/target regime labels are canonical conditions in a multi-regime experiment. Suppress them only when a regime is globally fixed or an explicit invariance has been established.
 
-The direct \(H_e^{a\to b,*}\) is identified by complete paired orbits without a factorization assumption. The neurosymbolic composition
+The direct \(H_e^{\mathrm{dir},a\to b,*}\) is identified by complete paired orbits without a factorization assumption. Define the neurosymbolic composition separately as
 
 \[
-H_e^{a\to b,*}
+H_e^{\mathrm{comp},a\to b,*}
 =
 Q_e^{a\to b,*}\circ
 K_S^{a\to b,*}\circ
 G_e^{a,*}
 \]
 
-equals that direct oracle law only if the structured state is counterfactually sufficient:
+using the augmented-state, well-typed interpretation given later. It equals the direct paired population law only if the structured state is counterfactually sufficient:
 
 \[
 P(\mathbf S^b\in d\mathbf s'
@@ -338,7 +344,7 @@ P(\mathbf S^b\in d\mathbf s'
 \mid \mathbf S^a=\mathbf s,a,b).
 \]
 
-Ideal LIBERTy makes this plausible when the text renderer receives \(U_i\) only through \(\mathbf S_i^a\), and persona/template/renderer state is independent of \(U_i\). If \(Z^a\) reveals hidden causal information relevant to \(\mathbf S^b\) beyond \(\mathbf S^a\), the direct \(H\) remains identified but the displayed modular factorization fails. Enlarge \(\mathbf S\), include the missing context, or use a kernel such as \(K_S(d\mathbf s'\mid\mathbf s,z,\text{context},a,b)\), then retype the composition.
+Ideal LIBERTy makes this plausible when the text renderer receives \(U_i\) only through \(\mathbf S_i^a\), and persona/template/renderer state is independent of \(U_i\). If \(Z^a\) reveals hidden causal information relevant to \(\mathbf S^b\) beyond \(\mathbf S^a\), the direct \(H_e^{\mathrm{dir},*}\) remains identified but the displayed modular factorization fails. Enlarge \(\mathbf S\), include the missing context, or use a kernel such as \(K_S(d\mathbf s'\mid\mathbf s,z,\text{context},a,b)\), then retype the composition.
 
 ### 0B.5 Oracle and deployable SCM kernels are different
 
@@ -392,7 +398,7 @@ Do not launch the full billed renderer run until all of the following exist and 
 7. a 20–50-unit end-to-end pilot that can be encoded into correctly aligned paired \(Z^a,Z^b\) artifacts;
 8. effective transition/support counts from a large cheap tabular simulation, used to choose the number of independent rendered units.
 
-After the pilot passes, run the complete generator, freeze/cache every encoder world, fit and certify \(G_e^a\), fit/validate deployable \(K_S^{a\to b}\), train \(Q_e^{a\to b}\) against paired \(Z^b\), and compare direct-oracle \(H\) with the composed \(G\to K\to Q\) pipeline.
+After the pilot passes, run the complete generator, freeze/cache every encoder world, fit and certify \(G_e^a\), fit/validate deployable \(K_S^{a\to b}\), train \(Q_e^{a\to b}\) and direct \(\widehat H_e^{\mathrm{dir},a\to b}\) against paired \(Z^b\), and compare the direct paired and composed \(G\to K\to Q\) laws.
 
 The defensible final claim is:
 
@@ -409,7 +415,7 @@ The project now targets **frozen-backbone modularity**:
 - A pretrained encoder can be downloaded and used as-is.
 - Its weights are never updated.
 - The causal model and simulator protocol are shared across encoders.
-- For each encoder \(e\), small post-hoc modules \(G_e\) and \(Q_e\) are trained.
+- For each encoder \(e\), small post-hoc modules \(G_e\), \(Q_e\), and direct \(H_e^{\mathrm{dir}}\) are trained.
 - Encoder-specific compatibility is measured rather than assumed.
 
 ### 1.2 What is not required
@@ -434,7 +440,8 @@ For each encoder \(e\), the method expects:
 2. simulator-generated factual/counterfactual text pairs;
 3. an encoder-specific semantic probe \(G_e\);
 4. an encoder-specific conditional editor \(Q_e\);
-5. encoder admissibility diagnostics.
+5. an encoder-specific direct symbolic-free editor \(H_e^{\mathrm{dir}}\);
+6. encoder admissibility diagnostics.
 
 A concise description is:
 
@@ -634,7 +641,7 @@ The old objective does not use \(Z^b\) as the primary target. It instead asks th
 
 ### 3.6 Semantic-only training can produce off-support edits
 
-A flexible manipulator may learn points that fool \(g_e\) into outputting the target semantic state while lying outside the support of real encoder outputs. Paired target embeddings mitigate this problem because the oracle conditional law is supported on embeddings actually generated by the frozen encoder from simulator texts.
+A flexible manipulator may learn points that fool \(g_e\) into outputting the target semantic state while lying outside the support of real encoder outputs. Paired target embeddings mitigate this problem because the simulator-paired conditional law is supported on embeddings actually generated by the frozen encoder from simulator texts.
 
 A fitted ambient Gaussian can still place some mass outside the empirical support, so support diagnostics remain necessary, but the target itself is no longer defined only through a potentially exploitable probe.
 
@@ -729,38 +736,38 @@ If additional observed structured context \(c\) is required, replace \(s\) by th
 Train the regime-explicit conditional editor
 
 \[
-Q_{e,\theta}(dz'\mid z,s',a,b)
+Q_{e,\theta}(dz'\mid z,s,s',a,b)
 \approx
-P_e(Z^b\in dz'\mid Z^a=z,S^b=s',a,b).
+P_e(Z^b\in dz'\mid Z^a=z,S^a=s,S^b=s',a,b).
 \]
 
 A family notation is equivalent:
 
 \[
-Q_{e,\theta}^{a\to b}(dz'\mid z,s').
+Q_{e,\theta}^{a\to b}(dz'\mid z,s,s').
 \]
 
-Conditioning additionally on the factual state \(s\) may improve optimization,
+The reduced model
 
 \[
-Q_{e,\theta}(dz'\mid z,s,s',a,b),
+Q_{e,\theta}(dz'\mid z,s',a,b)
 \]
 
-but is not essential at the conceptual level because \(z\) already contains factual information. The regime-explicit notation is canonical whenever several queries share a model.
+is an important ablation testing whether \(z\) already contains all useful factual semantics. The full conditioning set is preferred for the first modular implementation because \(S^a\) is available from the simulator during training and is already sampled by \(G_e\) for \(K_S\) during inference.
 
 The full factual embedding \(z\) acts as an **implicit residual carrier**. There is no assumption that persona and style occupy identifiable coordinates.
 
 ### 5.5 Overall latent counterfactual kernel
 
-The final method is
+The interpretable modular path is
 
 \[
 \boxed{
-H_{Z,e}^{a\to b}(B\mid z)
+H_e^{\mathrm{comp},a\to b}(B\mid z)
 =
 \int_{\mathcal S}G_e^{a}(ds\mid z)
 \int_{\mathcal S}K_S^{a\to b}(ds'\mid s)
-Q_e(B\mid z,s',a,b)
+Q_e(B\mid z,s,s',a,b)
 }
 \]
 
@@ -772,7 +779,7 @@ In kernel-composition notation:
 
 \[
 \boxed{
-H_{Z,e}^{a\to b}
+H_e^{\mathrm{comp},a\to b}
 =
 Q_e^{a\to b}
 \circ
@@ -784,7 +791,56 @@ G_e^{a},
 
 with the factual latent \(z\) retained as side information by \(Q_e\).
 
-### 5.6 Why the mapping is stochastic
+### 5.6 Direct symbolic-free deployment kernel
+
+Notation is strict in formulas: \(H_e^{\mathrm{dir},*}\) denotes the directly identified population law, while \(\widehat H_{e,\psi}^{\mathrm{dir}}\) denotes its fitted student. Informal references to the “direct \(H\) path” mean the latter at implementation time.
+
+Complete paired orbits also identify the direct law
+
+\[
+H_e^{\mathrm{dir},a\to b,*}(dz'\mid z)
+=
+P_e(Z^b\in dz'\mid Z^a=z,a,b).
+\]
+
+If deployment should not require \(S^a,S^b,G_e\), or \(K_S\), fit a separate student
+
+\[
+\widehat H_{e,\psi}^{\mathrm{dir},a\to b}(dz'\mid z)
+\approx
+H_e^{\mathrm{dir},a\to b,*}(dz'\mid z)
+\]
+
+directly from paired records \((Z_i^a,Z_i^b,a,b)\). Its primary objective is a strictly proper score against the genuine paired \(Z_i^b\). At inference it uses only
+
+\[
+Z_m^b\sim\widehat H_{e,\psi}^{\mathrm{dir},a\to b}(\cdot\mid Z^a).
+\]
+
+The structured states may be used as **privileged training information** but never need to enter the student:
+
+\[
+\mathcal L_{\mathrm{sem}}^H
+=
+-\mathbb E\log G_e^b
+\left(S_i^b\mid\widetilde Z_i^b\right),
+\qquad
+\widetilde Z_i^b\sim
+\widehat H_{e,\psi}^{\mathrm{dir},a\to b}(\cdot\mid Z_i^a).
+\]
+
+This frozen-\(G_e\) term is auxiliary. Using it without the paired \(Z_i^b\) objective would recreate the original semantic-fiber nonidentification. A trained composed model \(Q_e\circ K_S\circ G_e\) may additionally serve as a teacher that supplies Monte Carlo samples for distributional distillation, but real paired \(Z^b\) remains the identifying target so the student does not merely inherit teacher error.
+
+This option trades explicit symbolic control and component-wise diagnosis for simple inference. It marginalizes over \(S^a,S^b\), cannot reveal or select which target state was realized, and requires direct support for every claimed \(a\to b\) query. It is nevertheless a fully identified simulator-relative kernel, not merely a heuristic fallback.
+
+Recommended positioning:
+
+- \(G_e\to K_S\to Q_e\): interpretable scientific/reference model and optional teacher;
+- \(\widehat H_e^{\mathrm{dir}}\): symbolic-free deployment student and direct-kernel comparator;
+- deterministic paired \(\widehat H_e^{\mathrm{dir}}\): test of whether the direct law is effectively degenerate;
+- original \(h_Z\): historical semantic+\(L_1/L_2\) baseline.
+
+### 5.7 Why the mapping is stochastic
 
 The simulator may be deterministic conditional on its full hidden state, persona, style, and random seed. Nevertheless, the inference-time relation conditional only on \(Z^a=z\) is stochastic when multiple hidden states are compatible with the same embedding.
 
@@ -796,9 +852,9 @@ Sources of uncertainty include:
 - remaining text/rendering variability;
 - stochastic encoder output, if retained.
 
-These are sources of **aleatoric counterfactual variation under the simulator-relative estimand**. Finite-data, model-selection, and parameter uncertainty are epistemic and are not automatically represented by one fitted \(Q_e\). Use orbit-level bootstrap, ensembles, or another explicit procedure when uncertainty about the estimated kernel itself matters; never interpret the editor's predicted variance as containing both kinds by default.
+These are sources of **aleatoric counterfactual variation under the simulator-relative estimand**. Finite-data, model-selection, and parameter uncertainty are epistemic and are not automatically represented by either fitted \(Q_e\) or fitted direct \(\widehat H_e^{\mathrm{dir}}\). Use orbit-level bootstrap, ensembles, or another explicit procedure when uncertainty about the estimated kernel itself matters; never interpret either editor's predicted variance as containing both kinds by default.
 
-### 5.7 Deterministic special case
+### 5.8 Deterministic special case
 
 If
 
@@ -813,15 +869,15 @@ K_S^{a\to b}(\cdot\mid s)=\delta_{h_S^{a\to b}(s)},
 and
 
 \[
-Q_e^{a\to b}(\cdot\mid z,s')=\delta_{q_e^{a\to b}(z,s')},
+Q_e^{a\to b}(\cdot\mid z,s,s')=\delta_{q_e^{a\to b}(z,s,s')},
 \]
 
 then
 
 \[
-H_{Z,e}^{a\to b}(\cdot\mid z)
+H_e^{\mathrm{comp},a\to b}(\cdot\mid z)
 =
-\delta_{q_e^{a\to b}(z,h_S^{a\to b}(g_e(z)))}.
+\delta_{q_e^{a\to b}(z,g_e(z),h_S^{a\to b}(g_e(z)))}.
 \]
 
 Thus the original deterministic architecture is nested inside the new formulation, but it is no longer imposed without evidence.
@@ -923,6 +979,7 @@ Trained for each encoder:
 
 - semantic analysis model \(G_{e,\eta}\);
 - stochastic editor \(Q_{e,\theta}\);
+- direct symbolic-free student \(\widehat H_{e,\psi}^{\mathrm{dir}}\);
 - optional frozen-latent persona/style probes used for diagnostics;
 - optional intervention embeddings or small shared heads.
 
@@ -989,7 +1046,7 @@ The primary identifying objective is a strictly proper conditional distributiona
 \mathbb E\,
 \mathcal S_{\mathrm{dist}}
 \left(
-Q_{e,\theta}(\cdot\mid Z_e^a,S^b,a,b),
+ Q_{e,\theta}(\cdot\mid Z_e^a,S^a,S^b,a,b),
 Z_e^b
 \right).
 }
@@ -1005,19 +1062,57 @@ When the conditional law is dominated by a declared reference measure and \(Q_e\
 \left(
 Z_e^b
 \mid
-Z_e^a,S^b,a,b
+ Z_e^a,S^a,S^b,a,b
 \right).
 \]
 
 The interpretation is direct:
 
-> Given a frozen factual embedding and the target structured counterfactual state, assign high probability to the frozen embedding of the matched counterfactual CV.
+> Given a frozen factual embedding, its factual structured state, and the target structured counterfactual state, assign high probability to the frozen embedding of the matched counterfactual CV.
 
 This loss uses the simulator’s cross-world coupling and replaces the old attempt to identify \(Z'\) through semantic consistency plus distance.
 
 For atomic, Dirac, or lower-dimensional targets, use a strictly proper score that admits singular laws, such as a conditional energy score, or explicitly define a smoothed target/reference measure. A Gaussian variance floor prevents collapse but by itself targets a smoothed or best-in-family approximation rather than the exact singular \(Q_e^*\).
 
-### 7.5 Identity objective
+### 7.5 Train the direct symbolic-free kernel separately
+
+The deployment student targets the directly identified paired law without taking either structured state as input:
+
+\[
+\boxed{
+\mathcal L_{H,\mathrm{pair}}
+=
+\mathbb E\,
+\mathcal S_{\mathrm{dist}}
+\left(
+\widehat H_{e,\psi}^{\mathrm{dir}}(\cdot\mid Z_e^a,a,b),
+Z_e^b
+\right).
+}
+\]
+
+This paired proper score is the identifying objective. Train a deterministic direct regressor \(m_{H,e}(Z^a,a,b)\) with paired point loss as the falsification baseline: it estimates a conditional mean or other selected functional, not the full law.
+
+The simulator's \(S^b\) can be privileged training-only information through the frozen target-regime semantic kernel:
+
+\[
+\mathcal L_{H,\mathrm{sem}}
+=
+-\mathbb E\log
+g_{e,\eta}(S^b\mid\widetilde Z_H^b,b),
+\qquad
+\widetilde Z_H^b
+\sim
+\widehat H_{e,\psi}^{\mathrm{dir}}(\cdot\mid Z_e^a,a,b).
+\]
+
+Freeze \(G_e\)'s parameters while allowing gradients through its input \(\widetilde Z_H^b\) into the direct student.
+
+After the modular model is trained, its composed samples may optionally provide a distributional distillation loss. Distillation is auxiliary: on its own it copies errors in \(G_e\), \(K_S\), \(Q_e\), and the factorization assumption. Likewise, \(\mathcal L_{H,\mathrm{sem}}\) alone only forces samples into the correct semantic fiber. Genuine paired \(Z^b\) must remain the primary target.
+
+Keep the \(Q_e\) and direct-\(H\) objectives separate. Their conditioning sets and scientific roles differ even if they share the same probabilistic architecture.
+
+### 7.6 Identity objective
 
 When no intervention is requested, anchor the model at the factual embedding:
 
@@ -1035,14 +1130,16 @@ Z_e^a\mid Z_e^a,S^a
 
 This is a useful anchor and tests whether the editor unnecessarily perturbs representations. For a continuous density model, this NLL encourages concentration near \(Z_e^a\) but does **not** literally guarantee an exact identity sample. If exact identity is part of the interface contract, implement an explicit `a == b` identity/skip branch or a mixed distribution with a Dirac component.
 
-### 7.6 Semantic calibration of generated embeddings
+Apply the same identity contract to direct \(\widehat H_e^{\mathrm{dir}}\), using paired \(a\to a\) records and preferably the same hard bypass when exact no-op behavior is required.
+
+### 7.7 Semantic calibration of generated embeddings
 
 Draw
 
 \[
 \widetilde Z^b
 \sim
-Q_{e,\theta}^{a\to b}(\cdot\mid Z_e^a,S^b)
+Q_{e,\theta}^{a\to b}(\cdot\mid Z_e^a,S^a,S^b)
 \]
 
 and use the already trained, frozen semantic probe:
@@ -1052,13 +1149,13 @@ and use the already trained, frozen semantic probe:
 \mathcal L_{\mathrm{sem}}
 =
 -\mathbb E
-\log g_{e,\eta}(S^b\mid\widetilde Z^b).
+\log g_{e,\eta}(S^b\mid\widetilde Z^b,b).
 }
 \]
 
 This encourages the distributional analogue of semantic consistency, but it is now auxiliary to direct paired likelihood rather than the sole training signal.
 
-### 7.7 Optional persona/style preservation losses
+### 7.8 Optional persona/style preservation losses
 
 If the renderer coupling truly preserves persona/context and causally irrelevant style, the paired conditional proper loss targets that preservation law at the population level. It cannot repair a flawed coupling or individually recover information absent from \(Z^a\). Auxiliary losses and audits may improve finite-sample training and reveal violations.
 
@@ -1076,7 +1173,7 @@ These probes must be trained on real frozen embeddings and then frozen to avoid 
 
 Retrieval or contrastive losses using the matched target \(Z_e^b\) are also possible, but they should not collapse the stochastic distribution to one point when true conditional variation remains.
 
-### 7.8 Optional composition consistency
+### 7.9 Optional composition consistency
 
 When the simulator’s coupling is path-compositional, enforce
 
@@ -1093,7 +1190,7 @@ Operationally, compare
 \[
 \widetilde Z^c_{\mathrm{seq}}
 \sim
-Q_e^{b\to c}(\cdot\mid\widetilde Z^b,S^c)
+Q_e^{b\to c}(\cdot\mid\widetilde Z^b,S^b,S^c)
 \]
 
 with
@@ -1101,16 +1198,16 @@ with
 \[
 \widetilde Z^c_{\mathrm{direct}}
 \sim
-Q_e^{a\to c}(\cdot\mid Z^a,S^c)
+Q_e^{a\to c}(\cdot\mid Z^a,S^a,S^c)
 \]
 
 using a distributional discrepancy.
 
 This is optional. It should be imposed only if the simulator defines the same preserved residual state under sequential and direct interventions.
 
-### 7.9 Full objective
+### 7.10 Modular-editor objective
 
-A compact way to list all available terms is
+A compact way to list all available terms for the modular path is
 
 \[
 \boxed{
@@ -1142,9 +1239,9 @@ Recommended priority:
 
 The old \(L_1/L_2\) terms may be retained as weak numerical regularizers, but they must not be presented as identifying the true counterfactual. Their sensitivity should be ablated.
 
-The displayed expression is **not** a recommendation to optimize all modules jointly. Training is staged: optimize \(\mathcal L_G\) first, freeze \(G_e\), and then optimize the editor terms with \(\lambda_G=0\). Frozen probes may transmit gradients with respect to their input \(\widetilde Z\) into \(Q_e\), but their own parameters must not update.
+The displayed expression is **not** a recommendation to optimize all modules jointly. Training is staged: optimize \(\mathcal L_G\) first, freeze \(G_e\), and then optimize the editor terms with \(\lambda_G=0\). Frozen probes may transmit gradients with respect to their input \(\widetilde Z\) into \(Q_e\), but their own parameters must not update. The direct student's objective \(\mathcal L_H\) is a separate optimization problem whose primary term is \(\mathcal L_{H,\mathrm{pair}}\).
 
-### 7.10 Recommended training schedule
+### 7.11 Recommended training schedule
 
 **Stage A: Generate paired orbits.**  
 Generate every configured intervention world under shared \(U\), persona, and declared renderer state; split by `unit_id` before pair expansion.
@@ -1159,17 +1256,22 @@ Fit the regime-conditioned semantic kernel on genuine frozen embeddings from all
 Fit or calculate the deployable regime-conditioned SCM kernel from training-unit structured orbits and validate it against held-out stored-\(U\) oracle transitions. For the current finite state space, a smoothed conditional-frequency table is the transparent first baseline; posterior sampling from the known SCM is the reference.
 
 **Stage E: Train \(Q_e\) with teacher-forced targets.**  
-Use true \(S^b\) and minimize a strictly proper paired distributional score; use conditional NLL only when the dominated or explicitly smoothed density model is part of the estimand.
+Use true \((S^a,S^b)\) and minimize a strictly proper paired distributional score; use conditional NLL only when the dominated or explicitly smoothed density model is part of the estimand.
 
 **Stage F: Add identity and semantic calibration.**  
 Freeze \(G_e\), sample from \(Q_e\), and apply auxiliary losses.
 
-**Stage G: Evaluate the complete inference pipeline.**  
-At evaluation, infer \(S^a\) through \(G_e\), obtain \(S^b\) through the SCM kernel, and sample \(Z^b\) through \(Q_e\).
+**Stage G: Train the direct \(H_e^{\mathrm{dir}}\) student.**
 
-Report both an **oracle-structured** editor evaluation, which feeds true simulator \(\mathbf S^b\) to \(Q_e\), and a **full-pipeline** evaluation, which feeds samples or predictions from \(G_e\) and \(K_S\). The gap measures exposure to semantic/SCM error. Because editor training is teacher-forced on exact \(\mathbf S^b\), consider calibrated perturbations or sampled structured inputs during a later robustness phase if the full-pipeline gap is large; do not blur the clean paired objective in the first baseline.
+Fit the stochastic and deterministic direct models from \((Z^a,a,b)\) to paired \(Z^b\). Add the frozen-\(G_e\) semantic auxiliary only after the paired objective works. If desired, add teacher distillation only after the modular model is frozen.
 
-### 7.11 One minibatch iteration
+**Stage H: Evaluate both inference paths.**
+
+For modular evaluation, infer \(S^a\) through \(G_e\), obtain \(S^b\) through the SCM kernel, and sample \(Z^b\) through \(Q_e\). For symbolic-free evaluation, sample directly from \(\widehat H_e^{\mathrm{dir}}(\cdot\mid Z^a,a,b)\).
+
+Report both a **true-state** editor evaluation, which feeds true simulator \((\mathbf S^a,\mathbf S^b)\) to \(Q_e\), and a **full-pipeline** evaluation, which feeds samples or predictions from \(G_e\) and \(K_S\). The gap measures exposure to semantic/SCM error. Because editor training is teacher-forced on exact structured states, consider calibrated perturbations or sampled structured inputs during a later robustness phase if the full-pipeline gap is large; do not blur the clean paired objective in the first baseline.
+
+### 7.12 One minibatch iteration
 
 For each matched pair:
 
@@ -1180,21 +1282,23 @@ For each matched pair:
 2. Update \(G_e\) using \(S^a\) and \(Z_e^a\), unless the probe is already frozen.
 3. Evaluate
    \[
-   -\log q_e(Z_e^b\mid Z_e^a,S^b,a,b).
+   -\log q_e(Z_e^b\mid Z_e^a,S^a,S^b,a,b).
    \]
 4. Include identity examples with \(a=b\).
 5. Sample
    \[
-   \widetilde Z^b\sim Q_e(\cdot\mid Z_e^a,S^b,a,b).
+   \widetilde Z^b\sim Q_e(\cdot\mid Z_e^a,S^a,S^b,a,b).
    \]
 6. Evaluate semantic and optional residual-preservation probes.
 7. Update only the post-hoc modules.
 
+In a separate direct-student minibatch update, evaluate the paired proper score for \(\widehat H_e^{\mathrm{dir}}(\cdot\mid Z_e^a,a,b)\). If enabled, draw \(\widetilde Z_H^b\) for the frozen semantic auxiliary or compare it with frozen teacher samples; never pass \(S^a\) or \(S^b\) as a direct-student inference input.
+
 For a Gaussian mixture, gradients from auxiliary losses on sampled \(\widetilde Z^b\) require an explicit estimator: component enumeration, a relaxed/reparameterized mixture assignment, or a score-function estimator. A normalizing flow or single Gaussian has simpler pathwise gradients. Conditional NLL itself does not require differentiating through the sampled component.
 
-### 7.12 Model choice for \(Q_e\)
+### 7.13 Model choice for \(Q_e\) and direct \(H_e^{\mathrm{dir}}\)
 
-Start with the simplest model that can represent the observed conditional distribution.
+Start with the simplest model that can represent the observed conditional distribution. The modular and direct models may use the same family, but they must have distinct conditioning interfaces and fitted parameters.
 
 - **Conditional diagonal or low-rank Gaussian:** strong baseline; may be unimodal and over-smooth.
 - **Conditional Gaussian mixture / mixture density network:** useful after a single Gaussian and deterministic paired regressor show evidence of multimodality.
@@ -1205,14 +1309,16 @@ For the current default scale (nominally \(n=1000\), 128-dimensional LangVAE lat
 
 Two cautions are essential for the first model:
 
-1. With a deterministic encoder and a deterministic paired renderer, the oracle conditional law may contain Dirac or lower-dimensional components and need not have a Lebesgue density. An unconstrained Gaussian likelihood can then shrink variances toward zero. Use a variance floor/explicit smoothing model, a mixed deterministic-stochastic family, or a proper sample score such as the energy score, and state which estimand is being fitted.
+1. With a deterministic encoder and a deterministic paired renderer, the paired conditional law may contain Dirac or lower-dimensional components and need not have a Lebesgue density. An unconstrained Gaussian likelihood can then shrink variances toward zero. Use a variance floor/explicit smoothing model, a mixed deterministic-stochastic family, or a proper sample score such as the energy score, and state which estimand is being fitted.
 2. One unique \(Z^b\) for every nearly unique continuous \(Z^a\) is weak finite-sample evidence for multimodality. Generate renderer replicates and evaluate held-out proper scores against a deterministic paired regressor before claiming that stochasticity is empirically necessary.
 
 ---
 
 ## 8. Inference
 
-For a new CV \(x\):
+There are two supported inference paths for a new CV \(x\). Both require the frozen encoder, a known or declared source regime \(a\), and a supported requested target regime \(b\).
+
+### 8.1 Interpretable modular inference
 
 1. Freeze-encode:
    \[
@@ -1229,7 +1335,7 @@ For a new CV \(x\):
    \]
 4. Generate the latent counterfactual:
    \[
-   z'_m\sim Q_e(\cdot\mid z,s'_m,a,b).
+   z'_m\sim Q_e(\cdot\mid z,s_m,s'_m,a,b).
    \]
 
 The samples
@@ -1237,12 +1343,28 @@ The samples
 \[
 z'_1,\ldots,z'_M
 \sim
-H_{Z,e}^{a\to b}(\cdot\mid z)
+H_e^{\mathrm{comp},a\to b}(\cdot\mid z)
 \]
 
 represent uncertainty about the counterfactual embedding.
 
 A deterministic summary such as the conditional mean may be reported, but it should not replace the distribution when the fitted kernel is visibly nondegenerate.
+
+### 8.2 Direct symbolic-free inference
+
+After freeze-encoding, bypass the semantic and SCM modules:
+
+\[
+z'_m
+\sim
+\widehat H_{e,\psi}^{\mathrm{dir},a\to b}(\cdot\mid z).
+\]
+
+The runtime input is only \((x,a,b)\), equivalently \((z,a,b)\) after encoding; the output is a sample of target embeddings. Neither \(S^a\) nor \(S^b\) is inferred or supplied. This path is simpler and can be used even when a symbolic interface is undesirable, but it has marginalized the symbolic trajectory: it cannot expose, diagnose, or explicitly select which target structured state produced a sample.
+
+### 8.3 Controls shared by both paths
+
+Use the identical frozen encoder checkpoint and preprocessing used for training, restrict \((a,b)\) to supported query cells, preserve any renderer/persona context that the estimand declares invariant, and retain Monte Carlo samples rather than only their mean. The modular path additionally requires calibrated \(G_e\), a deployable—not stored-\(U\)—\(K_S\), and target conditions supported by \(Q_e\). The direct path requires direct paired training support for the requested \((a,b)\). Compare the two sample laws on held-out paired orbits; disagreement may reveal insufficiency of \(\mathbf S\), component-estimation error, or direct-model error.
 
 ---
 
@@ -1272,13 +1394,13 @@ P(S^b\in ds'\mid S^a=s,a,b)
 =
 K_S^{a\to b}(ds'\mid s).
 \]
-If this is false, the direct orbit kernel \(H_e^{a\to b}\) remains identified, but the proposed modular factorization does not. Enlarge \(S\) or condition \(K_S\) on the required \(z\)/observed context and retype the composition.
+If this is false, the direct orbit kernel \(H_e^{\mathrm{dir},a\to b,*}\) remains identified, but the proposed modular factorization does not. Enlarge \(S\) or condition \(K_S\) on the required \(z\)/observed context and retype the composition.
 
 **A5. Intervention support.**  
 The source-target regimes and structured states evaluated at inference have adequate simulator support. In particular, outputs of \(G_e^a\circ K_S^{a\to b}\) lie in the conditioning support on which \(Q_e^{a\to b}\) was trained. Full regime enumeration does not create support for impossible or negligibly rare state combinations.
 
 **A6. Conditional model consistency/realizability.**  
-The chosen estimators for \(G_e\), deployable \(K_S\), and \(Q_e\) are correctly specified or form suitable consistent sieves in the probability metrics used in the theorem. Their scoring rules, regularization, and optimization procedures satisfy the corresponding consistency conditions.
+The chosen estimators for \(G_e\), deployable \(K_S\), \(Q_e\), and direct \(H_e^{\mathrm{dir}}\) are correctly specified or form suitable consistent sieves in the probability metrics used in the theorem. Their scoring rules, regularization, and optimization procedures satisfy the corresponding consistency conditions.
 
 **A7. Independent orbit sampling.**  
 Independent SCM units/orbits are sampled from a stable declared DGP, \(N_{\mathrm{units}}\to\infty\), and within-orbit transition rows are treated as dependent clusters. The sampling or weighting of regimes defines the target regime mixture. More intervention rows or renderer replicates for one \(U_i\) do not replace independent units.
@@ -1304,10 +1426,10 @@ P_e(S^a\in ds\mid Z^a=z,a),\\
 K_S^{a\to b,*}(ds'\mid s)
 &=
 P_e(S^b\in ds'\mid S^a=s,a,b),\\
-Q_e^{a\to b,*}(dz'\mid z,s')
+Q_e^{a\to b,*}(dz'\mid z,s,s')
 &=
-P_e(Z^b\in dz'\mid Z^a=z,S^b=s',a,b),\\
-H_e^{a\to b,*}(dz'\mid z)
+P_e(Z^b\in dz'\mid Z^a=z,S^a=s,S^b=s',a,b),\\
+H_e^{\mathrm{dir},a\to b,*}(dz'\mid z)
 &=
 P_e(Z^b\in dz'\mid Z^a=z,a,b).
 \end{aligned}
@@ -1329,24 +1451,24 @@ As the dominated special case, suppose \(Q_e^{a\to b,*}\) admits a density \(q_e
 
 \[
 \begin{aligned}
-\mathbb E[-\log q_\theta(Z^b\mid Z^a,S^b,a,b)]
+\mathbb E[-\log q_\theta(Z^b\mid Z^a,S^a,S^b,a,b)]
 ={}&
-\mathbb E[-\log q_e^*(Z^b\mid Z^a,S^b,a,b)]
+\mathbb E[-\log q_e^*(Z^b\mid Z^a,S^a,S^b,a,b)]
 \\
 &+
 \mathbb E\!
 \left[
 \operatorname{KL}
 \left(
-Q_e^{a\to b,*}(\cdot\mid Z^a,S^b)
+Q_e^{a\to b,*}(\cdot\mid Z^a,S^a,S^b)
 \Vert
-Q_{e,\theta}(\cdot\mid Z^a,S^b,a,b)
+Q_{e,\theta}(\cdot\mid Z^a,S^a,S^b,a,b)
 \right)
 \right].
 \end{aligned}
 \]
 
-Therefore, every population minimizer recovers \(Q_e^{a\to b,*}\) almost surely, subject to the stated sampling, model, regularization, and optimization assumptions. Analogous proper-score statements apply to probabilistic \(G_e^a\) and an estimated \(K_S^{a\to b}\).
+Therefore, every population minimizer recovers \(Q_e^{a\to b,*}\) almost surely, subject to the stated sampling, model, regularization, and optimization assumptions. The identical statement applies to direct \(H_e^{\mathrm{dir},a\to b,*}\) when the score conditions on \((Z^a,a,b)\), and analogously to probabilistic \(G_e^a\) and an estimated \(K_S^{a\to b}\).
 
 The density assumption is substantive. Existence of a regular conditional probability does **not** imply existence of a Lebesgue density. With deterministic posterior-mean embeddings and a tightly coupled renderer, \(Q_e^*\) may be Dirac or supported on a lower-dimensional set. In that case, either formulate the theorem and estimator with a proper distributional score that permits singular laws, or explicitly define a smoothed observation model/reference measure and a variance floor. Do not describe unconstrained Gaussian NLL as “exact recovery” of a singular target.
 
@@ -1355,14 +1477,14 @@ The density assumption is substantive. Existence of a regular conditional probab
 There exists a measurable deterministic editor \(m_e\) satisfying
 
 \[
-Z^b=m_e(Z^a,S^b,a,b)
+Z^b=m_e(Z^a,S^a,S^b,a,b)
 \quad\text{almost surely}
 \]
 
 if and only if
 
 \[
-Q_e^{a\to b,*}(\cdot\mid Z^a,S^b)
+Q_e^{a\to b,*}(\cdot\mid Z^a,S^a,S^b)
 \]
 
 is almost surely a Dirac measure.
@@ -1374,42 +1496,42 @@ For Euclidean \(Z_e\) with finite second moments,
 \inf_m
 \mathbb E
 \left[
-\lVert Z^b-m(Z^a,S^b,a,b)\rVert_2^2
+\lVert Z^b-m(Z^a,S^a,S^b,a,b)\rVert_2^2
 \right]
 =
 \mathbb E
 \left[
 \operatorname{tr}
-\operatorname{Var}(Z^b\mid Z^a,S^b,a,b)
+\operatorname{Var}(Z^b\mid Z^a,S^a,S^b,a,b)
 \right].
 }
 \]
 
 This quantity is an **irreducible counterfactual ambiguity score** for the frozen encoder. A deterministic \(L_2\) model converges to the conditional mean, which can average incompatible latent modes.
 
-More precisely, it is irreducible **for the chosen simulator coupling, conditioning set \((Z^a,\mathbf S^b,a,b)\), coordinate system, and squared loss**. It can include renderer variability and is not an encoder-intrinsic or coordinate-free scalar. Compare it to standardized baselines within an encoder, not as an absolute score across unrelated latent spaces.
+More precisely, it is irreducible **for the chosen simulator coupling, conditioning set \((Z^a,\mathbf S^a,\mathbf S^b,a,b)\), coordinate system, and squared loss**. It can include renderer variability and is not an encoder-intrinsic or coordinate-free scalar. Compare it to standardized baselines within an encoder, not as an absolute score across unrelated latent spaces.
 
-This proposition concerns a deterministic **conditional synthesizer** \(m_e(Z^a,\mathbf S^b,a,b)\). A deterministic end-to-end editor depending only on \(Z^a\) for fixed \(a,b\) exists only if the complete composed law
+This proposition concerns a deterministic **conditional synthesizer** \(m_e(Z^a,\mathbf S^a,\mathbf S^b,a,b)\). A deterministic end-to-end editor depending only on \(Z^a\) for fixed \(a,b\) exists only if the direct paired law
 
 \[
-H_{Z,e}^{a\to b}(\cdot\mid Z^a)
+H_e^{\mathrm{dir},a\to b,*}(\cdot\mid Z^a)
 \]
 
-is almost surely Dirac, including uncertainty contributed by \(G_e\) and \(K_S\). Degeneracy of \(Q_e(\cdot\mid Z^a,\mathbf S^b)\) alone is not enough.
+is almost surely Dirac. Under counterfactual sufficiency this is also the composed law and includes uncertainty contributed by \(G_e\) and \(K_S\). Degeneracy of \(Q_e(\cdot\mid Z^a,\mathbf S^a,\mathbf S^b)\) alone is not enough.
 
 For intuition, the law of total variance separates two sources of ambiguity:
 
 \[
 \operatorname{Var}(Z^b\mid Z^a,a,b)
 =
-\mathbb E\!\left[\operatorname{Var}(Z^b\mid Z^a,\mathbf S^b,a,b)\mid Z^a,a,b\right]
+\mathbb E\!\left[\operatorname{Var}(Z^b\mid Z^a,\mathbf S^a,\mathbf S^b,a,b)\mid Z^a,a,b\right]
 +
-\operatorname{Var}\!\left(\mathbb E[Z^b\mid Z^a,\mathbf S^b,a,b]\mid Z^a,a,b\right).
+\operatorname{Var}\!\left(\mathbb E[Z^b\mid Z^a,\mathbf S^a,\mathbf S^b,a,b]\mid Z^a,a,b\right).
 \]
 
 The first term is residual latent-synthesis ambiguity after the target state is known; the second is ambiguity about which target structured state the semantic/SCM stages produce.
 
-### 9.5 Proposition 4: oracle factorization of the complete latent kernel
+### 9.5 Proposition 4: factorization of the complete latent kernel
 
 Assume, for fixed supported \(a,b\),
 
@@ -1429,11 +1551,11 @@ P(Z^b\in B\mid Z^a=z,a,b)
 =
 \int G_e^{a,*}(ds\mid z)
 \int K_S^{a\to b,*}(ds'\mid s)
-Q_e^{a\to b,*}(B\mid z,s').
+Q_e^{a\to b,*}(B\mid z,s,s').
 }
 \]
 
-Thus the proposed composition equals the simulator’s directly identified oracle latent counterfactual kernel \(H_e^{a\to b,*}\). The direct \(H_e^{a\to b,*}\) exists from the paired orbit law even if this factorization assumption fails; direct-versus-composed \(H\) is therefore an important diagnostic.
+Thus \(H_e^{\mathrm{comp},a\to b,*}\) equals the simulator's directly identified paired population kernel \(H_e^{\mathrm{dir},a\to b,*}\). The direct law exists from the paired orbit law even if this factorization assumption fails; direct-versus-composed \(H\) is therefore an important diagnostic. Reserve “oracle” for evaluation using stored \(U\) or true structured states.
 
 If the conditional independence above is not plausible, the remedy is not a rank assumption. The remedy is to enlarge the structured state or let the SCM kernel condition on the missing observed context.
 
@@ -1444,7 +1566,7 @@ For rigorous proofs, \(Q_e\circ K_S\circ G_e\) is shorthand because \(Q_e\) reta
 Let \(G_e^b\) be the target-regime semantic measurement kernel on generated embeddings. Suppose the editor is semantically calibrated:
 
 \[
-(G_e^b\circ Q_e^{a\to b})(A\mid z,s')
+(G_e^b\circ Q_e^{a\to b})(A\mid z,s,s')
 =
 \mathbf 1\{s'\in A\}
 \]
@@ -1453,7 +1575,7 @@ for measurable \(A\subseteq\mathcal S\). Then
 
 \[
 \boxed{
-G_e^b\circ H_{Z,e}^{a\to b}
+G_e^b\circ H_e^{\mathrm{comp},a\to b}
 =
 K_S^{a\to b}\circ G_e^a.
 }
@@ -1494,7 +1616,7 @@ If
 and
 
 \[
-\sup_{z,s'} d_{\mathrm{TV}}(\widehat Q(\cdot\mid z,s'),Q(\cdot\mid z,s'))\leq\varepsilon_Q,
+\sup_{z,s,s'} d_{\mathrm{TV}}(\widehat Q(\cdot\mid z,s,s'),Q(\cdot\mid z,s,s'))\leq\varepsilon_Q,
 \]
 
 then Markov-kernel contraction and the triangle inequality yield
@@ -1523,6 +1645,8 @@ For bounded downstream \(p\),
 under the conventional definition of total variation. Check the factor-of-two convention in the final manuscript.
 
 Total variation is often too strong for continuous or singular latent laws: for example, a narrow Gaussian and a Dirac measure can have maximal TV despite close downstream behavior. Keep the TV result as an abstract lemma if useful, but add Wasserstein or bounded-Lipschitz error propagation for Lipschitz downstream predictors and use metrics compatible with the fitted model in experiments.
+
+The direct student has its own estimation error \(\varepsilon_H=d(\widehat H_e^{\mathrm{dir}},H_e^{\mathrm{dir},*})\). Under counterfactual sufficiency, direct and composed population targets coincide, so a compatible metric and the triangle inequality bound their fitted disagreement by the direct error plus the modular component errors. Without sufficiency, their population discrepancy is structural and should not be mislabeled as estimator error.
 
 ### 9.8 What theory is deliberately not claimed
 
@@ -1559,10 +1683,12 @@ If the intervention-relevant structured state cannot be recovered from \(Z_e\), 
 Evaluate held-out conditional NLL, energy score, calibration, or coverage for
 
 \[
-Q_e(Z_e^b\mid Z_e^a,S^b,a,b).
+Q_e(Z_e^b\mid Z_e^a,S^a,S^b,a,b)
+\quad\text{and}\quad
+H_e^{\mathrm{dir}}(Z_e^b\mid Z_e^a,a,b).
 \]
 
-Compare against baselines that ignore \(Z^a\), ignore \(S^b\), or use a deterministic regressor.
+Compare against baselines that omit \(S^a\), ignore \(Z^a\), use a deterministic regressor, or directly learn \(H_e^{\mathrm{dir}}\) without symbolic inputs.
 
 ### 10.3 Deterministic ambiguity
 
@@ -1602,19 +1728,21 @@ Do not claim equal performance or exact preservation for all encoders.
 
 The original single-point penalty should become distributional.
 
-For a predictor \(p\), a natural objective is
+For a predictor \(p\) and path \(r\in\{\mathrm{dir},\mathrm{comp}\}\), a natural objective is
 
 \[
 \boxed{
-\mathcal L_{\mathrm{fair}}
+\mathcal L_{\mathrm{fair}}^{r}
 =
 \mathbb E_{Z^a}
-\mathbb E_{Z'\sim H_{Z,e}^{a\to b}(\cdot\mid Z^a)}
+\mathbb E_{Z'\sim H_e^{r,a\to b}(\cdot\mid Z^a)}
 \left[
 \ell\bigl(p(Z^a),p(Z')\bigr)
 \right].
 }
 \]
+
+Evaluate \(r=\mathrm{dir}\) and \(r=\mathrm{comp}\) on the same held-out orbits. Under counterfactual sufficiency they target the same paired population law; without it, their fairness functionals need not agree.
 
 Depending on the application, one may compare:
 
@@ -1634,8 +1762,8 @@ The displayed expected pairwise loss is a candidate training/evaluation function
 | Dimension | Original proposal | Final frozen-backbone kernel proposal |
 |---|---|---|
 | Encoder | Frozen pretrained VAE | Any fixed encoder; no parameter updates |
-| Encoder-specific training | Semantic decoder and deterministic manipulator | Semantic probe and stochastic conditional editor |
-| Latent counterfactual object | One point \(Z'=h_Z(Z)\) | Conditional law \(H_{Z,e}^{a\to b}(dZ'\mid Z)\) |
+| Encoder-specific training | Semantic decoder and deterministic manipulator | Semantic probe, modular stochastic editor, and direct symbolic-free student |
+| Latent counterfactual object | One point \(Z'=h_Z(Z)\) | Direct paired law \(H_e^{\mathrm{dir},*}\), modeled directly; \(G\to K\to Q\) is a candidate factorization equal to it only under counterfactual sufficiency |
 | Main supervision | Semantic consistency through \(g\) | Paired simulator target \(Z_e^b\) |
 | Main editor loss | Consistency + \(L_1/L_2\) displacement | Conditional NLL or other proper score |
 | Role of \(g/G\) | Sole bridge supervising \(h_Z\) | Semantic analysis and calibration component |
@@ -1647,7 +1775,8 @@ The displayed expected pairwise loss is a candidate training/evaluation function
 | Arbitrary encoder information loss | Hidden failure mode | Represented as conditional uncertainty and measured |
 | Commuting diagram | Equality of functions | Equality/calibration of Markov kernels |
 | Downstream fairness | Compare \(p(z)\) with one \(p(z')\) | Average or compare distributions over \(z'\) |
-| Modularity | Frozen encoder, but weakly supervised editor | Frozen encoder plus lightweight encoder-specific probabilistic bridge |
+| Inference interface | \(Z^a\) plus one fixed editor | Interpretable symbolic path or direct \((Z^a,a,b)\)-only deployment path |
+| Modularity | Frozen encoder, but weakly supervised editor | Frozen encoder plus lightweight encoder-specific probabilistic bridges |
 
 ---
 
@@ -1672,15 +1801,23 @@ with Euclidean minimality.
 ### New object
 
 \[
-Q_e(dz'\mid z,s',a,b)
+Q_e(dz'\mid z,s,s',a,b)
 \]
 
 trained from matched simulator pairs, then composed with semantic and symbolic kernels:
 
 \[
-H_{Z,e}^{a\to b}
+H_e^{\mathrm{comp},a\to b}
 =
 Q_e^{a\to b}\circ K_S^{a\to b}\circ G_e^a.
+\]
+
+When symbolic-free inference is required, fit the second representation of the same paired target:
+
+\[
+\widehat H_{e,\psi}^{\mathrm{dir},a\to b}(dz'\mid z)
+\approx
+P_e(Z^b\in dz'\mid Z^a=z,a,b).
 \]
 
 This one conceptual replacement resolves several problems simultaneously:
@@ -1708,7 +1845,7 @@ The rest of the original architecture can remain recognizable:
 
 Replace “learns a latent transformation analogous to a symbolic counterfactual” with language such as:
 
-> For each frozen encoder, we learn a stochastic conditional editor from simulator-generated matched counterfactual pairs. The editor estimates the encoder-specific conditional distribution of counterfactual embeddings under an explicit symbolic intervention.
+> For each frozen encoder, we learn a modular stochastic counterfactual editor and a direct symbolic-free counterpart from simulator-generated matched pairs. The modular path exposes the semantic and causal transition; the direct path predicts the paired counterfactual embedding law from the factual embedding and intervention query alone.
 
 Emphasize simulator-relative identification and frozen-backbone modularity.
 
@@ -1725,31 +1862,33 @@ Z^a=e(X^a).
 Define the target as
 
 \[
-H_{Z,e}^{a\to b}(\cdot\mid z)
+H_e^{\mathrm{dir},a\to b,*}(\cdot\mid z)
 =
-P_e(Z^b\in\cdot\mid Z^a=z),
+P_e(Z^b\in\cdot\mid Z^a=z,a,b),
 \]
 
-or its conditional-editor factorization through \(S^b\).
+and separately define its candidate modular factorization through \((S^a,S^b)\).
 
 ### 14.3 Procedure
 
-Retain two broad phases but redefine them:
+Use the following staged procedure:
 
 1. train a semantic analysis kernel \(G_e\) on frozen embeddings;
-2. train a stochastic conditional editor \(Q_e\) on matched frozen embedding pairs.
+2. fit or calculate the deployable structured kernel \(K_S\);
+3. train a stochastic conditional editor \(Q_e\) on matched frozen embedding pairs and true \((S^a,S^b)\);
+4. train direct stochastic and deterministic \(H_e^{\mathrm{dir}}\) models from \((Z^a,a,b)\) to paired \(Z^b\).
 
-The SCM kernel sits between them at inference.
+At inference, the modular path uses \(G_e\to K_S\to Q_e\); the direct path uses only \((Z^a,a,b)\). Optional distillation may use the frozen modular path as a teacher, never as a substitute for paired \(Z^b\).
 
 ### 14.4 Replace the old latent loss
 
-The primary loss should be
+The modular editor's primary loss should be
 
 \[
--\log q_e(Z_e^b\mid Z_e^a,S^b,a,b).
+-\log q_e(Z_e^b\mid Z_e^a,S^a,S^b,a,b).
 \]
 
-Semantic consistency becomes an auxiliary calibration term. \(L_1/L_2\) penalties become optional regularizers or baselines.
+The direct student receives its own paired proper score \(\mathcal S_{\mathrm{dist}}(\widehat H_e^{\mathrm{dir}}(\cdot\mid Z^a,a,b),Z^b)\). Semantic consistency becomes an auxiliary calibration term. \(L_1/L_2\) penalties become optional regularizers or baselines.
 
 ### 14.5 Rewrite the data section
 
@@ -1760,9 +1899,9 @@ The simulator must generate **counterfactual orbits**, not one independent text 
 Use
 
 \[
-G_e\circ H_{Z,e}^{a\to b}
+G_e^b\circ H_e^{\mathrm{comp},a\to b}
 =
-K_S^{a\to b}\circ G_e
+K_S^{a\to b}\circ G_e^a
 \]
 
 as the ideal stochastic commutation relation.
@@ -1771,7 +1910,7 @@ as the ideal stochastic commutation relation.
 
 Include at minimum:
 
-1. joint-orbit existence/identification of \(G_e^{a,*}\), \(K_S^{a\to b,*}\), \(Q_e^{a\to b,*}\), and direct \(H_e^{a\to b,*}\);
+1. joint-orbit existence/identification of \(G_e^{a,*}\), \(K_S^{a\to b,*}\), \(Q_e^{a\to b,*}\), and direct \(H_e^{\mathrm{dir},a\to b,*}\);
 2. population recovery under a proper scoring rule;
 3. deterministic-if-and-only-if-Dirac criterion;
 4. the counterfactual-sufficiency condition under which \(G\to K\to Q\) equals direct \(H\);
@@ -1780,7 +1919,7 @@ Include at minimum:
 
 ### 14.8 Update downstream fairness
 
-Use Monte Carlo integration over \(H_{Z,e}^{a\to b}\), not one arbitrary counterfactual point.
+Use Monte Carlo integration separately over \(H_e^{\mathrm{dir},a\to b}\) and \(H_e^{\mathrm{comp},a\to b}\), not one arbitrary counterfactual point, and compare the two estimators on held-out orbits.
 
 ### 14.9 Update limitations
 
@@ -1803,18 +1942,20 @@ For multiple held-out people and styles:
 
 1. generate full intervention orbits;
 2. encode with several frozen encoders;
-3. train separate \((G_e,Q_e)\) modules;
-4. evaluate paired conditional prediction and semantic calibration.
+3. train separate \((G_e,Q_e,\widehat H_e^{\mathrm{dir}})\) modules;
+4. evaluate paired conditional prediction, semantic calibration, and direct-versus-composed agreement.
 
 ### 15.2 Baselines
 
 Compare:
 
 - original deterministic consistency + \(L_1/L_2\) manipulator;
-- deterministic paired regressor \(m(z,s')\);
-- stochastic paired editor \(Q_e(z'\mid z,s')\);
-- editor ignoring factual \(z\): \(Q_e(z'\mid s')\);
-- editor ignoring target semantics: \(Q_e(z'\mid z)\);
+- deterministic paired modular regressor \(m_Q(z,s,s',a,b)\);
+- stochastic paired editor \(Q_e(z'\mid z,s,s',a,b)\);
+- modular ablation omitting factual state: \(Q_e(z'\mid z,s',a,b)\);
+- editor ignoring factual \(z\): \(Q_e(z'\mid s,s',a,b)\);
+- direct stochastic kernel \(\widehat H_e^{\mathrm{dir}}(z'\mid z,a,b)\);
+- direct deterministic regressor \(m_H(z,a,b)\);
 - optional tuned-encoder factorized model as an upper bound.
 
 ### 15.3 Metrics
@@ -1822,9 +1963,10 @@ Compare:
 Use:
 
 - semantic prediction/calibration for \(G_e\);
-- conditional NLL or proper score for \(Q_e\);
+- conditional NLL or proper score for \(Q_e\) and direct \(\widehat H_e^{\mathrm{dir}}\);
 - coverage of predictive regions;
 - two-sample distance between generated and true target embeddings;
+- distributional distance between direct and composed samples;
 - identity error;
 - persona/style preservation;
 - composition consistency where justified;
@@ -1850,7 +1992,7 @@ Treat real-data use as transport, not automatic identification. Evaluate probe c
 
 A strong but defensible formulation is:
 
-> We introduce a frozen-backbone neurosymbolic method that learns, for any compatible fixed vector encoder, an encoder-specific stochastic counterfactual editing kernel from paired simulator-generated CVs. The SCM controls the structured intervention, while the post-hoc editor learns the conditional law of the corresponding frozen embeddings. Under standard regularity, support, and estimation conditions, this kernel is identified relative to the simulator coupling and can be estimated by a suitable conditional proper-loss procedure. A deterministic editor is justified only when the relevant composed conditional law is degenerate.
+> We introduce a frozen-backbone counterfactual editing framework that learns an encoder-specific stochastic latent law from paired simulator-generated CVs. It offers an interpretable neurosymbolic estimator \(G_e\to K_S\to Q_e\) and a direct symbolic-free estimator \(H_e^{\mathrm{dir}}\). Complete orbit data identify the direct paired law relative to the simulator coupling; the neurosymbolic composition represents the same law under an explicit counterfactual-sufficiency condition. Both latent estimators use paired \(Z^b\) as primary supervision under suitable proper-score, support, sampling, model, and optimization conditions. A deterministic editor is justified only when the relevant conditional law is degenerate.
 
 Additional useful claims:
 
@@ -1859,6 +2001,7 @@ Additional useful claims:
 - The same SCM and training recipe can be reused across encoders.
 - Uncertainty caused by encoder information loss is represented rather than hidden.
 - Paired simulator supervision replaces arbitrary latent minimality as the main identifying signal.
+- The direct path needs no structured state at inference; the modular path retains explicit state-level control and diagnosis.
 
 ---
 
@@ -1870,6 +2013,7 @@ Avoid statements implying that:
 - the method recovers the unique true latent counterfactual;
 - \(L_1/L_2\) minimality has causal meaning;
 - semantic consistency alone identifies person-preserving edits;
+- a direct student trained only through \(G_e\) or only by teacher distillation is identified as the paired counterfactual law;
 - all causal assumptions live only in the tabular graph;
 - simulator validity automatically transfers to real CVs;
 - fixed persona/style labels imply identifiable numerical residual coordinates.
@@ -1891,28 +2035,44 @@ The cross-world simulator coupling and tabular-to-text renderer are themselves s
 4. Freeze G_e.
 5. Fit/calculate deployable K_S(s_b | s_a, a, b) from training-unit
    structured orbits; validate it against held-out stored-U oracle transitions.
-6. Train editor Q_e(z_b | z_a, s_b, a, b) using a strictly proper
+6. Train editor Q_e(z_b | z_a, s_a, s_b, a, b) using a strictly proper
    distributional score; use NLL only for an explicit dominated/smoothed law.
 7. Add identity examples a -> a.
 8. Optionally add:
       - semantic calibration through frozen G_e,
       - persona/style preservation through frozen auxiliary probes,
       - composition consistency when the simulator coupling supports it.
-9. Evaluate on held-out SCM units and secondary held-out renderer contexts.
-10. Certify or reject the encoder for the intended counterfactual task.
+9. Separately train direct H_dir(z_b | z_a, a, b) against paired z_b;
+   also train its deterministic direct-regression baseline.
+10. Optionally add frozen-G_e semantic calibration and, only after the
+    modular teacher is frozen, distributional distillation to H_dir.
+11. Evaluate modular, direct, and deterministic paths on held-out SCM units
+    and secondary held-out renderer contexts.
+12. Certify or reject the encoder for the intended counterfactual task.
 ```
 
-### Inference
+### Interpretable modular inference
 
 ```text
 Input: CV x, source regime a, target regime b.
 1. z = e(x).
 2. Draw/estimate s ~ G_e(. | z, a).
 3. Draw s' ~ K_S^{a->b}(. | s).
-4. Draw z' ~ Q_e(. | z, s', a, b).
-5. Repeat to approximate H_{Z,e}^{a->b}(. | z).
+4. Draw z' ~ Q_e(. | z, s, s', a, b).
+5. Repeat to approximate H_comp,e^{a->b}(. | z).
 6. Aggregate downstream predictions according to the declared fairness target.
 ```
+
+### Direct symbolic-free inference
+
+```text
+Input: CV x, source regime a, target regime b.
+1. z = e(x).
+2. Draw z' ~ H_dir,e(. | z, a, b).
+3. Repeat for a counterfactual embedding sample and downstream aggregation.
+```
+
+The direct interface never receives \(S^a\) or \(S^b\); those states may only have supplied privileged auxiliary supervision during training.
 
 ---
 
@@ -2030,28 +2190,39 @@ Provide two clearly named paths:
 
 The transparent first baseline for the current finite discrete state space is a smoothed regime-conditioned transition table fitted from a large cheap structured-orbit sample. Stronger/reference implementations include rejection or importance sampling from the known noise priors, analytic interval/truncated-noise calculations where feasible, or an amortized posterior. Validate every inferred kernel against held-out oracle paired simulator targets before placing it inside the full latent pipeline.
 
-If an inferred \(K_S\) must be deferred, a direct regime-conditioned model \(H_e(dz^b\mid z^a,a,b)\) can be run as a reduced baseline. It does not implement the claimed semantic-SCM-editor factorization and must be labeled accordingly, not used to imply that the neurosymbolic inference path is operational.
+The direct regime-conditioned model \(\widehat H_e^{\mathrm{dir}}(dz^b\mid z^a,a,b)\) is an independently supported symbolic-free deployment path, not merely a fallback. If inferred \(K_S\) is deferred, direct inference can still be evaluated, but the neurosymbolic path is not operational and must not be claimed as such.
 
-### 19.8 Add \(Q_e\) as a new model, keep \(h_Z\) as a baseline
+### 19.8 Add \(Q_e\) and direct \(H_e^{\mathrm{dir}}\), keep \(h_Z\) as a baseline
 
-Do not rename the current class and change its loss. Retain it as `deterministic_consistency_l1_l2`. Add a separate `StochasticLatentEditor` with explicit distribution methods such as:
+Do not rename the current class and change its loss. Retain it as `deterministic_consistency_l1_l2`. Add a modular `StochasticLatentEditor` with explicit distribution methods such as:
 
 ```text
-log_prob(z_target, z_source, target_state, source_regime, target_regime)
+log_prob(z_target, z_source, source_state, target_state,
+         source_regime, target_regime)
 sample(..., n_samples)
+mean_or_summary(...)  # diagnostic only
+```
+
+Add a separate `DirectStochasticLatentEditor` whose public interface deliberately has no state arguments:
+
+```text
+log_prob(z_target, z_source, source_regime, target_regime)
+sample(z_source, source_regime, target_regime, n_samples)
 mean_or_summary(...)  # diagnostic only
 ```
 
 Recommended first comparison:
 
-- deterministic paired regressor \(m_e(Z^a,\mathbf S^b,a,b)\);
-- conditional diagonal Gaussian;
-- conditional diagonal-Gaussian mixture with variance floor;
+- deterministic paired modular regressor \(m_{Q,e}(Z^a,\mathbf S^a,\mathbf S^b,a,b)\);
+- modular conditional diagonal Gaussian;
+- direct deterministic regressor \(m_{H,e}(Z^a,a,b)\);
+- direct conditional diagonal Gaussian;
+- conditional diagonal-Gaussian mixtures with variance floors when justified;
 - optional conditional flow only if the mixture is inadequate.
 
 A Gaussian mixture can be implemented in PyTorch without adding a dependency. A flow requires an explicit dependency and reproducibility review.
 
-Train on the paired proper objective, use true \(\mathbf S^b\) first, and add auxiliaries only after the primary likelihood/score is working. Evaluate variance collapse, component use, scale sensitivity, and whether samples—not just means—lie near genuine target embeddings.
+Train both stochastic models on their own paired proper objectives, use true \((\mathbf S^a,\mathbf S^b)\) for \(Q_e\), and add auxiliaries only after the primary likelihood/score is working. Evaluate variance collapse, component use, scale sensitivity, and whether samples—not just means—lie near genuine target embeddings. If teacher distillation is enabled, freeze the modular teacher first and retain real paired targets in every direct-student batch.
 
 ### 19.9 Evaluate at three distinct levels
 
@@ -2063,7 +2234,7 @@ Do not collapse all failures into one end-to-end score.
 - supported/joint structured states;
 - sensitivity by encoder and regime.
 
-**Level 2: oracle editor**
+**Level 2: paired latent models**
 
 - conditional NLL when the density assumptions are appropriate;
 - energy score or another proper score for non-dominated targets;
@@ -2073,12 +2244,14 @@ Do not collapse all failures into one end-to-end score.
 - semantic validity through both the training-time frozen \(G_e\) and an independent held-out probe/audit;
 - identity, persona/context, renderer preservation;
 - nearest-neighbor/support and decoded-text diagnostics;
-- ablations omitting \(Z^a\), \(\mathbf S^b\), or regime labels.
+- modular ablations omitting \(Z^a\), \(\mathbf S^a\), \(\mathbf S^b\), or regime labels;
+- direct deterministic versus stochastic \(H_e^{\mathrm{dir}}\), each scored against paired \(Z^b\).
 
-**Level 3: composed inference and fairness**
+**Level 3: direct-versus-composed inference and fairness**
 
 - oracle versus inferred \(G_e/K_S\) gap;
-- Monte Carlo stability of \(H_{Z,e}^{a\to b}\);
+- Monte Carlo stability of direct \(H_e^{\mathrm{dir},a\to b}\) and composed \(H_e^{\mathrm{comp},a\to b}\);
+- proper-score, two-sample, semantic, and downstream comparison of the two laws;
 - downstream predictor utility for the simulated outcome `Q`/manuscript \(Y\);
 - the declared expectation-, distribution-, quantile-, or worst-case fairness functional;
 - sim-to-real shift/calibration separately from simulator-relative validity.
@@ -2095,8 +2268,9 @@ Extend configuration with:
 - compound artifact schema and split manifests;
 - encoder registry;
 - \(G_e\) calibration settings;
-- \(Q_e\) family, mixture components, scale parameterization, and variance floor;
+- separate \(Q_e\) and direct-\(H_e\) families, mixture components, scale parameterizations, and variance floors;
 - staged auxiliary weights;
+- direct-student semantic and optional teacher-distillation weights;
 - SCM-kernel mode (`oracle` versus `inferred`);
 - Monte Carlo sample counts and fairness definition;
 - explicit old-method baseline configuration.
@@ -2116,6 +2290,8 @@ Add Python tests for:
 - explicit identity behavior;
 - oracle and inferred \(K_S\) validation;
 - composed-inference shapes/reproducibility;
+- direct-model interface tests proving that no structured state is required;
+- direct-versus-composed distributional comparison and distillation tests;
 - metric and end-to-end smoke tests.
 
 The current module `__main__` checks are useful smoke tests but not a sufficient regression suite.
@@ -2128,9 +2304,9 @@ The first implementation is complete only when all of the following are true:
 2. the frozen encoder is never updated and its provenance is stored;
 3. \(G_e\) is trained on all regimes, calibrated, frozen, and reported separately;
 4. deployable \(K_S^{a\to b}\) is fitted or calculated from training-unit structured orbits and validated against held-out stored-\(U\) oracle transitions;
-5. the old deterministic editor, a deterministic paired regressor, and a stochastic paired editor all run on the same splits;
-6. the stochastic editor is scored against held-out paired \(Z^b\), not merely through \(G_e\);
-7. direct-oracle \(H\), oracle-structured \(Q_e\), and full composed inference are reported separately;
+5. the old deterministic editor, deterministic modular/direct regressors, stochastic \(Q_e\), and stochastic direct \(H_e^{\mathrm{dir}}\) all run on the same splits;
+6. both stochastic models are scored against held-out paired \(Z^b\), not merely through \(G_e\) or teacher samples;
+7. direct paired \(H_e^{\mathrm{dir}}\), true-state \(Q_e\), and full composed inference are reported separately and compared;
 8. uncertainty is empirically assessed rather than assumed;
 9. distributional fairness and utility are computed for a declared functional;
 10. tests protect pairing, leakage, freezing, support, and probabilistic-model behavior;
@@ -2144,20 +2320,21 @@ The next agent should not reopen the frozen-versus-tuned encoder decision unless
 
 1. **Semantic-kernel family:** a probabilistic, calibrated \(G_e^a\) is required for the claimed stochastic composition; deterministic point prediction remains a special-case baseline.
 2. **Deployable SCM estimator:** choose among a smoothed discrete transition table, known-SCM posterior sampling, analytic truncated-noise calculation, or an amortized posterior. Retain stored-\(U\) oracle evaluation regardless of this choice.
-3. **Editor family:** Gaussian mixture, normalizing flow, or diffusion.
-4. **Conditioning:** canonical \((z,s',a,b)\) versus augmentation by factual state/context \((z,s,s',a,b)\).
-5. **Intervention parameterization:** one shared editor with intervention tokens versus a family of smaller editors.
-6. **Representation from VAE:** posterior mean versus explicitly modeled encoder samples.
-7. **Fairness notion:** equality in expectation, distributional equality, or a risk/quantile criterion.
-8. **Support metric:** Euclidean after whitening, learned metric, likelihood, or downstream-task metric.
-9. **Real-data transport:** explicit domain-adaptation assumption, calibration set, or bounds under distribution shift.
+3. **Editor family:** Gaussian mixture, normalizing flow, or diffusion, chosen separately for modular \(Q_e\) and direct \(H_e^{\mathrm{dir}}\).
+4. **Modular conditioning ablation:** the primary \(Q_e\) uses \((z,s,s',a,b)\); test whether omitting \(s\) loses information.
+5. **Direct-student auxiliaries:** frozen-\(G_e\) semantic calibration and whether teacher distillation improves held-out paired scores.
+6. **Intervention parameterization:** one shared editor with intervention tokens versus a family of smaller editors.
+7. **Representation from VAE:** posterior mean versus explicitly modeled encoder samples.
+8. **Fairness notion:** equality in expectation, distributional equality, or a risk/quantile criterion.
+9. **Support metric:** Euclidean after whitening, learned metric, likelihood, or downstream-task metric.
+10. **Real-data transport:** explicit domain-adaptation assumption, calibration set, or bounds under distribution shift.
 
 Recommended first prototype:
 
 - deterministic/frozen encoder output;
 - probabilistic semantic probe if feasible;
 - oracle SCM target for editor isolation plus a separately validated inferred SCM kernel;
-- standardized residual prediction with a deterministic paired baseline and a conditional diagonal/low-rank Gaussian with a variance floor, conditioned on \((z,\mathbf S^b,a,b)\); add a mixture only if held-out evidence supports it;
+- standardized residual prediction for both paths: \(Q_e\) conditioned on \((z,\mathbf S^a,\mathbf S^b,a,b)\), and direct \(H_e^{\mathrm{dir}}\) conditioned only on \((z,a,b)\), each with deterministic and diagonal/low-rank Gaussian variants plus a variance floor;
 - paired conditional NLL when the dominated/smoothed density assumption is explicit, otherwise a strictly proper sample score;
 - semantic and identity auxiliaries;
 - multiple frozen encoders for the modularity experiment.
@@ -2175,10 +2352,11 @@ This is a concise rationale, not a hidden reasoning transcript.
 5. **Modularity constraint:** The collaborator wants the encoder to remain untouched so the method can attach to downloaded models.
 6. **Resolution:** Do not force a product decomposition. Retain the entire factual embedding as the carrier of preserved information and directly estimate
    \[
-   P(Z^b\mid Z^a,S^b,a,b).
+   P(Z^b\mid Z^a,S^a,S^b,a,b).
    \]
 7. **Final conceptual shift:** Replace deterministic point editing and coordinate-dependent minimality with an encoder-specific stochastic conditional kernel trained by paired proper loss.
 8. **Resulting theory:** Identification is now of a simulator-induced conditional law on frozen-encoder support. Determinism becomes a testable degeneracy condition, and modular errors can be decomposed across semantic analysis, SCM inference, and latent synthesis.
+9. **Symbolic-free deployment decision:** In addition to the modular scientific path, fit a direct stochastic \(H_e^{\mathrm{dir}}(Z^b\mid Z^a,a,b)\). It may use \(S^b\) through a frozen semantic auxiliary or use the modular system as a teacher during training, but paired \(Z^b\) remains primary and neither structured state is required at inference.
 
 ---
 
@@ -2188,15 +2366,15 @@ A next agent can continue efficiently by producing, in this order:
 
 1. a revised formal problem statement using potential texts and embeddings;
 2. polished theorem statements and complete proofs for Propositions 1-6;
-3. a revised architecture figure showing \(e\), \(G_e\), \(K_S\), and \(Q_e\);
-4. a revised training section with complete paired orbit generation and a strictly proper conditional distributional score;
+3. a revised dual-path architecture figure showing modular \(e\to G_e\to K_S\to Q_e\) and direct \(e\to H_e^{\mathrm{dir}}\) inference;
+4. a revised training section with complete paired orbit generation and separate strictly proper objectives for \(Q_e\) and direct \(H_e^{\mathrm{dir}}\);
 5. a simulation protocol and encoder-admissibility evaluation plan;
 6. a revised abstract, contributions list, discussion, and limitations;
-7. pseudocode and a minimal implementation using deterministic paired residual regression and a conditional diagonal/low-rank Gaussian, with mixtures/flows reserved for evidence of multimodality;
-8. an ablation comparing the original deterministic \(L_1/L_2\) editor with the paired stochastic editor.
+7. pseudocode and a minimal implementation using deterministic paired residual regression and conditional diagonal/low-rank Gaussians for both interfaces, with mixtures/flows reserved for evidence of multimodality;
+8. ablations comparing the original deterministic \(L_1/L_2\) editor, modular \(Q_e\), and direct deterministic/stochastic \(H_e^{\mathrm{dir}}\).
 
 ---
 
 ## 23. One-sentence handoff
 
-The project should remain modular by freezing any compatible vector encoder, but it should stop treating semantic consistency plus latent distance as identification of one counterfactual point; instead, use audited complete LIBERTy-style orbits to identify and fit regime-conditioned \(G_e^a\), deployable \(K_S^{a\to b}\), and encoder-specific \(Q_e(dz'\mid z,s',a,b)\), verify when their composition equals the directly paired oracle law, and retain determinism as a testable special case.
+The project should freeze any compatible vector encoder and use audited complete LIBERTy-style orbits to fit the interpretable modular path \(G_e^a\to K_S^{a\to b}\to Q_e(dz'\mid z,s,s',a,b)\) plus a direct symbolic-free \(H_e^{\mathrm{dir}}(dz'\mid z,a,b)\), supervise both latent models primarily with paired \(Z^b\), test when the composed law equals the direct paired population law, and retain determinism as a falsifiable special case.

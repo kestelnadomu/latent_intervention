@@ -30,10 +30,7 @@ This pairing is the source of identification. The old method only finds a nearby
 
 1. **Lock the query set.** Specify every source and target regime the paper will claim, including whether the intervention is total or path-specific. The current SCM implements total node interventions; path-specific claims require separate edge/path interventions.
 
-2. **Generate one long orbit per unit.** Sample the SCM noise once and evaluate the complete configured regime grid from it. Store one row per
-   $
-   (\text{unit},\text{regime},\text{renderer replicate}).
-   $
+2. **Generate one long orbit per unit.** Sample the SCM noise once and evaluate the complete configured regime grid from it. Store one row per $(\text{unit},\text{regime},\text{renderer replicate})$.
 
 3. **Couple and audit the renderer.** Reuse persona and template, explicitly couple concrete values such as age and work experience, reuse the exact text for identity worlds, and record prompt, model, settings, and response metadata. Temperature zero and equal persona IDs alone do not prove that person and style were preserved.
 
@@ -101,7 +98,27 @@ This pairing is the source of identification. The old method only finds a nearby
 
      Conditional negative log-likelihood is appropriate only for an explicit density or smoothed target; an energy score can be used when the target law is singular. Semantic and identity losses are auxiliaries, not the identifying objective.
 
-5. **Retain the original deterministic editor as a baseline.**
+5. **Train the direct symbolic-free editor $H_e^{\mathrm{dir}}$.**
+
+   - **Input:** factual embedding $Z_i^a$ and regime query $(a,b)$—no structured state enters the model.
+   - **Training target:** the genuine paired target embedding $Z_i^b$.
+   - **Output:** a fitted $\widehat H_{e,\psi}^{\mathrm{dir}}(Z^b\mid Z^a,a,b)$, which can be sampled without $G_e$ or $K_S$ at inference.
+   - **Loss/objective:** a proper paired score against $Z_i^b$:
+
+     $$
+     \mathcal L_H
+     =
+     \mathbb E\,
+     \mathcal S_{\mathrm{dist}}
+     \left(
+       \widehat H_{e,\psi}^{\mathrm{dir}}(\cdot\mid Z_i^a,a,b),
+       Z_i^b
+     \right).
+     $$
+
+     A frozen-$G_e$ semantic loss using $S_i^b$ and distillation from the modular model are optional auxiliaries; neither may replace paired $Z_i^b$ supervision.
+
+6. **Retain the original deterministic editor as a baseline.**
 
    - **Input:** $Z_i^a$ and the intervention encoding for $a\to b$.
    - **Training target:** $\mathbf S_i^b$, used by the frozen semantic model to score the edited point; it is supervision, not a direct input to the current editor.
@@ -116,13 +133,15 @@ This pairing is the source of identification. The old method only finds a nearby
      +\beta\lVert\widehat Z_i^b-Z_i^a\rVert_2^2.
      $$
 
-6. **Evaluate the modules and their composition.**
+7. **Evaluate the modules and their composition.**
 
    - **Input:** held-out complete orbits grouped by unit.
-   - **Output:** separate results for $G_e$, deployable versus oracle $K_S$, oracle-target $Q_e$, and the complete $G\to K\to Q$ pipeline.
+   - **Output:** separate results for $G_e$, deployable versus oracle $K_S$, true-state $Q_e$, the complete $G\to K\to Q$ pipeline, and direct symbolic-free $H_e^{\mathrm{dir}}$.
    - **Loss/objective:** no parameter updates. Report proper scores and calibration, semantic and support validity, paired target accuracy, persona/style preservation, downstream utility, and the declared fairness measure.
 
 ## Inference: input, output, and required controls
+
+### Interpretable modular inference
 
 For a new CV, inference receives:
 
@@ -140,7 +159,7 @@ z=e(x),\qquad
 Z^b_m\sim Q_e(\cdot\mid z,\mathbf S^a_m,\mathbf S^b_m,a,b).
 $$
 
-The output is a sample $\{Z^b_m\}_{m=1}^M$ approximating the counterfactual latent distribution $H_e^{a\to b}(\cdot\mid z)$. A downstream predictor can turn these into a predictive distribution or fairness statistic. The core method does **not** automatically output a counterfactual text; that would require a separately validated text decoder.
+The output is a sample $\{Z^b_m\}_{m=1}^M$ approximating the composed counterfactual latent distribution $H_e^{\mathrm{comp},a\to b}(\cdot\mid z)$. A downstream predictor can turn these into a predictive distribution or fairness statistic. The core method does **not** automatically output a counterfactual text; that would require a separately validated text decoder.
 
 For component evaluation only, an oracle mode may replace $G_e$ and $K_S$ with the simulator’s true $\mathbf S^a,\mathbf S^b$. That isolates $Q_e$, but it is not the deployable inference procedure.
 
@@ -157,36 +176,85 @@ The following must be controlled:
 
 A stochastic kernel may turn out to be almost deterministic. We should test that rather than force artificial variance. If deterministic texts and embeddings make the target distribution singular, use a proper distributional score that supports such laws, or explicitly state that a Gaussian model estimates a smoothed approximation.
 
-## Which editor is the actual method—and why train three?
+## Symbolic-free deployment path: learn $H_e^{\mathrm{dir}}$ directly
 
-The three editors are trained **separately on the same unit splits**. They are not combined:
+If deployment should require only the factual embedding and intervention query, train a separate direct model
+
+$$
+\widehat H_{e,\psi}^{\mathrm{dir}}(dZ^b\mid Z^a,a,b)
+\approx
+P(Z^b\in dZ^b\mid Z^a,a,b).
+$$
+
+Its **input** is $(Z_i^a,a,b)$ and its **primary target** is the genuine paired $Z_i^b$. It therefore needs no $S^a$, $S^b$, $G_e$, or $K_S$ at inference:
+
+$$
+z=e(x),
+\qquad
+Z_m^b\sim\widehat H_{e,\psi}^{\mathrm{dir}}(\cdot\mid z,a,b).
+$$
+
+The simulator states remain useful as privileged training information. With frozen $G_e$, add the auxiliary check
+
+$$
+\mathcal L_{\mathrm{sem}}^H
+=
+-\mathbb E\log G_e^b(S_i^b\mid\widetilde Z_i^b),
+\qquad
+\widetilde Z_i^b\sim\widehat H_{e,\psi}^{\mathrm{dir}}(\cdot\mid Z_i^a,a,b).
+$$
+
+This semantic loss must not replace the paired loss against $Z_i^b$; by itself it recreates the original semantic-fiber ambiguity. Optionally, the composed $G\to K\to Q$ model can act as a teacher and provide extra samples for distributional distillation, but genuine paired $Z^b$ remains the identifying target so the student does not merely inherit teacher errors.
+
+During this auxiliary loss, freeze $G_e$ itself but let the gradient pass through $G_e$ back into the direct editor.
+
+The trade-off is simple: direct $H_e^{\mathrm{dir}}$ gives convenient symbolic-free inference but marginalizes over the possible $S^a,S^b$. It cannot expose or explicitly select the realized target state, and it needs direct training support for every claimed $a\to b$ query.
+
+## Which model plays which role?
+
+The editor variants are trained **separately on the same unit splits**:
 
 | Editor | What it learns from | Role |
 |---|---|---|
 | Original deterministic editor | Target semantics plus $L_1/L_2$ proximity; it never sees the matched $Z^b$ | Historical baseline representing the original proposal |
-| Deterministic paired regressor | The matched $Z^b$, but predicts one point | Strong safety baseline and test of whether paired supervision alone is sufficient |
-| Stochastic paired editor $Q_e$ | The matched $Z^b$ and predicts its conditional distribution | Proposed method |
+| Deterministic modular regressor $m_Q$ | Paired $Z^b$, conditioned on $Z^a,S^a,S^b,a,b$, but predicts one point | Falsification baseline for stochastic $Q_e$ |
+| Stochastic paired editor $Q_e$ | Paired $Z^b$, conditioned on $Z^a,S^a,S^b,a,b$ | Interpretable modular editor inside the scientific $G\to K\to Q$ model |
+| Deterministic direct regressor $m_H$ | Paired $Z^b$, conditioned only on $Z^a,a,b$, but predicts one point | Falsification baseline for stochastic direct $H_e^{\mathrm{dir}}$ |
+| Direct stochastic $\widehat H_e^{\mathrm{dir}}$ | Paired $Z^b$, conditioned only on $Z^a,a,b$ | Symbolic-free deployment student and direct-kernel baseline |
 
-The comparisons answer two different questions:
+The comparisons answer four different questions:
 
-1. **Original versus deterministic paired:** does direct supervision by the true paired $Z^b$ improve on semantic proximity?
-2. **Deterministic paired versus stochastic $Q_e$:** is there meaningful counterfactual ambiguity that requires a distribution?
+1. **Original versus deterministic modular:** does direct supervision by the true paired $Z^b$ improve on semantic proximity?
+2. **Deterministic modular versus stochastic $Q_e$:** is latent synthesis still ambiguous after $(S^a,S^b)$ are known?
+3. **Deterministic direct versus stochastic direct $H_e^{\mathrm{dir}}$:** is the complete symbolic-free counterfactual law nondegenerate?
+4. **Composed $G\to K\to Q$ versus direct $\widehat H_e^{\mathrm{dir}}$:** what is gained by explicit symbolic control, and what is lost when it is marginalized for simpler deployment?
 
-The population target we expect to exist is
+The two population targets are
 
 $$
+\begin{aligned}
 Q_e^*
-=
-P(Z^b\mid Z^a,\mathbf S^a,\mathbf S^b,a,b).
+&=P(Z^b\mid Z^a,\mathbf S^a,\mathbf S^b,a,b),\\
+H_e^{\mathrm{dir},*}
+&=P(Z^b\mid Z^a,a,b).
+\end{aligned}
 $$
 
-An exact deterministic editor exists only when this distribution is effectively a point mass. Otherwise, paired squared-error regression approaches a conditional mean, which may average incompatible targets. The original $L_1/L_2$ editor only approaches a minimizer of its semantic-distance objective; that point is not identified as the paired counterfactual.
+Test point-mass feasibility separately. $Q_e^*$ can be deterministic after $(S^a,S^b)$ are given while direct $H_e^{\mathrm{dir},*}$ remains stochastic because it marginalizes uncertainty over those states. Otherwise, paired squared-error regression approaches a conditional mean, which may average incompatible targets. The original $L_1/L_2$ editor only approaches a minimizer of its semantic-distance objective; that point is not identified as the paired counterfactual.
 
-Therefore $Q_e$ is the method we propose, the deterministic paired model is the important safety/falsification baseline, and the old editor is the historical baseline. We should claim a practically important stochastic editor only if $Q_e$ beats the deterministic paired model on a common held-out proper score and produces calibrated, supported variation. If it collapses to one point or offers no improvement, the honest result is that the identified kernel is effectively deterministic for this simulator and encoder.
+The recommended paper design is to treat $G\to K\to Q$ as the interpretable scientific/reference model and direct $\widehat H_e^{\mathrm{dir}}$ as the practical symbolic-free student. Their matching deterministic regressors are the safety/falsification baselines, and the old editor is the historical baseline. Claim important stochasticity for either model only if it beats its deterministic counterpart on a common held-out proper score and produces calibrated, supported variation. Otherwise, report that the corresponding kernel is effectively deterministic for this simulator and encoder.
 
 ## What this lets us claim
 
-Complete population orbits identify the regime-conditioned semantic, structured-counterfactual, and latent-editor distributions **relative to our fixed LIBERTy-style SCM, renderer, and frozen encoder, and only on supported queries**.
+Complete population orbits directly identify
+
+$$
+H_e^{\mathrm{dir},*}(dz'\mid z,a,b)
+=
+P(Z^b\in dz'\mid Z^a=z,a,b),
+$$
+
+as well as the regime-conditioned semantic, structured-counterfactual, and latent-editor distributions **relative to our fixed LIBERTy-style SCM, renderer, and frozen encoder, and only on supported queries**. Direct $H_e^{\mathrm{dir}}$ does not require the structured-state sufficiency assumption.
 
 For the modular composition $G\to K\to Q$ to equal the directly paired simulator counterfactual law, the structured state must contain all factual causal information relevant to the target state. If the factual embedding reveals additional relevant hidden information, enlarge the structured state or let $K_S$ condition on that context.
 
@@ -196,6 +264,7 @@ This establishes the method in a controlled synthetic world. It does not automat
 
 Do not start the full billed generation yet. First implement and validate the query manifest, multi-regime orbit schema, renderer coupling, compound resume keys, unit-level split, and small end-to-end pilot. Once that pilot produces correctly aligned paired $Z^a,Z^b$, the full rerun is aligned with the revised problem.
 
-## Questions
-1. Why does g need to be stochastic if the encoder is deterministic? If the encoder is deterministic, then the latent representation of a given input will always be the same.
-2. Why should the symbolic intervention function be stochastic? If the SCM is deterministic, then the intervention function will always produce the same output for a given input.
+## Intuition: why $G_e$ and $K_S$ can still be stochastic
+
+- **Deterministic encoder does not imply deterministic semantics.** The encoder fixes $Z=e(X)$ for a given text, but it may discard information. If several structured states are compatible with the same $Z$, then $G_e(S\mid Z,a)$ is a distribution. It collapses to a point only when the relevant state is recoverable from $Z$.
+- **Deterministic SCM does not imply deterministic abduction from an observed state.** The structural equations are deterministic given the hidden SCM noise $U$, but a new CV does not reveal $U$. Several noise values can produce the same observed $S^a$ and different $S^b$, so $K_S(S^b\mid S^a,a,b)$ averages over them. With stored $U$ in synthetic oracle evaluation, it collapses to one target.
