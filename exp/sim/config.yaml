@@ -17,6 +17,29 @@ seed: 1
 intervention:
   G: 1
 
+# Structured-state schema S: column -> cardinality (values 0..card-1), listed in
+# topological / autoregressive-decoding order. Read by src/schema.py; the generic
+# framework in src/ has no other knowledge of the columns. The concrete SCM that
+# produces these columns lives in exp/sim/cv_screening.py (see objects: below).
+schema:
+  columns:
+    R: 4
+    G: 2
+    A: 3
+    E: 4
+    S: 3
+    W: 3
+    V: 2
+    C: 2
+  outcome:
+    Q: 3   # downstream outcome Y: simulated, excluded from decoder heads and consistency loss
+
+# Dotted "module:attribute" pointers to the concrete experiment objects. src/
+# imports these via src/schema.py::load_object rather than importing exp/sim/ directly.
+objects:
+  scm: exp.sim.cv_screening:build_scm
+  symbolic_kernel: exp.sim.cv_screening:build_symbolic_kernel
+
 paths:
   sim_dir: data/sim                    # sim_data_{factual,counterfactual,epsilon}.csv
   templates: data/text/templates.csv   # generated template pool (tracked: costs API credits)

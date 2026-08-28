@@ -1,8 +1,8 @@
 """
 Training and evaluation pipeline: text latents -> semantic decoder -> manipulator.
 
-Stages (hyperparameters from src/config.yaml; data from exp/sim/run.py):
-    encode             encode generated CV texts into latents (data/latents/)
+Stages (hyperparameters from src/config.yaml; data + schema from exp/sim/):
+    encode             encode generated input texts into latents (data/latents/)
     train-decoder      train the semantic decoder g: Z -> S on factual pairs
     train-manipulator  train the latent manipulator h_Z against frozen g and
                        counterfactual targets S' from the SCM simulation
@@ -29,15 +29,13 @@ from src.latent_intervention import (
     make_objective,
     train_latent_intervention,
 )
+from src.schema import load_intervention, load_schema
 from src.semantic_decoder import (
-    SCM_COLUMNS,
     SemanticDecoder,
     accuracy,
     targets_from_dataframe,
     train_semantic_decoder,
 )
-
-SIM_CONFIG_PATH = Path(__file__).parent.parent / "exp" / "sim" / "config.yaml"
 
 
 def _load_latents(config: dict[str, Any]) -> tuple[torch.Tensor, list[int]]:
@@ -46,10 +44,10 @@ def _load_latents(config: dict[str, Any]) -> tuple[torch.Tensor, list[int]]:
     return payload["z"], payload["ids"]
 
 
-def _aligned_targets(csv_path: str | Path, ids: list[int]) -> dict[str, torch.Tensor]:
+def _aligned_targets(csv_path: str | Path, ids: list[int], columns: list) -> dict[str, torch.Tensor]:
     """Read a sim CSV and return per-column targets aligned to the latent ids."""
     df = pd.read_csv(csv_path).set_index("id").loc[ids].reset_index()
-    return targets_from_dataframe(df)
+    return targets_from_dataframe(df, columns)
 
 
 def _split(n: int, val_split: float, seed: int) -> tuple[torch.Tensor, torch.Tensor]:
@@ -60,16 +58,8 @@ def _split(n: int, val_split: float, seed: int) -> tuple[torch.Tensor, torch.Ten
     return perm[n_val:], perm[:n_val]
 
 
-def _intervention() -> dict[str, int]:
-    """Read the do() spec the sim data was generated under (exp/sim/config.yaml)."""
-    import yaml
-
-    with open(SIM_CONFIG_PATH, "r", encoding="utf-8") as f:
-        return {str(k): int(v) for k, v in yaml.safe_load(f)["intervention"].items()}
-
-
 def stage_encode(config: dict[str, Any]) -> None:
-    """Encode the generated CV texts into latent vectors."""
+    """Encode the generated input texts into latent vectors."""
     from src.encoder import TextEncoder  # deferred: heavy import, downloads checkpoint
 
     df = pd.read_csv(config["paths"]["texts"])
@@ -90,12 +80,14 @@ def stage_encode(config: dict[str, Any]) -> None:
 def stage_train_decoder(config: dict[str, Any]) -> None:
     """Train the semantic decoder on (latent, factual tabular) pairs."""
     z, ids = _load_latents(config)
-    targets = _aligned_targets(config["paths"]["sim_factual"], ids)
+    columns, _ = load_schema()
+    targets = _aligned_targets(config["paths"]["sim_factual"], ids, columns)
     cfg = config["semantic_decoder"]
     train_idx, val_idx = _split(len(ids), cfg["val_split"], config["seed"])
 
     decoder = SemanticDecoder(
         latent_dim=z.shape[1],
+        columns=columns,
         hidden_dim=cfg["hidden_dim"],
         n_hidden=cfg["n_hidden"],
         dropout=cfg["dropout"],
@@ -118,12 +110,12 @@ def stage_train_decoder(config: dict[str, Any]) -> None:
 def stage_train_manipulator(config: dict[str, Any]) -> None:
     """Train the manipulator against the frozen decoder and counterfactual targets."""
     z, ids = _load_latents(config)
-    s_prime = _aligned_targets(config["paths"]["sim_counterfactual"], ids)
-    intervention = _intervention()
+    intervention = load_intervention()
     cfg = config["latent_intervention"]
     train_idx, _ = _split(len(ids), config["semantic_decoder"]["val_split"], config["seed"])
 
     decoder = SemanticDecoder.load(config["paths"]["decoder_model"])
+    s_prime = _aligned_targets(config["paths"]["sim_counterfactual"], ids, decoder.columns)
     model = LatentIntervention(
         latent_dim=z.shape[1],
         columns=decoder.columns,
@@ -153,13 +145,13 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
 def stage_evaluate(config: dict[str, Any]) -> None:
     """Evaluate manipulator faithfulness on the validation split."""
     z, ids = _load_latents(config)
-    s_factual = _aligned_targets(config["paths"]["sim_factual"], ids)
-    s_prime = _aligned_targets(config["paths"]["sim_counterfactual"], ids)
-    intervention = _intervention()
+    intervention = load_intervention()
     _, val_idx = _split(len(ids), config["semantic_decoder"]["val_split"], config["seed"])
 
     decoder = SemanticDecoder.load(config["paths"]["decoder_model"])
     model = LatentIntervention.load(config["paths"]["manipulator_model"])
+    s_factual = _aligned_targets(config["paths"]["sim_factual"], ids, decoder.columns)
+    s_prime = _aligned_targets(config["paths"]["sim_counterfactual"], ids, decoder.columns)
     z_val = z[val_idx]
     values, mask = make_objective(intervention, decoder.columns, batch_size=len(val_idx))
     with torch.no_grad():
@@ -168,7 +160,7 @@ def stage_evaluate(config: dict[str, Any]) -> None:
 
     consistency = {
         col.name: (preds[col.name] == s_prime[col.name][val_idx]).float().mean().item()
-        for col in SCM_COLUMNS
+        for col in decoder.columns
     }
     decoder_val_acc = accuracy(decoder, z_val, {k: v[val_idx] for k, v in s_factual.items()})
     delta = z_prime - z_val

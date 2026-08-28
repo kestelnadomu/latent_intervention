@@ -21,7 +21,7 @@ Three parameterisations:
 The consistency objective (Plan A/B) is
     L = E_z[ D_KL( (h_S . g)(. | z, delta) || (g . h_Z)(. | z, delta) ) ]
         + alpha ||z' - z||_1 + beta ||z' - z||_2^2
-with forward (mass-covering) KL over the dense |S| = 3456 vector.
+with forward (mass-covering) KL over the dense |S| = prod(cardinalities) vector.
 """
 
 import math
@@ -31,30 +31,22 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.semantic_decoder import SCM_COLUMNS, ColumnSpec, SemanticDecoder
-from src.symbolic_intervention import SymbolicIntervention
+from src.schema import ColumnSpec, flat_state_index, unflatten_state_index
+from src.semantic_decoder import SemanticDecoder
+from src.symbolic_intervention import SymbolicKernel
 
-# --- flat state <-> per-column indices --------------------------------------------------
-# Column-major over `columns`, matching SemanticDecoder.log_joint and
-# SymbolicIntervention.state_index: idx = ((s_0 * k_1) + s_1) * k_2 + ...
-
-
-def flat_state_index(values: torch.Tensor, columns: list[ColumnSpec] = SCM_COLUMNS) -> torch.Tensor:
-    """(..., n_cols) category indices -> (...,) flat state index."""
-    idx = torch.zeros(values.shape[:-1], dtype=torch.long, device=values.device)
-    for i, col in enumerate(columns):
-        idx = idx * col.n_categories + values[..., i]
-    return idx
-
-
-def unflatten_state_index(flat: torch.Tensor, columns: list[ColumnSpec] = SCM_COLUMNS) -> torch.Tensor:
-    """(...,) flat state index -> (..., n_cols) category indices."""
-    rem = flat.clone()
-    cols: list[torch.Tensor] = []
-    for col in reversed(columns):
-        cols.append(rem % col.n_categories)
-        rem = torch.div(rem, col.n_categories, rounding_mode="floor")
-    return torch.stack(list(reversed(cols)), dim=-1)
+__all__ = [
+    "flat_state_index",
+    "unflatten_state_index",
+    "LatentIntervention",
+    "LatentInterventionA",
+    "LatentInterventionB",
+    "make_objective",
+    "consistency_target",
+    "train_latent_intervention",
+    "train_latent_intervention_a",
+    "train_latent_intervention_b",
+]
 
 
 # --- shared building blocks -------------------------------------------------------------
@@ -166,7 +158,7 @@ class LatentIntervention(nn.Module):
     def __init__(
         self,
         latent_dim: int,
-        columns: list[ColumnSpec] = SCM_COLUMNS,
+        columns: list[ColumnSpec],
         d_model: int = 128,
         nhead: int = 4,
         dim_feedforward: int = 256,
@@ -237,7 +229,7 @@ class LatentIntervention(nn.Module):
 
 def make_objective(
     intervention: dict[str, int],
-    columns: list[ColumnSpec] = SCM_COLUMNS,
+    columns: list[ColumnSpec],
     batch_size: int = 1,
     device: str | torch.device | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -372,7 +364,7 @@ def train_latent_intervention(
 @torch.no_grad()
 def consistency_target(
     decoder: SemanticDecoder,
-    h_s: SymbolicIntervention,
+    h_s: SymbolicKernel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     chunk: int = 512,
@@ -404,7 +396,7 @@ class LatentInterventionA(nn.Module):
     def __init__(
         self,
         latent_dim: int,
-        columns: list[ColumnSpec] = SCM_COLUMNS,
+        columns: list[ColumnSpec],
         noise_std: float = 1.0,
         d_model: int = 128,
         nhead: int = 4,
@@ -478,7 +470,7 @@ class LatentInterventionA(nn.Module):
 def train_latent_intervention_a(
     model: LatentInterventionA,
     decoder: SemanticDecoder,
-    h_s: SymbolicIntervention,
+    h_s: SymbolicKernel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     n_samples: int = 8,
@@ -604,7 +596,7 @@ class LatentInterventionB(nn.Module):
     def __init__(
         self,
         latent_dim: int,
-        columns: list[ColumnSpec] = SCM_COLUMNS,
+        columns: list[ColumnSpec],
         d_model: int = 128,
         nhead: int = 4,
         dim_feedforward: int = 256,
@@ -674,7 +666,7 @@ class LatentInterventionB(nn.Module):
 def train_latent_intervention_b(
     model: LatentInterventionB,
     decoder: SemanticDecoder,
-    h_s: SymbolicIntervention,
+    h_s: SymbolicKernel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     s_prime_targets: dict[str, torch.Tensor],
@@ -770,20 +762,45 @@ def train_latent_intervention_b(
 
 
 if __name__ == "__main__":
-    # Smoke tests on random data: identity at init, then a short training run for each plan
-    # against a freshly (randomly) initialised frozen decoder and the closed-form h_S.
+    # Smoke tests on a random schema: identity at init, then a short training run for
+    # each plan against a randomly initialised frozen decoder and a stub h_S.
     torch.manual_seed(0)
     latent_dim, n = 128, 192
+    columns = [ColumnSpec(f"c{i}", int(k)) for i, k in enumerate(torch.randint(2, 4, (5,)))]
+    total_states = 1
+    for col in columns:
+        total_states *= col.n_categories
+
+    class _StubKernel:
+        """Identity h_S: every factual state is its own counterfactual (rows sum to 1)."""
+
+        columns = columns
+
+        def state_index(self, state: dict[str, int]) -> int:
+            idx = 0
+            for c in self.columns:
+                idx = idx * c.n_categories + int(state[c.name])
+            return idx
+
+        def transition_matrix(self, delta: dict[str, int]) -> torch.Tensor:
+            eye = torch.arange(total_states)
+            return torch.sparse_coo_tensor(
+                torch.stack([eye, eye]), torch.ones(total_states), (total_states, total_states)
+            ).coalesce()
+
+        def compose(self, g_probs: torch.Tensor, delta: dict[str, int]) -> torch.Tensor:
+            return g_probs
+
     z = torch.randn(n, latent_dim)
-    decoder = SemanticDecoder(latent_dim)
-    h_s = SymbolicIntervention.from_scm()
-    intervention = {"G": 1}
-    s_prime = {col.name: torch.randint(col.n_categories, (n,)) for col in SCM_COLUMNS}
-    s_prime["G"] = torch.ones(n, dtype=torch.long)
-    values, mask = make_objective(intervention, batch_size=n)
+    decoder = SemanticDecoder(latent_dim, columns)
+    h_s = _StubKernel()
+    intervention = {columns[1].name: 1}
+    s_prime = {col.name: torch.randint(col.n_categories, (n,)) for col in columns}
+    s_prime[columns[1].name] = torch.ones(n, dtype=torch.long)
+    values, mask = make_objective(intervention, columns, batch_size=n)
 
     # Plan 0 -- baseline
-    base = LatentIntervention(latent_dim)
+    base = LatentIntervention(latent_dim, columns)
     with torch.no_grad():
         assert torch.allclose(base(z, values, mask), z), "baseline: identity at init"
     h0 = train_latent_intervention(base, decoder, z, intervention, s_prime, epochs=5, seed=0, verbose=False)
@@ -791,7 +808,7 @@ if __name__ == "__main__":
 
     # Plan A -- engression
     gen = torch.Generator().manual_seed(0)
-    a = LatentInterventionA(latent_dim, noise_std=0.5)
+    a = LatentInterventionA(latent_dim, columns, noise_std=0.5)
     with torch.no_grad():
         assert torch.allclose(a(z, values, mask, gen), z), "plan A: identity at init"
     ha = train_latent_intervention_a(
@@ -800,7 +817,7 @@ if __name__ == "__main__":
     print(f"[plan A] total {ha[0]['total']:.4f} -> {ha[-1]['total']:.4f}  kl {ha[-1]['kl']:.4f}")
 
     # Plan B -- discrete mixture
-    b = LatentInterventionB(latent_dim, top_k=8)
+    b = LatentInterventionB(latent_dim, columns, top_k=8)
     with torch.no_grad():
         z_b = b(z, values, mask)
     assert torch.allclose(z_b, z), "plan B: realiser is identity at init"
@@ -816,6 +833,6 @@ if __name__ == "__main__":
     with torch.no_grad():
         z_prime = b(z, values, mask)
     preds = decoder.predict(z_prime)
-    consistency = {c.name: (preds[c.name] == s_prime[c.name]).float().mean().item() for c in SCM_COLUMNS}
+    consistency = {c.name: (preds[c.name] == s_prime[c.name]).float().mean().item() for c in columns}
     print("[plan B] consistency accuracy:", {k: round(v, 2) for k, v in consistency.items()})
     print(f"[plan B] mean latent shift: {(z_prime - z).norm(dim=1).mean():.3f}")
