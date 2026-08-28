@@ -15,16 +15,18 @@ with `eps_i ~ Normal(mu_i, sigma_i)`, so the three-step counterfactual recipe is
 Enumerating all |S| = 3456 factual states precomputes a sparse 3456 x 3456 transition
 matrix per delta; h_S is then a lookup, and (h_S . g)(. | z) = M_delta^T g(. | z).
 
-The noise parameters (mu_i, sigma_i), and optionally the mechanism coefficients, can be
-taken from the known SCM (`SymbolicIntervention.from_scm`) or estimated from a factual
-sample (`SymbolicIntervention.fit`) when the simulator is not available (Studies 2/3).
+An SCM is passed in explicitly as `mechanism_coeffs` (which also encodes the graph: keys
+are the non-root nodes, each value maps a parent to its linear weight) plus `noise_params`
+(mu_i, sigma_i per non-root node). `SymbolicIntervention.from_scm` takes both from a known
+SCM; `SymbolicIntervention.fit` keeps the graph but estimates the noise (and optionally
+re-fits the coefficients) from a factual sample when the simulator is unavailable.
 """
 
 from __future__ import annotations
 
 import math
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from itertools import product
 
 import numpy as np
@@ -33,12 +35,11 @@ import torch
 
 from src.semantic_decoder import SCM_COLUMNS, ColumnSpec
 
-# --- SCM structure (mirrors exp/sim/scm.py; Q is excluded - not part of S) -------------
-
-ROOT_NODES: tuple[str, ...] = ("R", "G", "A")
+# --- Reference CV-screening SCM (mirrors exp/sim/scm.py; Q excluded - not part of S) ----
+# Used only as the default arguments of `from_scm` / `fit`; no method below reads these.
 
 # Linear mechanism m_i(pa_i) = sum_j coef[j] * pa_j (no bias term in this SCM).
-MECHANISM_COEFFS: dict[str, dict[str, float]] = {
+CV_SCREENING_MECHANISM_COEFFS: dict[str, dict[str, float]] = {
     "E": {"R": 0.4, "A": 0.4, "G": 0.4},
     "S": {"E": 0.45, "A": 0.25},
     "W": {"A": 0.5, "E": 0.3},
@@ -47,7 +48,7 @@ MECHANISM_COEFFS: dict[str, dict[str, float]] = {
 }
 
 # eps_i ~ Normal(mu_i, sigma_i), from exp/sim/R/utils/sim_scm.R / exp/sim/scm.py NOISE_SPEC.
-NOISE_PARAMS: dict[str, tuple[float, float]] = {
+CV_SCREENING_NOISE_PARAMS: dict[str, tuple[float, float]] = {
     "E": (0.35, 0.50),
     "S": (0.25, 0.35),
     "W": (0.00, 0.50),
@@ -56,27 +57,6 @@ NOISE_PARAMS: dict[str, tuple[float, float]] = {
 }
 
 _SQRT2 = math.sqrt(2.0)
-
-
-def _children() -> dict[str, list[str]]:
-    out: dict[str, list[str]] = {n: [] for n in [*ROOT_NODES, *MECHANISM_COEFFS]}
-    for child, parents in MECHANISM_COEFFS.items():
-        for p in parents:
-            out[p].append(child)
-    return out
-
-
-def _descendants(nodes: set[str]) -> set[str]:
-    """Transitive descendant closure of `nodes` (excluding the nodes themselves)."""
-    children = _children()
-    seen: set[str] = set()
-    stack = [c for n in nodes for c in children[n]]
-    while stack:
-        n = stack.pop()
-        if n not in seen:
-            seen.add(n)
-            stack.extend(children[n])
-    return seen
 
 
 def _normal_cdf(x: float, mu: float, sigma: float) -> float:
@@ -119,21 +99,21 @@ def _category_probs(m_prime: float, lo: float, hi: float, mu: float, sigma: floa
 @dataclass
 class SymbolicIntervention:
     """
-    Closed-form symbolic counterfactual kernel h_S(s' | s, delta) for the CV-screening SCM.
+    Closed-form symbolic counterfactual kernel h_S(s' | s, delta) for a linear-Gaussian
+    rounded-and-clipped SCM. The SCM is supplied explicitly - use `from_scm` or `fit`
+    rather than constructing this directly.
 
     Attributes:
         columns: the structured state schema (single source of truth: SCM_COLUMNS).
-        mechanism_coeffs: linear mechanism weights m_i(pa_i) = sum_j coef[j] pa_j.
+        mechanism_coeffs: linear mechanism weights m_i(pa_i) = sum_j coef[j] pa_j; the
+            keys are the non-root nodes and each value's keys are that node's parents,
+            so this doubles as the graph structure.
         noise_params: (mu_i, sigma_i) of eps_i ~ Normal for each non-root node.
     """
 
-    columns: list[ColumnSpec] = field(default_factory=lambda: list(SCM_COLUMNS))
-    mechanism_coeffs: dict[str, dict[str, float]] = field(
-        default_factory=lambda: {k: dict(v) for k, v in MECHANISM_COEFFS.items()}
-    )
-    noise_params: dict[str, tuple[float, float]] = field(
-        default_factory=lambda: dict(NOISE_PARAMS)
-    )
+    columns: list[ColumnSpec]
+    mechanism_coeffs: dict[str, dict[str, float]]
+    noise_params: dict[str, tuple[float, float]]
 
     def __post_init__(self) -> None:
         self._names = [c.name for c in self.columns]
@@ -143,27 +123,43 @@ class SymbolicIntervention:
     # --- constructors -----------------------------------------------------------------
 
     @classmethod
-    def from_scm(cls, columns: list[ColumnSpec] = SCM_COLUMNS) -> "SymbolicIntervention":
-        """Use the known simulator mechanism and noise parameters."""
-        return cls(columns=list(columns))
+    def from_scm(
+        cls,
+        columns: list[ColumnSpec] = SCM_COLUMNS,
+        mechanism_coeffs: dict[str, dict[str, float]] = CV_SCREENING_MECHANISM_COEFFS,
+        noise_params: dict[str, tuple[float, float]] = CV_SCREENING_NOISE_PARAMS,
+    ) -> "SymbolicIntervention":
+        """
+        Build the kernel from a fully known SCM: linear mechanism weights and Normal noise
+        parameters per non-root node. Defaults describe the CV-screening SCM
+        (exp/sim/scm.py); pass your own to use a different graph or parameters.
+        """
+        return cls(
+            columns=list(columns),
+            mechanism_coeffs={k: dict(v) for k, v in mechanism_coeffs.items()},
+            noise_params=dict(noise_params),
+        )
 
     @classmethod
     def fit(
         cls,
         factual: pd.DataFrame,
+        mechanism_coeffs: dict[str, dict[str, float]] = CV_SCREENING_MECHANISM_COEFFS,
         columns: list[ColumnSpec] = SCM_COLUMNS,
         fit_mechanisms: bool = False,
     ) -> "SymbolicIntervention":
         """
-        Estimate the noise parameters (and optionally the mechanism coefficients) from a
-        factual sample, for when the simulator is unavailable.
+        Estimate the noise parameters from a factual sample, for when the simulator is
+        unavailable. `mechanism_coeffs` supplies the graph (nodes and their parents); its
+        coefficient values are used as given, or re-estimated by least squares when
+        `fit_mechanisms=True`.
 
         `sigma_i` is corrected for the uniform rounding jitter (Var -= 1/12); this is a
         method-of-moments estimate on the interior (non-censored) rows. The principled
         alternative is MLE of the rounded-censored-normal likelihood; empirical transition
         counts on (factual, counterfactual) pairs remain the validation check.
         """
-        coeffs = {k: dict(v) for k, v in MECHANISM_COEFFS.items()}
+        coeffs = {k: dict(v) for k, v in mechanism_coeffs.items()}
         noise: dict[str, tuple[float, float]] = {}
         for name, parents in coeffs.items():
             k = next(c.n_categories for c in columns if c.name == name)
@@ -194,9 +190,28 @@ class SymbolicIntervention:
     def _mechanism(self, node: str, assign: dict[str, int]) -> float:
         return sum(coef * assign[p] for p, coef in self.mechanism_coeffs[node].items())
 
+    def _children(self) -> dict[str, list[str]]:
+        out: dict[str, list[str]] = {name: [] for name in self._names}
+        for child, parents in self.mechanism_coeffs.items():
+            for p in parents:
+                out[p].append(child)
+        return out
+
+    def _descendants(self, nodes: set[str]) -> set[str]:
+        """Transitive descendant closure of `nodes` (excluding the nodes themselves)."""
+        children = self._children()
+        seen: set[str] = set()
+        stack = [c for n in nodes for c in children[n]]
+        while stack:
+            n = stack.pop()
+            if n not in seen:
+                seen.add(n)
+                stack.extend(children[n])
+        return seen
+
     def counterfactual(self, state: dict[str, int], delta: dict[str, int]) -> dict[int, float]:
         """h_S(. | state, delta) as {state_index: probability} over the sparse support."""
-        movable = _descendants(set(delta))
+        movable = self._descendants(set(delta))
         fixed: dict[str, int] = {}
         for name in self._names:
             if name in delta:
