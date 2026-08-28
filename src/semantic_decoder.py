@@ -134,16 +134,14 @@ class SemanticAutoRegDecoder(SemanticDecoder):
             dropout: float = 0.1,
             embed_dim: int = 16,
         ) -> None:
-            super().__init__()
-            self.columns = list(columns)
-            self._config = {
-                "latent_dim": latent_dim,
-                "columns": [(c.name, c.n_categories) for c in self.columns],
-                "hidden_dim": hidden_dim,
-                "n_hidden": n_hidden,
-                "dropout": dropout,
-            }
-            self.trunk = _mlp_trunk(latent_dim, hidden_dim, n_hidden, dropout)
+            super().__init__(
+                latent_dim,
+                columns,
+                hidden_dim,
+                n_hidden,
+                dropout
+            )
+            self._config["embed_dim"] = embed_dim
             d = hidden_dim if n_hidden > 0 else latent_dim
             self.embed = nn.ModuleDict(
                 {c.name: nn.Embedding(c.n_categories, embed_dim) for c in self.columns}
