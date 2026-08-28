@@ -22,28 +22,28 @@ semantic_decoder:
   batch_size: 64
   lr: 1.0e-3
   val_split: 0.2
-  autoregresseive:
+  autoregressive:
     embed_dim: 16          # decoded-prefix embedding size
 
 latent_intervention:
   # variant: which h_Z parameterisation (docs/architecture/latent_intervention.md)
   #   baseline   -> LatentIntervention  (Plan 0: deterministic z' = z + T(z,delta), per-column CE)
-  #   engression -> LatentInterventionA (Plan A: z' = z + Delta(z+eps,delta), MC forward-KL)
-  #   mixture    -> LatentInterventionB (Plan B: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
+  #   pre_additive -> LatentInterventionPreAdditive (Plan A: z' = z + Delta(z+eps,delta), MC forward-KL)
+  #   dist    -> LatentInterventionDist (Plan B: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
   variant: baseline
   d_model: 128
   nhead: 4
   dim_feedforward: 256
   dropout: 0.1
-  epochs: 50             # baseline / engression
+  epochs: 50             # baseline / pre_additive
   batch_size: 64
   lr: 1.0e-4
   sparsity_weight: 1.0    # alpha: L1 penalty on z' - z
   proximity_weight: 1.0   # beta:  L2 penalty on z' - z
-  engression:
+  pre_additive:
     noise_std: 1.0        # sigma of the pre-additive noise eps ~ N(0, sigma^2 I)
     n_samples: 8          # M: Monte-Carlo samples for the g . h_Z composition
-  mixture:
+  dist:
     embed_dim: 16         # w_theta decoded-prefix embedding size
     top_k: 16             # retained counterfactual states s' in the exact composition
     pretrain_epochs: 30   # distil w_theta + fit the realiser Delta_phi
