@@ -66,4 +66,5 @@ pools:
 generation:
   n_templates: 50    # template pool size (one billed call each)
   n_personas: 100    # persona pool size (one billed call each)
-  limit: null        # max rows to generate per stage run (billed calls); null = all
+  limit: null        # max IDs processed per stage run; null = all
+  max_attempts: 3    # total API calls allowed per stage and ID, persisted across resumes

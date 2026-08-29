@@ -20,7 +20,8 @@ import csv
 import hashlib
 import json
 import os
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -31,7 +32,6 @@ import yaml
 from exp.sim.generate_text import (
     DEFAULT_BASE_URL,
     GenerationResult,
-    generate_text,
     generate_text_result,
     load_codebook_spec,
     load_prompts,
@@ -122,6 +122,13 @@ def _generation_limit(config: Mapping[str, Any], count: int) -> int:
     return min(limit, count)
 
 
+def _max_generation_attempts(config: Mapping[str, Any]) -> int:
+    attempts = int(config.get("generation", {}).get("max_attempts", 3))
+    if not 1 <= attempts <= 3:
+        raise ValueError("generation.max_attempts must be between 1 and 3")
+    return attempts
+
+
 def _input_digest(settings: Mapping[str, Any], files: Mapping[str, Path]) -> str:
     digest = hashlib.sha256(json.dumps(settings, sort_keys=True).encode("utf-8"))
     for name, path in sorted(files.items()):
@@ -132,6 +139,25 @@ def _input_digest(settings: Mapping[str, Any], files: Mapping[str, Path]) -> str
 
 def _generation_info_path(output: Path) -> Path:
     return output.with_suffix(".generation.json")
+
+
+def _archive_existing(paths: Iterable[str | Path]) -> None:
+    """Move existing run artifacts aside using one date-only suffix."""
+    existing = list(dict.fromkeys(Path(path) for path in paths if Path(path).exists()))
+    if not existing:
+        return
+    stamp = datetime.now().strftime("%y-%m-%d")
+    destinations = {}
+    for path in existing:
+        suffixes = "".join(path.suffixes)
+        basename = path.name[: -len(suffixes)] if suffixes else path.name
+        destinations[path] = path.with_name(f"{basename}_{stamp}{suffixes}")
+    collisions = [destination for destination in destinations.values() if destination.exists()]
+    if collisions:
+        raise FileExistsError(f"dated archive already exists: {collisions[0]}")
+    for path, destination in destinations.items():
+        path.rename(destination)
+        print(f"archived {path} -> {destination}")
 
 
 def _prepare_generated_csv(
@@ -156,7 +182,10 @@ def _prepare_generated_csv(
     if not output.exists():
         if not create:
             raise FileNotFoundError(f"generated output not found: {output}")
-        _write_json(info_path, {**expected_info, "complete": False, "n_completed": 0})
+        _write_json(
+            info_path,
+            {**expected_info, "complete": False, "n_completed": 0, "attempts": {}},
+        )
         output.parent.mkdir(parents=True, exist_ok=True)
         pd.DataFrame(columns=schema).to_csv(output, index=False)
 
@@ -180,6 +209,36 @@ def _prepare_generated_csv(
     if frame["text"].isna().any() or not frame["text"].astype(str).str.strip().all():
         raise ValueError(f"{output} contains empty text")
     return frame.sort_values(id_column).reset_index(drop=True)
+
+
+def _generate_with_attempts(
+    output: Path,
+    row_id: int,
+    maximum: int,
+    call: Callable[[], GenerationResult],
+) -> GenerationResult:
+    """Return one accepted response, making at most ``maximum`` calls per ID."""
+    info_path = _generation_info_path(output)
+    info = json.loads(info_path.read_text(encoding="utf-8"))
+    attempts = info.setdefault("attempts", {})
+    used = int(attempts.get(str(row_id), 0))
+    if used < 0:
+        raise ValueError(f"{info_path} has an invalid attempt count for id={row_id}")
+    for attempt in range(used + 1, maximum + 1):
+        attempts[str(row_id)] = attempt
+        _write_json(info_path, info)
+        try:
+            result = call()
+            if not result.text.strip():
+                raise RuntimeError("empty text")
+            if result.finish_reason != "stop":
+                raise RuntimeError(f"finish_reason={result.finish_reason!r}")
+            if not result.model or not result.model.strip():
+                raise RuntimeError("response model is missing")
+            return result
+        except RuntimeError as exc:
+            print(f"id={row_id} attempt {attempt}/{maximum} failed: {exc}")
+    raise RuntimeError(f"id={row_id} exhausted its {maximum} generation attempts")
 
 
 def _finish_generation(output: Path, completed: set[int], expected: set[int]) -> None:
@@ -266,6 +325,19 @@ def stage_simulate(config: dict[str, Any]) -> None:
     )
 
     sim_dir = Path(config["paths"]["sim_dir"])
+    text_outputs = [
+        Path(config["paths"]["texts"]),
+        Path(config["paths"]["texts_counterfactual"]),
+    ]
+    archive_paths = [
+        *_simulation_paths(config).values(),
+        sim_dir / "simulation_info.json",
+        Path(config["paths"]["render_plan"]),
+    ]
+    for output in text_outputs:
+        archive_paths.extend([output, _generation_info_path(output)])
+    _archive_existing(archive_paths)
+
     sim_dir.mkdir(parents=True, exist_ok=True)
     outputs = _simulation_paths(config)
     for name, frame in (
@@ -349,6 +421,7 @@ def _generate_rows(
     prompt_path: str | Path,
     label: str,
 ) -> set[int]:
+    maximum = _max_generation_attempts(config)
     todo = todo[: _generation_limit(config, len(todo))]
     if not todo:
         return set()
@@ -360,16 +433,22 @@ def _generate_rows(
     with open(out_path, "a", encoding="utf-8", newline="") as stream:
         writer = csv.writer(stream)
         for position, (sample, prefix) in enumerate(todo, 1):
-            text = generate_text(
-                sample,
-                prompts["prompts"][0],
-                prompts["templates"],
-                api_key=api_key,
-                base_url=base_url,
+            row_id = int(prefix[0])
+            result = _generate_with_attempts(
+                out_path,
+                row_id,
+                maximum,
+                lambda: generate_text_result(
+                    sample,
+                    prompts["prompts"][0],
+                    prompts["templates"],
+                    api_key=api_key,
+                    base_url=base_url,
+                ),
             )
-            writer.writerow([*prefix, text])
+            writer.writerow([*prefix, result.text])
             stream.flush()
-            written.add(int(prefix[0]))
+            written.add(row_id)
             if position % 25 == 0 or position == len(todo):
                 print(f"  {position}/{len(todo)}")
     return written
@@ -679,10 +758,16 @@ def _validate_grounding(
         expected_mode = "identity_copy" if counterfactual and identity else "generated"
         if row["generation_mode"] != expected_mode:
             raise ValueError(f"incorrect generation mode for id={row_id}")
-        if expected_mode == "identity_copy" and (
-            factual_by_id is None or row["text"] != factual_by_id.at[row_id, "text"]
-        ):
-            raise ValueError(f"identity counterfactual text differs for id={row_id}")
+        if expected_mode == "generated":
+            if row["finish_reason"] != "stop":
+                raise ValueError(f"generated text did not finish normally for id={row_id}")
+            if pd.isna(row["model"]) or not str(row["model"]).strip():
+                raise ValueError(f"generated text has no response model for id={row_id}")
+        else:
+            if factual_by_id is None or row["text"] != factual_by_id.at[row_id, "text"]:
+                raise ValueError(f"identity counterfactual text differs for id={row_id}")
+            if any(pd.notna(row[column]) for column in RESPONSE_COLUMNS[:-1]):
+                raise ValueError(f"identity counterfactual has response metadata for id={row_id}")
 
 
 def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
@@ -698,6 +783,7 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
     personas = personas.set_index("persona_id")
     prompt, prompt_templates = _cv_prompt(config)
     _generation_limit(config, 0)  # validate before identity rows or billed calls
+    maximum = _max_generation_attempts(config)
 
     all_ids = set(pairs["id"])
     factual_text: pd.DataFrame | None = None
@@ -785,12 +871,17 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
             sample, concrete = _render_inputs(
                 state_by_id.loc[row_id], plan_row, templates, personas, spec
             )
-            result = generate_text_result(
-                sample,
-                prompt,
-                prompt_templates,
-                api_key=api_key,
-                base_url=base_url,
+            result = _generate_with_attempts(
+                output,
+                row_id,
+                maximum,
+                lambda: generate_text_result(
+                    sample,
+                    prompt,
+                    prompt_templates,
+                    api_key=api_key,
+                    base_url=base_url,
+                ),
             )
             _append_cv_row(
                 output,

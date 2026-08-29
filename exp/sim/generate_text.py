@@ -324,7 +324,8 @@ def generate_text_result(
     formatted = format_messages(msgs, sample, templates)
     metadata = prompt_template.get("metadata", {})
 
-    client = OpenAI(api_key=api_key, base_url=base_url)
+    # The stage runner owns the persisted per-ID retry budget.
+    client = OpenAI(api_key=api_key, base_url=base_url, max_retries=0)
     try:
         response = client.chat.completions.create(
             model=metadata.get("model", model),
