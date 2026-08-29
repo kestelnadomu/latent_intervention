@@ -93,23 +93,30 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
     texts = factual["text"].astype(str).tolist() + [
         str(counterfactual_by_id.at[row_id, "text"]) for row_id in nonidentity_ids
     ]
-    if encoder_factory is None:
-        from src.encoder import TextEncoder
-
-        encoder_factory = TextEncoder
     enc = config["encoder"]
-    encoder = encoder_factory(
-        model_name=enc["model_name"],
-        device=enc["device"],
-        max_len=int(enc["max_len"]),
-        local_checkpoint=enc.get("local_checkpoint"),
-    )
+    variant = enc.get("variant", "langvae")
+    if encoder_factory is None:
+        from src.encoder import make_encoder
+
+        encoder = make_encoder(enc)
+    else:
+        encoder = encoder_factory(
+            model_name=enc["model_name"],
+            model_revision=enc.get("model_revision"),
+            device=enc["device"],
+            max_len=int(enc["max_len"]),
+            local_checkpoint=enc.get("local_checkpoint"),
+        )
+    if int(encoder.latent_dim) != 128:
+        raise ValueError(
+            f"encoder latent dimension must be 128, got {encoder.latent_dim}"
+        )
     encoded = encoder.encode(
         texts,
         deterministic=True,
         batch_size=int(enc["batch_size"]),
     ).detach().cpu()
-    if encoded.ndim != 2 or encoded.shape[0] != len(texts) or not torch.isfinite(encoded).all():
+    if encoded.shape != (len(texts), 128) or not torch.isfinite(encoded).all():
         raise ValueError("encoder returned invalid latent vectors")
 
     # Detach factual storage from the appended counterfactual encodings before saving.
@@ -132,14 +139,35 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
     output.parent.mkdir(parents=True, exist_ok=True)
     torch.save(payload, output)
     info_path = output.with_suffix(".info.json")
+    is_nomic = variant == "nomic"
     info_path.write_text(
         json.dumps(
             {
-                "encoder": enc["model_name"],
+                "encoder_variant": variant,
+                "encoder": (
+                    enc.get("nomic_model_name") if is_nomic else enc["model_name"]
+                ),
+                "model_revision": (
+                    enc.get("nomic_model_revision")
+                    if is_nomic
+                    else None if enc.get("local_checkpoint") else enc.get("model_revision")
+                ),
                 "local_checkpoint": (
-                    str(enc["local_checkpoint"]) if enc.get("local_checkpoint") else None
+                    None
+                    if is_nomic
+                    else str(enc["local_checkpoint"])
+                    if enc.get("local_checkpoint")
+                    else None
+                ),
+                "code_revision": enc.get("nomic_code_revision") if is_nomic else None,
+                "task_prefix": (
+                    f"{enc.get('nomic_task', 'classification')}: " if is_nomic else None
+                ),
+                "normalization": (
+                    "layer_norm+truncate_128+l2" if is_nomic else None
                 ),
                 "langvae_version": _package_version("langvae"),
+                "transformers_version": _package_version("transformers"),
                 "max_length": int(enc["max_len"]),
                 "deterministic": True,
                 "latent_dimension": int(z.shape[1]),
