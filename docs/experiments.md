@@ -29,13 +29,12 @@ Two sub-questions, to be reported separately:
 1. Simulate tabular data: factual $\mathbf S$ and counterfactual $\mathbf S'$ under $\delta$,
    sharing exogenous noise $\varepsilon$.
 2. Generate factual texts $X$ for train **and** test.
-3. Generate counterfactual texts $X'$ for the **test set only**, and only for the strata
-   where they are informative:
+3. Generate a complete counterfactual-text artifact for the **test set only**:
    - rows already at the target value are their own counterfactuals ($X' = X$ exactly) —
      never pay for these; under $do(\texttt{G}{=}1)$ that is ~50% of rows;
-   - among the rest, oversample the **ambiguous strata** (those where $\mathbf S'$ is not
-     determined by $\mathbf S$ — 46.9% of mass, see `notes/leo/idea.md`). These are where
-     the stochastic claim is actually tested.
+   - generate $X'$ for every remaining nonidentity test unit. Ambiguous strata (those where
+     $\mathbf S'$ is not determined by $\mathbf S$) can be reported separately or reweighted
+     during evaluation, without changing the random unit split or generation coverage.
 4. Split **by unit**: all worlds of one simulated candidate stay in the same split.
 
 ### Function Derivation
@@ -169,7 +168,7 @@ flowchart TB
 
     subgraph TXT["2 · Renderer, coupled context"]
         XF["X factual text<br/>train + test"]
-        XC["X' counterfactual text<br/>TEST ONLY, ambiguous strata"]
+        XC["X' counterfactual text<br/>TEST ONLY"]
     end
     SF -->|LLM| XF
     SC -->|LLM| XC
@@ -221,9 +220,11 @@ Dashed = supervision.
 
 ---
 
-## Open decisions
+## Remaining open decisions
 
-1. **Query set.** One intervention ($do(\texttt{G}{=}1)$) or a grid? A grid needs $h_Z$ conditioned on $\delta$ (the architecture already supports it) and multiplies generation cost.
-2. **Sample size** from transition support: count rare transitions in a large cheap tabular run before committing to billed text generation.
-3. **Study 2/3 domain**, driven by where a defensible SCM exists.
-4. **Fairness measure** to be declared before results are computed.
+The query set is fixed to the single intervention $do(\texttt{G}{=}1)$; no query grid or
+orbit is generated.
+
+1. **Sample size** from transition support: count rare transitions in a large cheap tabular run before committing to billed text generation.
+2. **Study 2/3 domain**, driven by where a defensible SCM exists.
+3. **Fairness measure** to be declared before results are computed.

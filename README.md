@@ -2,9 +2,9 @@
 
 Research code and publication materials for the *latent intervention* project.
 
-The pipeline builds counterfactual latent representations of text: an SCM simulates factual and counterfactual candidate attributes, an LLM verbalizes the factual rows into CV personal statements, a frozen LangVAE encodes them into latents, a semantic decoder grounds the latents in the SCM variables, and a latent manipulator learns to transform latents analogously to the SCM's counterfactual operation.
+The pipeline builds counterfactual latent representations of text: an SCM simulates paired factual and counterfactual candidate attributes, an LLM verbalizes the approved worlds into CV personal statements, a frozen LangVAE encodes them into latents, a semantic decoder grounds the latents in the SCM variables, and a latent manipulator learns to transform latents analogously to the SCM's counterfactual operation.
 
-The synthetic data reproduces the CV Screening dataset of the LIBERTy paper ([arXiv 2601.10700](https://arxiv.org/abs/2601.10700)): the SCM is its Table 9, and text generation follows its Appendix D.3 — seed personal statements are abstracted into narrative templates, personas are generated for sampled job titles, and each factual row is verbalized by combining a template, a persona, and the row's attribute values (with concrete age/years sampled inside their bins).
+The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 2601.10700](https://arxiv.org/abs/2601.10700)). Text generation is a protocol-faithful adaptation of its Appendix D.3: seed personal statements are abstracted into narrative templates, personas are generated for sampled job titles, and each rendered world combines a fixed template, persona, and the unit's attribute values. This is not a literal replication of the released benchmark.
 
 ## Repository layout
 
@@ -29,23 +29,41 @@ Text generation talks to any OpenAI-compatible chat endpoint. Set `llm.base_url`
 
 ## Pipeline
 
-Data generation (configured by `exp/sim/config.yaml`; the intervention defaults to do(G=1)). Every `generate-*` row is one billed API call; stages resume by skipping ids already in their output CSV and can be capped via `generation.limit`:
+The experiment uses one fixed query, `do(G=1)`. Factual `G=0` units receive the nontrivial intervention; factual `G=1` units are identity pairs. It does not generate `do(G=0)`, an opposite-value query, or an orbit of interventions.
+
+The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test split, and whether the structured intervention is an identity. Artifact coverage is:
+
+| Object | Coverage | Artifact |
+| --- | --- | --- |
+| `S`, `S'` | All units | `data/sim/sim_data_{factual,counterfactual}.csv` |
+| `X` | All units | `data/text/cv_factual.csv` |
+| `X'` | Test units only | `data/text/cv_counterfactual.csv` |
+| `Z=f(X)` | All units | `z` in `data/latents/z_pairs.pt` |
+| `Z'=f(X')` | Test units only | `z_prime` in `data/latents/z_pairs.pt` |
+
+Identity test units copy `X'=X` without another LLM call and `Z'=Z` without another encoding. Nonidentity worlds reuse the same template, persona, and bin quantiles. `X'` and `Z'` are evaluation data and never enter the current training losses.
+
+Data generation is configured by `exp/sim/config.yaml`. Every billed generation stage appends successful rows and resumes from missing IDs; a small `*.generation.json` file prevents resuming with changed semantic inputs. `generation.limit` caps billed calls without changing the data definition:
 
 ```bash
-uv run python -m exp.sim.run simulate            # SCM -> data/sim/sim_data_{factual,counterfactual,epsilon}.csv
+uv run python -m exp.sim.run simulate            # S/S', epsilon, pair_index.csv, simulation_info.json
 uv run python -m exp.sim.run generate-templates  # seed statements -> data/text/templates.csv
 uv run python -m exp.sim.run generate-personas   # job titles -> data/text/personas.csv
-uv run python -m exp.sim.run generate-texts      # template + candidate info + persona -> data/text/cv_factual.csv
+uv run python -m exp.sim.run generate-texts      # render_plan.csv and X for every unit
+uv run python -m exp.sim.run generate-counterfactual-texts  # X' for test units only
+uv run python -m exp.sim.run validate-pairs      # validate complete S/S' and X/X' pairing
 ```
 
-Training and evaluation (hyperparameters in `src/config.yaml`):
+Paired latent encoding and the existing training/evaluation stages use `src/config.yaml`:
 
 ```bash
-uv run python -m src.pipeline encode             # texts -> latents (downloads the LangVAE checkpoint on first use)
+uv run python -m src.pipeline encode             # X plus test X' -> one deterministic z_pairs.pt
 uv run python -m src.pipeline train-decoder      # semantic decoder g: Z -> S
 uv run python -m src.pipeline train-manipulator  # manipulator h_Z against frozen g and counterfactual targets
 uv run python -m src.pipeline evaluate           # consistency accuracy + latent shift -> reports/eval.json
 ```
+
+The model-training stages still use their pre-existing internal train/validation split; they do not yet consume `pair_index.csv`. Wiring the held-out pairing split into RQ1 training and evaluation remains separate model work, while the required `test_ids` and `z_prime` are already present in `z_pairs.pt`.
 
 Optionally fine-tune the LangVAE on the generated CVs first (`uv run python -m src.finetune_vae`), then point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder.
 
