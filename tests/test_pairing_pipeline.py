@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from copy import deepcopy
 from pathlib import Path
 
@@ -9,6 +10,11 @@ import pytest
 from exp.sim import run
 from exp.sim.generate_text import GenerationResult
 from exp.sim.pairing import build_pair_index, build_render_plan, materialize_binned_values
+
+
+def _saved_attempts(output: Path) -> dict[int, int]:
+    info = json.loads(run._generation_info_path(output).read_text(encoding="utf-8"))
+    return {int(row_id): int(count) for row_id, count in info["attempts"].items()}
 
 
 def test_pair_index_and_render_plan_are_order_independent() -> None:
@@ -192,6 +198,9 @@ def test_test_only_counterfactual_generation_and_identity_copy(
     assert counterfactual.at[1, "persona_id"] == factual.at[1, "persona_id"]
     assert counterfactual.at[1, "age"] == factual.at[1, "age"]
     assert "Gender: Male" in counterfactual.at[1, "text"]
+    attempts = _saved_attempts(Path(config["paths"]["texts_counterfactual"]))
+    assert attempts[1] == 1
+    assert 2 not in attempts
     run.stage_validate_pairs(config)
 
 
@@ -204,7 +213,11 @@ def test_generation_resumes_and_rejects_changed_prompt_before_a_call(
 
     def fake_generate(sample, *args, **kwargs):
         calls.append(sample)
-        return GenerationResult(text=f"CV {len(calls)}")
+        return GenerationResult(
+            text=f"CV {len(calls)}",
+            model="mock-model",
+            finish_reason="stop",
+        )
 
     monkeypatch.setattr(run, "generate_text_result", fake_generate)
     run.stage_generate_texts(config)
@@ -260,3 +273,44 @@ def test_generation_info_and_csv_must_exist_together(tmp_path: Path) -> None:
             "digest",
             create=True,
         )
+
+
+def test_generation_attempts_are_persisted_and_capped(tmp_path: Path) -> None:
+    output = tmp_path / "texts.csv"
+    info_path = run._generation_info_path(output)
+    run._write_json(info_path, {"attempts": {}})
+    calls = []
+    rejected_results = [
+        GenerationResult("unfinished", model="mock-model", finish_reason="length"),
+        GenerationResult("finished", model="", finish_reason="stop"),
+        GenerationResult("", model="mock-model", finish_reason="stop"),
+    ]
+
+    def rejected() -> GenerationResult:
+        calls.append(True)
+        assert _saved_attempts(output) == {7: len(calls)}
+        return rejected_results[len(calls) - 1]
+
+    with pytest.raises(RuntimeError, match="exhausted its 3 generation attempts"):
+        run._generate_with_attempts(output, 7, 3, rejected)
+    assert len(calls) == 3
+    assert _saved_attempts(output) == {7: 3}
+    with pytest.raises(RuntimeError, match="exhausted its 3 generation attempts"):
+        run._generate_with_attempts(output, 7, 3, rejected)
+    assert len(calls) == 3
+
+
+def test_archive_existing_uses_one_date_only_suffix(tmp_path: Path) -> None:
+    first = tmp_path / "sim_data_factual.csv"
+    second = tmp_path / "cv_factual.generation.json"
+    first.write_text("data", encoding="utf-8")
+    second.write_text("{}", encoding="utf-8")
+
+    stamp = run.datetime.now().strftime("%y-%m-%d")
+    run._archive_existing([first, second])
+
+    assert not first.exists()
+    assert not second.exists()
+    assert (tmp_path / f"sim_data_factual_{stamp}.csv").read_text(encoding="utf-8") == "data"
+    archived_info = tmp_path / f"cv_factual_{stamp}.generation.json"
+    assert archived_info.read_text(encoding="utf-8") == "{}"
