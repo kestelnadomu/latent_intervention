@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pandas as pd
 import pytest
 import torch
 
+import src.encoder as encoder_module
 from src.pair_encoding import encode_pairs
 from src.pipeline import _load_latents
 
 
 class StubEncoder:
+    latent_dim = 128
     instances = 0
     calls: list[list[str]] = []
 
@@ -20,7 +23,10 @@ class StubEncoder:
     def encode(self, texts, deterministic, batch_size):
         type(self).calls.append(list(texts))
         return torch.tensor(
-            [[float(len(text)), float(sum(text.encode("utf-8")))] for text in texts]
+            [
+                [float(len(text)), float(sum(text.encode("utf-8")))] + [0.0] * 126
+                for text in texts
+            ]
         )
 
 
@@ -71,7 +77,7 @@ def test_encode_pairs_uses_one_encoder_and_one_canonical_artifact(tmp_path: Path
     assert payload["test_ids"] == [1, 2]
     assert payload["is_identity"].tolist() == [False, True]
     assert torch.equal(payload["z_prime"][1], payload["z"][1])
-    assert torch.equal(payload["z_prime"][0], torch.tensor([8.0, 755.0]))
+    assert torch.equal(payload["z_prime"][0, :2], torch.tensor([8.0, 755.0]))
     assert torch.isfinite(payload["z"]).all()
     assert (tmp_path / "z_pairs.info.json").exists()
 
@@ -94,3 +100,37 @@ def test_encode_pairs_rejects_incomplete_or_incorrect_test_pairs(tmp_path: Path)
     )
     with pytest.raises(ValueError, match="identity text differs"):
         encode_pairs(config, encoder_factory=StubEncoder)
+
+
+def test_encode_pairs_rejects_wrong_latent_width(tmp_path: Path) -> None:
+    class WrongWidthEncoder(StubEncoder):
+        def encode(self, texts, deterministic, batch_size):
+            return torch.zeros((len(texts), 127))
+
+    with pytest.raises(ValueError, match="invalid latent vectors"):
+        encode_pairs(_config(tmp_path), encoder_factory=WrongWidthEncoder)
+
+
+def test_encode_pairs_records_active_nomic_encoder(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config = _config(tmp_path)
+    config["encoder"].update(
+        {
+            "variant": "nomic",
+            "nomic_model_name": "nomic-model",
+            "nomic_model_revision": "model-revision",
+            "nomic_code_revision": "code-revision",
+            "nomic_task": "classification",
+        }
+    )
+
+    monkeypatch.setattr(encoder_module, "make_encoder", lambda config: StubEncoder())
+    encode_pairs(config)
+    info = json.loads((tmp_path / "z_pairs.info.json").read_text(encoding="utf-8"))
+
+    assert info["encoder_variant"] == "nomic"
+    assert info["encoder"] == "nomic-model"
+    assert info["model_revision"] == "model-revision"
+    assert info["code_revision"] == "code-revision"
+    assert info["task_prefix"] == "classification: "
