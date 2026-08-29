@@ -18,14 +18,27 @@ The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 26
 
 ## Setup
 
-Requires Python ≥ 3.12 and [uv](https://docs.astral.sh/uv/):
+Requires Python ≥ 3.12 and [uv](https://docs.astral.sh/uv/). Run all commands from the repository root:
 
 ```bash
 uv sync
-export AZURE_OPENAI_API_KEY=...   # key for the endpoint configured in exp/sim/config.yaml (llm:)
 ```
 
-Text generation talks to any OpenAI-compatible chat endpoint. Set `llm.base_url` in `exp/sim/config.yaml` (e.g. your Azure OpenAI resource's `/openai/v1/` endpoint, with the deployment name as `model` in the `exp/sim/prompts/*.yaml` metadata) and `llm.api_key_env` to the environment variable holding the key.
+All billed stages—templates, personas, and CVs—use the single endpoint in `exp/sim/config.yaml`. The default configuration targets Azure OpenAI and reads `AZURE_OPENAI_API_KEY`. The key must grant access to that endpoint and to the deployment named `gpt-5.4` in `exp/sim/prompts/*.yaml`.
+
+Provide the key locally, never in a committed file. Either create an ignored root `.env` file:
+
+```dotenv
+AZURE_OPENAI_API_KEY=your-key
+```
+
+or set it for the current shell:
+
+```powershell
+$env:AZURE_OPENAI_API_KEY = "your-key"
+```
+
+For another OpenAI-compatible provider, change `llm.base_url`, `llm.api_key_env`, and the prompt `model` deployment consistently before generating any text.
 
 ## Pipeline
 
@@ -43,7 +56,9 @@ The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test 
 
 Identity test units copy `X'=X` without another LLM call and `Z'=Z` without another encoding. Nonidentity worlds reuse the same template, persona, and bin quantiles. `X'` and `Z'` are evaluation data and never enter the current training losses.
 
-Data generation is configured by `exp/sim/config.yaml`. Every billed generation stage appends successful rows and resumes from missing IDs; a small `*.generation.json` file prevents resuming with changed semantic inputs. `generation.limit` caps billed calls without changing the data definition:
+Data generation is configured by `exp/sim/config.yaml`. Every billed stage appends successful rows and resumes from missing IDs. Each active billed output CSV must remain together and be committed with its `*.generation.json` information file; the dated template CSV is only a legacy archive. `generation.limit` controls how many IDs are sent to the API per invocation; free identity copies do not count. Each selected ID permits at most `generation.max_attempts` API calls. Set `generation.limit: 1` for a small billed smoke test of at most three calls, inspect the result, then restore `null` and rerun the same stage to completion before advancing.
+
+For a complete fresh run, execute these stages in order:
 
 ```bash
 uv run python -m exp.sim.run simulate            # S/S', epsilon, pair_index.csv, simulation_info.json
@@ -53,6 +68,16 @@ uv run python -m exp.sim.run generate-texts      # render_plan.csv and X for eve
 uv run python -m exp.sim.run generate-counterfactual-texts  # X' for test units only
 uv run python -m exp.sim.run validate-pairs      # validate complete S/S' and X/X' pairing
 ```
+
+With the current configuration and seeds, the completed run contains 50 templates, 100 personas, 100 factual CVs, and 20 counterfactual test CVs. Ten test counterfactuals are generated and ten identity cases are copied without an API call. This is 260 API calls if every request succeeds on its first attempt, and at most 780 for a completed run if failed or rejected attempts require all three tries.
+
+The simulation-data pipeline is complete only when `validate-pairs` reports:
+
+```text
+validated 100 factual units and 20 counterfactual test pairs
+```
+
+Stop here for the data-generation handoff. Encoding and model training below are separate work.
 
 Paired latent encoding and the existing training/evaluation stages use `src/config.yaml`:
 
