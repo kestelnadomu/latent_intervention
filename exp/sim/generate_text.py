@@ -17,6 +17,7 @@ pool-sampling workflow around data/prompts.yaml and are kept for compatibility.
 import json
 import os
 import random
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +30,17 @@ from openai import OpenAI
 Sample = dict[str, Any]
 PromptTemplate = dict[str, Any]
 Message = dict[str, str]
+
+
+@dataclass(frozen=True)
+class GenerationResult:
+    """Generated text plus the response details useful for an audit."""
+
+    text: str
+    response_id: str | None = None
+    model: str | None = None
+    system_fingerprint: str | None = None
+    finish_reason: str | None = None
 
 # Any OpenAI-compatible chat endpoint works, e.g. Mistral (default) or Azure
 # OpenAI's v1 endpoint (https://<resource>.openai.azure.com/openai/v1/ with an
@@ -277,7 +289,7 @@ def format_messages(
     return result
 
 
-def generate_text(
+def generate_text_result(
     sample: Sample,
     prompt_template: PromptTemplate,
     templates: dict[str, str] | None = None,
@@ -287,7 +299,7 @@ def generate_text(
     max_completion_tokens: int = 500,
     temperature: float = 0.7,
     **kwargs: Any,
-) -> str:
+) -> GenerationResult:
     """
     Generate text via an OpenAI-compatible chat completions API
     (Mistral by default; Azure OpenAI via its /openai/v1/ base_url, where
@@ -322,10 +334,45 @@ def generate_text(
             **kwargs,
         )
         if response.choices:
-            return response.choices[0].message.content
+            choice = response.choices[0]
+            text = choice.message.content
+            if not isinstance(text, str) or not text.strip():
+                raise RuntimeError("API returned a choice without non-empty text content.")
+            return GenerationResult(
+                text=text,
+                response_id=getattr(response, "id", None),
+                model=getattr(response, "model", None),
+                system_fingerprint=getattr(response, "system_fingerprint", None),
+                finish_reason=getattr(choice, "finish_reason", None),
+            )
         raise RuntimeError("No text generated.")
     except Exception as e:
         raise RuntimeError(f"API request failed: {e}") from e
+
+
+def generate_text(
+    sample: Sample,
+    prompt_template: PromptTemplate,
+    templates: dict[str, str] | None = None,
+    api_key: str | None = None,
+    model: str = DEFAULT_MODEL,
+    base_url: str = DEFAULT_BASE_URL,
+    max_completion_tokens: int = 500,
+    temperature: float = 0.7,
+    **kwargs: Any,
+) -> str:
+    """Backward-compatible text-only wrapper around ``generate_text_result``."""
+    return generate_text_result(
+        sample,
+        prompt_template,
+        templates,
+        api_key,
+        model,
+        base_url,
+        max_completion_tokens,
+        temperature,
+        **kwargs,
+    ).text
 
 
 def generate_batch(

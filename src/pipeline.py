@@ -74,22 +74,10 @@ def _split(n: int, val_split: float, seed: int) -> tuple[torch.Tensor, torch.Ten
 
 
 def stage_encode(config: dict[str, Any]) -> None:
-    """Encode the generated input texts into latent vectors."""
-    from src.encoder import TextEncoder  # deferred: heavy import, downloads checkpoint
+    """Encode all factual texts and held-out counterfactual pairs once."""
+    from src.pair_encoding import encode_pairs
 
-    df = pd.read_csv(config["paths"]["texts"])
-    enc_cfg = config["encoder"]
-    encoder = TextEncoder(
-        model_name=enc_cfg["model_name"],
-        device=enc_cfg["device"],
-        max_len=enc_cfg["max_len"],
-        local_checkpoint=enc_cfg.get("local_checkpoint"),
-    )
-    z = encoder.encode(df["text"].tolist(), batch_size=enc_cfg["batch_size"])
-    out = Path(config["paths"]["latents"])
-    out.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({"z": z.cpu(), "ids": df["id"].astype(int).tolist()}, out)
-    print(f"wrote {out}: {tuple(z.shape)} latents for {len(df)} texts")
+    encode_pairs(config)
 
 
 def stage_train_decoder(config: dict[str, Any]) -> None:
