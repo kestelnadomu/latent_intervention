@@ -13,6 +13,11 @@ llm:
 n: 100
 seed: 1
 
+# Persisted unit split. Counterfactual text and latent pairs are held out to test.
+split:
+  seed: 42
+  test_fraction: 0.2
+
 # do() intervention for the counterfactual dataset, e.g. do(G=1): male.
 intervention:
   G: 1
@@ -45,6 +50,9 @@ paths:
   templates: data/text/templates.csv   # generated template pool (tracked: costs API credits)
   personas: data/text/personas.csv     # generated persona pool (tracked: costs API credits)
   texts: data/text/cv_factual.csv      # generated CV statements (tracked: costs API credits)
+  texts_counterfactual: data/text/cv_counterfactual.csv  # X' for test IDs only
+  pair_index: data/sim/pair_index.csv  # id, split, is_identity
+  render_plan: data/sim/render_plan.csv  # shared template/persona/bin quantiles
 
 codebook: exp/sim/codebook.yaml
 prompts:
@@ -58,4 +66,5 @@ pools:
 generation:
   n_templates: 50    # template pool size (one billed call each)
   n_personas: 100    # persona pool size (one billed call each)
-  limit: null        # max rows to generate per stage run (billed calls); null = all
+  limit: null        # max IDs processed per stage run; null = all
+  max_attempts: 3    # total API calls allowed per stage and ID, persisted across resumes
