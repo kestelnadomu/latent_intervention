@@ -31,7 +31,6 @@ import numpy as np
 import pandas as pd
 import yaml
 
-from exp.sim import scm
 from exp.sim.generate_text import (
     DEFAULT_BASE_URL,
     candidate_info_from_row,
@@ -55,7 +54,10 @@ def load_sim_config(path: str | Path = CONFIG_PATH) -> dict[str, Any]:
 
 
 def stage_simulate(config: dict[str, Any]) -> None:
-    """Generate factual/counterfactual/epsilon CSVs from the Python SCM."""
+    """Generate factual/counterfactual/epsilon CSVs from the configured SCM."""
+    from src.schema import load_object
+
+    scm = load_object(config["objects"]["scm"])()
     factual, counterfactual, epsilon = scm.simulate(
         n=int(config["n"]),
         intervention=config["intervention"],
@@ -69,6 +71,11 @@ def stage_simulate(config: dict[str, Any]) -> None:
         print(f"wrote {out} ({len(df)} rows)")
     changed = (factual.drop(columns="id") != counterfactual.drop(columns="id")).any(axis=1)
     print(f"intervention {config['intervention']}: {changed.mean():.1%} of rows changed")
+
+
+def _slug(text: str) -> str:
+    """Lowercase snake_case identifier for a CSV header column."""
+    return "_".join("".join(c if c.isalnum() else " " for c in text).split()).lower()
 
 
 def _load_string_list(yaml_path: str | Path, what: str) -> list[str]:
@@ -205,6 +212,12 @@ def stage_generate_texts(config: dict[str, Any]) -> None:
     out_path = Path(config["paths"]["texts"])
     done = _done_ids(out_path, "id")
 
+    # The concrete value sampled inside each binned codebook column is recorded
+    # alongside the text (it enables identically-paired counterfactual text
+    # generation later). Column names are derived from the codebook, not hard-coded.
+    binned = list(spec["bins"])
+    binned_headers = [_slug(spec["labels"].get(col, col)) for col in binned]
+
     todo = []
     for row in rows:
         row_id = int(row["id"])
@@ -223,10 +236,11 @@ def stage_generate_texts(config: dict[str, Any]) -> None:
             "persona_details": f"Job Title: {persona['job_title']}\n{persona['text']}",
         }
         prefix = [row_id, int(template["template_id"]), int(persona["persona_id"]),
-                  concrete.get("A"), concrete.get("W")]
+                  *(concrete.get(col) for col in binned)]
         todo.append((sample, prefix))
     _generate_rows(
-        config, out_path, ["id", "template_id", "persona_id", "age", "years_experience", "text"],
+        config, out_path,
+        ["id", "template_id", "persona_id", *binned_headers, "text"],
         todo, config["prompts"]["cv"], len(rows), "texts",
     )
 

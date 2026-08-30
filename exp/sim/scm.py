@@ -1,143 +1,178 @@
 """
-Python port of the SCM simulation in exp/sim/R/utils/{sim_scm.R, sim_data.R}.
+Generic structural causal model engine for the data-generation half.
 
-Generates factual data, and counterfactual data under a do() intervention by
-reusing the stored exogenous noise (Pearl's abduction step is exact because the
-noise is known). The R implementation remains in the repo as the reference;
-keep the structural equations here in sync with it.
+Holds no knowledge of any specific experiment: an :class:`SCM` is built from an
+ordered list of nodes, a set of root nodes, a per-node exogenous-noise sampler
+and a per-node structural function. The concrete CV-screening SCM is assembled
+in ``exp/sim/cv_screening.py`` and pointed to from ``exp/sim/config.yaml``.
 
-Structural equations (all children clip-rounded to their category range):
-    R = eps_R                                   (root, 0..3)
-    G = eps_G                                   (root, 0..1)
-    A = eps_A                                   (root, 0..2)
-    E = clip(round(0.4(R + A + G) + eps_E), 0, 3)
-    S = clip(round(0.45 E + 0.25 A + eps_S), 0, 2)
-    W = clip(round(0.5 A + 0.3 E + eps_W), 0, 2)
-    V = clip(round(0.2 E + 0.3 S + eps_V), 0, 1)
-    C = clip(round(0.15(E + W) + eps_C), 0, 1)
-    Q = clip(round(0.3(E + V + C + W) + eps_Q), 0, 2)
+``SCM.simulate`` generates factual data and, under a ``do()`` intervention,
+counterfactual data by reusing the stored exogenous noise (Pearl's abduction
+step is exact because the noise is known), so the two frames are exact
+counterfactual pairs row by row. The original R implementation
+(``exp/sim/R/utils/{sim_scm.R, sim_data.R}``) remains the reference.
 """
 
+from __future__ import annotations
+
+from collections.abc import Sequence
+from dataclasses import dataclass, field
 from typing import Callable
 
 import numpy as np
 import pandas as pd
 
-from src.semantic_decoder import OUTCOME_COLUMN, SCM_COLUMNS
+from src.schema import ColumnSpec
 
-# All SCM nodes in topological order, with cardinalities from the shared schema.
-NODES: dict[str, int] = {col.name: col.n_categories for col in [*SCM_COLUMNS, OUTCOME_COLUMN]}
-ROOT_NODES = ("R", "G", "A")
-
-NoiseSpec = dict[str, Callable[[np.random.Generator, int], np.ndarray]]
+NoiseSampler = Callable[[np.random.Generator, int], np.ndarray]
 StructuralFn = Callable[[dict[str, np.ndarray], dict[str, np.ndarray]], np.ndarray]
-
-NOISE_SPEC: NoiseSpec = {
-    "R": lambda rng, n: rng.integers(0, 4, size=n),
-    "G": lambda rng, n: rng.integers(0, 2, size=n),
-    "A": lambda rng, n: rng.choice([0, 1, 2], size=n, p=[0.25, 0.50, 0.25]),
-    "E": lambda rng, n: rng.normal(0.35, 0.50, size=n),
-    "S": lambda rng, n: rng.normal(0.25, 0.35, size=n),
-    "W": lambda rng, n: rng.normal(0.00, 0.50, size=n),
-    "V": lambda rng, n: rng.normal(-0.35, 0.20, size=n),
-    "C": lambda rng, n: rng.normal(0.00, 0.30, size=n),
-    "Q": lambda rng, n: rng.normal(0.00, 0.30, size=n),
-}
 
 
 def clip_round(x: np.ndarray, lower: int, upper: int) -> np.ndarray:
-    """Round half-to-even (matching R's round()) and clip to [lower, upper]."""
+    """Round half-to-even (matching R's ``round()``) and clip to ``[lower, upper]``."""
     return np.clip(np.rint(x), lower, upper).astype(np.int64)
 
 
-STRUCTURAL_FNS: dict[str, StructuralFn] = {
-    "E": lambda d, e: clip_round(0.4 * (d["R"] + d["A"] + d["G"]) + e["E"], 0, 3),
-    "S": lambda d, e: clip_round(0.45 * d["E"] + 0.25 * d["A"] + e["S"], 0, 2),
-    "W": lambda d, e: clip_round(0.5 * d["A"] + 0.3 * d["E"] + e["W"], 0, 2),
-    "V": lambda d, e: clip_round(0.2 * d["E"] + 0.3 * d["S"] + e["V"], 0, 1),
-    "C": lambda d, e: clip_round(0.15 * (d["E"] + d["W"]) + e["C"], 0, 1),
-    "Q": lambda d, e: clip_round(0.3 * (d["E"] + d["V"] + d["C"] + d["W"]) + e["Q"], 0, 2),
-}
-
-
-def _generate(noise: dict[str, np.ndarray], intervention: dict[str, int], n: int) -> dict[str, np.ndarray]:
-    """One topological pass over the SCM; intervened nodes are held fixed."""
-    data: dict[str, np.ndarray] = {}
-    for node in NODES:
-        if node in intervention:
-            data[node] = np.full(n, intervention[node], dtype=np.int64)
-        elif node in ROOT_NODES:
-            data[node] = noise[node].astype(np.int64)
-        else:
-            data[node] = STRUCTURAL_FNS[node](data, noise)
-    return data
-
-
-def validate_intervention(intervention: dict[str, int]) -> dict[str, int]:
-    """Check intervention nodes and value ranges against the SCM schema."""
-    unknown = set(intervention) - set(NODES)
-    if unknown:
-        raise ValueError(f"Unknown intervention nodes: {sorted(unknown)}. Available: {list(NODES)}")
-    for node, value in intervention.items():
-        if not 0 <= int(value) < NODES[node]:
-            raise ValueError(f"do({node}={value}) outside 0..{NODES[node] - 1}")
-    return {node: int(value) for node, value in intervention.items()}
-
-
-def simulate(
-    n: int,
-    intervention: dict[str, int],
-    seed: int | None = None,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+@dataclass(frozen=True)
+class LinearMechanism:
     """
-    Simulate paired factual/counterfactual data from the SCM.
+    ``clip_round(sum_j coef_j * pa_j + eps_i, lower, upper)`` structural function.
 
-    Returns (factual, counterfactual, epsilon) data frames, each with an `id`
-    column. The counterfactual applies do(intervention) and reuses the factual
-    exogenous noise, so rows are true counterfactual pairs.
+    ``coeffs`` maps each parent node name to its linear weight (no bias term). The
+    node's own exogenous noise term is added by :class:`SCM` at evaluation time.
     """
-    if n < 1:
-        raise ValueError(f"n must be positive, got {n}")
-    intervention = validate_intervention(intervention)
-    if not intervention:
-        raise ValueError("Intervention must target at least one node, e.g. {'G': 1}.")
 
-    rng = np.random.default_rng(seed)
-    noise = {node: fn(rng, n) for node, fn in NOISE_SPEC.items()}
+    coeffs: dict[str, float]
+    lower: int
+    upper: int
 
-    factual = _generate(noise, intervention={}, n=n)
-    counterfactual = _generate(noise, intervention=intervention, n=n)
 
-    ids = pd.RangeIndex(1, n + 1, name=None)
-    factual_df = pd.DataFrame({"id": ids, **factual})
-    counterfactual_df = pd.DataFrame({"id": ids, **counterfactual})
-    epsilon_df = pd.DataFrame({"id": ids, **{f"eps_{node}": eps for node, eps in noise.items()}})
-    return factual_df, counterfactual_df, epsilon_df
+def linear_mechanism(coeffs: dict[str, float], lower: int, upper: int) -> LinearMechanism:
+    """Convenience constructor for :class:`LinearMechanism`."""
+    return LinearMechanism(dict(coeffs), lower, upper)
+
+
+@dataclass
+class SCM:
+    """
+    A structural causal model over discrete nodes.
+
+    Attributes:
+        nodes: every node (structured-state columns and the downstream outcome),
+            in topological order, with its cardinality.
+        roots: names of the exogenous root nodes (set directly from noise).
+        noise: per-node exogenous-noise sampler ``(rng, n) -> (n,) array``.
+        mechanisms: per-non-root structural function ``(data, noise) -> (n,) array``
+            of integer category values; may be a plain callable or one produced by
+            :func:`linear_mechanism` (whose noise term is added automatically).
+    """
+
+    nodes: list[ColumnSpec]
+    roots: Sequence[str]
+    noise: dict[str, NoiseSampler]
+    mechanisms: dict[str, StructuralFn | LinearMechanism]
+    _card: dict[str, int] = field(init=False)
+    _order: list[str] = field(init=False)
+
+    def __post_init__(self) -> None:
+        self._card = {c.name: c.n_categories for c in self.nodes}
+        self._order = [c.name for c in self.nodes]
+        roots = set(self.roots)
+        non_roots = [n for n in self._order if n not in roots]
+        missing = [n for n in non_roots if n not in self.mechanisms]
+        if missing:
+            raise ValueError(f"No mechanism for non-root node(s): {missing}")
+        if not set(self._order) <= set(self.noise):
+            raise ValueError(f"Missing noise samplers for {set(self._order) - set(self.noise)}")
+
+    def _apply(self, name: str, data: dict[str, np.ndarray], noise: dict[str, np.ndarray]) -> np.ndarray:
+        fn = self.mechanisms[name]
+        if isinstance(fn, LinearMechanism):  # add this node's own noise term
+            acc = sum(coef * data[p] for p, coef in fn.coeffs.items())
+            return clip_round(acc + noise[name], fn.lower, fn.upper)
+        return fn(data, noise)
+
+    def _generate(self, noise: dict[str, np.ndarray], intervention: dict[str, int], n: int) -> dict[str, np.ndarray]:
+        """One topological pass; intervened nodes are held fixed."""
+        data: dict[str, np.ndarray] = {}
+        for node in self._order:
+            if node in intervention:
+                data[node] = np.full(n, intervention[node], dtype=np.int64)
+            elif node in set(self.roots):
+                data[node] = noise[node].astype(np.int64)
+            else:
+                data[node] = self._apply(node, data, noise)
+        return data
+
+    def validate_intervention(self, intervention: dict[str, int]) -> dict[str, int]:
+        """Check intervention node names and value ranges against the schema."""
+        unknown = set(intervention) - set(self._order)
+        if unknown:
+            raise ValueError(f"Unknown intervention nodes: {sorted(unknown)}. Available: {self._order}")
+        for node, value in intervention.items():
+            if not 0 <= int(value) < self._card[node]:
+                raise ValueError(f"do({node}={value}) outside 0..{self._card[node] - 1}")
+        return {node: int(value) for node, value in intervention.items()}
+
+    def simulate(
+        self,
+        n: int,
+        intervention: dict[str, int],
+        seed: int | None = None,
+    ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+        """
+        Simulate paired factual/counterfactual data.
+
+        Returns ``(factual, counterfactual, epsilon)`` frames, each with an ``id``
+        column. The counterfactual applies ``do(intervention)`` and reuses the
+        factual exogenous noise, so rows are exact counterfactual pairs.
+        """
+        if n < 1:
+            raise ValueError(f"n must be positive, got {n}")
+        intervention = self.validate_intervention(intervention)
+        if not intervention:
+            raise ValueError("Intervention must target at least one node, e.g. {'G': 1}.")
+
+        rng = np.random.default_rng(seed)
+        noise = {node: self.noise[node](rng, n) for node in self._order}
+
+        factual = self._generate(noise, intervention={}, n=n)
+        counterfactual = self._generate(noise, intervention=intervention, n=n)
+
+        ids = pd.RangeIndex(1, n + 1, name=None)
+        factual_df = pd.DataFrame({"id": ids, **factual})
+        counterfactual_df = pd.DataFrame({"id": ids, **counterfactual})
+        epsilon_df = pd.DataFrame({"id": ids, **{f"eps_{node}": eps for node, eps in noise.items()}})
+        return factual_df, counterfactual_df, epsilon_df
 
 
 if __name__ == "__main__":
-    # Smoke test: seeding, invariances, and counterfactual semantics.
-    n = 2000
-    factual, counterfactual, epsilon = simulate(n, intervention={"G": 1}, seed=1)
-    factual2, _, _ = simulate(n, intervention={"G": 1}, seed=1)
+    # Smoke test on a random SCM: seeding, do() semantics, category ranges.
+    rng = np.random.default_rng(0)
+    nodes = [ColumnSpec(name, int(rng.integers(2, 5))) for name in ("a", "b", "c", "d")]
+    roots = ("a", "b")
+
+    def root_noise(card: int) -> NoiseSampler:
+        return lambda r, n: r.integers(0, card, n)
+
+    noise: dict[str, NoiseSampler] = {
+        c.name: root_noise(c.n_categories) if c.name in roots else (lambda r, n: r.normal(0.0, 0.5, n))
+        for c in nodes
+    }
+    mechanisms: dict[str, StructuralFn | LinearMechanism] = {
+        "c": linear_mechanism({"a": 0.5, "b": 0.3}, 0, nodes[2].n_categories - 1),
+        "d": linear_mechanism({"a": 0.2, "c": 0.4}, 0, nodes[3].n_categories - 1),
+    }
+    scm = SCM(nodes, roots, noise, mechanisms)
+
+    intervention = {"a": 1}
+    factual, counterfactual, epsilon = scm.simulate(2000, intervention=intervention, seed=1)
+    factual2, _, _ = scm.simulate(2000, intervention=intervention, seed=1)
     assert factual.equals(factual2), "seeding must be reproducible"
-
-    # do(G=1): non-descendants (R, A) never change; G is 1 everywhere.
-    assert (counterfactual["G"] == 1).all()
-    assert factual["R"].equals(counterfactual["R"])
-    assert factual["A"].equals(counterfactual["A"])
-
-    # Rows whose factual G already equals 1 are their own counterfactuals.
-    already = factual["G"] == 1
-    assert factual[already].equals(counterfactual[already])
-    changed = (factual != counterfactual).any(axis=1)
-    assert (changed == ~already).all(), "exactly the G=0 rows must change"
-
-    # Values stay within the schema's category ranges.
-    for node, card in NODES.items():
-        assert factual[node].between(0, card - 1).all()
-        assert counterfactual[node].between(0, card - 1).all()
-
-    print(f"factual marginals (n={n}):")
-    print(pd.DataFrame({node: factual[node].value_counts(normalize=True).sort_index() for node in NODES}).round(3))
-    print(f"\nshare of rows changed by do(G=1): {changed.mean():.3f}")
+    assert (counterfactual["a"] == 1).all()
+    assert factual["b"].equals(counterfactual["b"]), "non-descendant of a must not change"
+    for c in nodes:
+        assert factual[c.name].between(0, c.n_categories - 1).all()
+        assert counterfactual[c.name].between(0, c.n_categories - 1).all()
+    print("random-SCM smoke test passed")
+    print(factual.head())

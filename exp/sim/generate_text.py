@@ -1,7 +1,7 @@
 """
 Text generation from tabular samples via an OpenAI-compatible chat API.
 
-LLM plumbing for the LIBERTy-style generation pipeline (exp/sim/run.py):
+LLM plumbing for the text-generation pipeline (exp/sim/run.py):
 1. Load inputs: load_samples (CSV rows), load_prompts (chat prompt YAML),
    load_codebook_spec (column phrases + labels + bins).
 2. Verbalize: candidate_info_from_row (row -> paper-style candidate info list,

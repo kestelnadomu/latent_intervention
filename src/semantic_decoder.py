@@ -16,7 +16,6 @@ Both are trained with train_semantic_decoder on (latents, tabular targets) pairs
 the cross-entropy objective L_g = E[CE(g(. | z), s)].
 """
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -25,30 +24,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-
-@dataclass(frozen=True)
-class ColumnSpec:
-    """One tabular column: name and number of discrete categories (values 0..n-1)."""
-
-    name: str
-    n_categories: int
-
-
-# Structured features S of the SCM (exp/sim/scm.py, reference exp/sim/R/utils/sim_scm.R)
-# with their cardinalities, in topological order (this order is the autoregressive
-# decoding order for SemanticDecoderB). Q is the downstream outcome Y, not part of S:
-# it gets no decoder head and does not appear in the consistency loss or generated text.
-SCM_COLUMNS: list[ColumnSpec] = [
-    ColumnSpec("R", 4),
-    ColumnSpec("G", 2),
-    ColumnSpec("A", 3),
-    ColumnSpec("E", 4),
-    ColumnSpec("S", 3),
-    ColumnSpec("W", 3),
-    ColumnSpec("V", 2),
-    ColumnSpec("C", 2),
-]
-OUTCOME_COLUMN = ColumnSpec("Q", 3)
+from src.schema import ColumnSpec
 
 
 def _mlp_trunk(latent_dim: int, hidden_dim: int, n_hidden: int, dropout: float) -> nn.Sequential:
@@ -65,10 +41,11 @@ class SemanticDecoder(nn.Module):
     def __init__(
             self,
             latent_dim: int,
-            columns: list[ColumnSpec] = SCM_COLUMNS,
+            columns: list[ColumnSpec],
             hidden_dim: int = 256,
             n_hidden: int = 2,
             dropout: float = 0.1,
+            embed_dim: int = 16,
         ) -> None:
             super().__init__()
             self.columns = list(columns)
@@ -78,6 +55,7 @@ class SemanticDecoder(nn.Module):
                 "hidden_dim": hidden_dim,
                 "n_hidden": n_hidden,
                 "dropout": dropout,
+                "embed_dim": embed_dim
             }
             self.trunk = _mlp_trunk(latent_dim, hidden_dim, n_hidden, dropout)
             d = hidden_dim if n_hidden > 0 else latent_dim
@@ -128,7 +106,7 @@ class SemanticAutoRegDecoder(SemanticDecoder):
     def __init__(
             self,
             latent_dim: int,
-            columns: list[ColumnSpec] = SCM_COLUMNS,
+            columns: list[ColumnSpec],
             hidden_dim: int = 256,
             n_hidden: int = 2,
             dropout: float = 0.1,
@@ -139,9 +117,9 @@ class SemanticAutoRegDecoder(SemanticDecoder):
                 columns,
                 hidden_dim,
                 n_hidden,
-                dropout
+                dropout,
+                embed_dim
             )
-            self._config["embed_dim"] = embed_dim
             d = hidden_dim if n_hidden > 0 else latent_dim
             self.embed = nn.ModuleDict(
                 {c.name: nn.Embedding(c.n_categories, embed_dim) for c in self.columns}
@@ -234,7 +212,7 @@ def _load(cls: type, path: str | Path, device: str | torch.device | None) -> Any
 
 
 def targets_from_dataframe(
-    df: pd.DataFrame, columns: list[ColumnSpec] = SCM_COLUMNS
+    df: pd.DataFrame, columns: list[ColumnSpec]
 ) -> dict[str, torch.Tensor]:
     """Convert tabular data (e.g. loaded from data/sim/) into per-column target tensors."""
     return {c.name: torch.as_tensor(df[c.name].to_numpy(), dtype=torch.long) for c in columns}
@@ -302,16 +280,17 @@ if __name__ == "__main__":
     # Smoke test on random data: shapes and a short training run for both parameterisations.
     torch.manual_seed(0)
     latent_dim, n = 128, 256
+    columns = [ColumnSpec(f"c{i}", int(k)) for i, k in enumerate(torch.randint(2, 5, (6,)))]
     z = torch.randn(n, latent_dim)
     targets: dict[str, Any] = {
-        c.name: torch.randint(c.n_categories, (n,)) for c in SCM_COLUMNS
+        c.name: torch.randint(c.n_categories, (n,)) for c in columns
     }
     n_states = 1
-    for c in SCM_COLUMNS:
+    for c in columns:
         n_states *= c.n_categories
 
     for name, ctor in (("A", SemanticDecoder), ("B", SemanticAutoRegDecoder)):
-        decoder = ctor(latent_dim)
+        decoder = ctor(latent_dim, columns)
         history = train_semantic_decoder(decoder, z, targets, epochs=5, verbose=False)
         joint = decoder.log_joint(z[:4])
         assert joint.shape == (4, n_states), joint.shape

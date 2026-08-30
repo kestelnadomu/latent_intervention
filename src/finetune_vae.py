@@ -1,9 +1,9 @@
 """
-Optional: fine-tune the pre-trained LangVAE on the generated CV texts.
+Optional: fine-tune the pre-trained LangVAE on the generated texts.
 
 The stock checkpoints are trained on short explanation sentences; continuing
-training on the CV statements improves reconstruction fidelity for this
-domain. Compute-heavy — run on demand:
+training on the generated corpus improves reconstruction fidelity for the
+target domain. Compute-heavy — run on demand:
 
     uv run python -m src.finetune_vae
 
@@ -24,7 +24,7 @@ from src.config import load_config
 
 
 def finetune(config: dict | None = None) -> None:
-    """Continue-train the LangVAE checkpoint on the generated CV texts."""
+    """Continue-train the LangVAE checkpoint on the generated texts."""
     config = config or load_config()
     enc_cfg = config["encoder"]
     ft_cfg = config["finetune_vae"]

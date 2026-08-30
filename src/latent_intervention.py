@@ -9,10 +9,10 @@ Three parameterisations:
 - LatentIntervention  -- Plan 0 (baseline): deterministic residual transformer
   z' = z + T_theta(z, delta). Cannot represent the multimodality of (h_S . g) in the
   ambiguous strata; kept as a baseline, trained by per-column CE against S'.
-- LatentInterventionA -- Plan A (engression): z' = z + Delta_theta(z + eps, delta),
+- LatentInterventionPreAdditive -- Plan A (engression): z' = z + Delta_theta(z + eps, delta),
   eps ~ N(0, sigma^2 I). h_Z is the pushforward of eps; a nonlinear Delta_theta folds a
   unimodal eps onto separated modes. Composition g . h_Z needs Monte Carlo.
-- LatentInterventionB -- Plan B (discrete mixture, preferred):
+- LatentInterventionDist -- Plan B (discrete mixture):
   h_Z(. | z, delta) = sum_s' w_theta(s' | z, delta) * dirac_{z + Delta_phi(z, s')}.
   w_theta is an autoregressive head over S (the SCM internalised, no h_S at inference);
   Delta_phi is a deterministic realiser. Composition is an exact finite sum over the
@@ -21,40 +21,37 @@ Three parameterisations:
 The consistency objective (Plan A/B) is
     L = E_z[ D_KL( (h_S . g)(. | z, delta) || (g . h_Z)(. | z, delta) ) ]
         + alpha ||z' - z||_1 + beta ||z' - z||_2^2
-with forward (mass-covering) KL over the dense |S| = 3456 vector.
+with forward (mass-covering) KL over the dense |S| = prod(cardinalities) vector.
+
+Common scaffolding (config + persistence, the training loop, the latent-space penalties)
+lives in `_ManipulatorBase` and `_train`; each plan supplies only its model body and its
+per-batch loss.
 """
 
 import math
+from collections.abc import Callable
 from pathlib import Path
 
 import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.semantic_decoder import SCM_COLUMNS, ColumnSpec, SemanticDecoder
-from src.symbolic_intervention import SymbolicIntervention
+from src.schema import ColumnSpec, flat_state_index, unflatten_state_index
+from src.semantic_decoder import SemanticDecoder
+from src.symbolic_intervention import SymbolicKernel
 
-# --- flat state <-> per-column indices --------------------------------------------------
-# Column-major over `columns`, matching SemanticDecoder.log_joint and
-# SymbolicIntervention.state_index: idx = ((s_0 * k_1) + s_1) * k_2 + ...
-
-
-def flat_state_index(values: torch.Tensor, columns: list[ColumnSpec] = SCM_COLUMNS) -> torch.Tensor:
-    """(..., n_cols) category indices -> (...,) flat state index."""
-    idx = torch.zeros(values.shape[:-1], dtype=torch.long, device=values.device)
-    for i, col in enumerate(columns):
-        idx = idx * col.n_categories + values[..., i]
-    return idx
-
-
-def unflatten_state_index(flat: torch.Tensor, columns: list[ColumnSpec] = SCM_COLUMNS) -> torch.Tensor:
-    """(...,) flat state index -> (..., n_cols) category indices."""
-    rem = flat.clone()
-    cols: list[torch.Tensor] = []
-    for col in reversed(columns):
-        cols.append(rem % col.n_categories)
-        rem = torch.div(rem, col.n_categories, rounding_mode="floor")
-    return torch.stack(list(reversed(cols)), dim=-1)
+__all__ = [
+    "flat_state_index",
+    "unflatten_state_index",
+    "LatentIntervention",
+    "LatentInterventionPreAdditive",
+    "LatentInterventionDist",
+    "make_objective",
+    "consistency_target",
+    "train_latent_intervention",
+    "train_latent_intervention_preadditive",
+    "train_latent_intervention_dist",
+]
 
 
 # --- shared building blocks -------------------------------------------------------------
@@ -136,108 +133,75 @@ def _autoreg_log_joint(
     return acc
 
 
-def _save_module(model: nn.Module, path: str | Path) -> None:
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {"class": type(model).__name__, "config": model._config, "state_dict": model.state_dict()},
-        path,
-    )
+def _forward_kl(pred_log: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+    """D_KL(target || pred), mean over the batch. `pred_log` are log-probabilities."""
+    return F.kl_div(pred_log, target, reduction="batchmean")
 
 
-def _load_module(cls: type, path: str | Path, device: str | torch.device | None):
-    payload = torch.load(Path(path), map_location=device or "cpu", weights_only=True)
-    if payload.get("class", cls.__name__) != cls.__name__:
-        raise ValueError(f"checkpoint holds a {payload['class']}, not a {cls.__name__}")
-    config = dict(payload["config"])
-    config["columns"] = [ColumnSpec(name, card) for name, card in config["columns"]]
-    model = cls(**config)
-    model.load_state_dict(payload["state_dict"])
-    model.eval()
-    return model
+def _penalties(
+    shifts: torch.Tensor, l1_weight: float, l2_weight: float
+) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    """Latent-shift penalties: (sparsity, proximity, l1_weight*sparsity + l2_weight*proximity)."""
+    sparsity = shifts.abs().mean()
+    proximity = shifts.pow(2).mean()
+    return sparsity, proximity, l1_weight * sparsity + l2_weight * proximity
 
 
-# --- Plan 0: deterministic baseline ----------------------------------------------------
+# --- config + persistence, shared by every plan --------------------------------------
 
 
-class LatentIntervention(nn.Module):
-    """Single-layer transformer mapping (latent, do() spec) to an intervened latent."""
+class _ManipulatorBase(nn.Module):
+    """Holds `columns`, the reconstruction `_config`, and one-file save/load."""
 
     def __init__(
         self,
         latent_dim: int,
-        columns: list[ColumnSpec] = SCM_COLUMNS,
-        d_model: int = 128,
-        nhead: int = 4,
-        dim_feedforward: int = 256,
-        dropout: float = 0.1,
+        columns: list[ColumnSpec],
+        *,
+        d_model: int,
+        nhead: int,
+        dim_feedforward: int,
+        dropout: float,
+        **extra: object,
     ) -> None:
         super().__init__()
-        self.columns = columns
+        self.columns = list(columns)
         self._config = {
             "latent_dim": latent_dim,
-            "columns": [(col.name, col.n_categories) for col in columns],
+            "columns": [(c.name, c.n_categories) for c in self.columns],
             "d_model": d_model,
             "nhead": nhead,
             "dim_feedforward": dim_feedforward,
             "dropout": dropout,
+            **extra,
         }
-        max_card = max(col.n_categories for col in columns)
-
-        self.z_proj = nn.Linear(latent_dim, d_model)
-        self.col_embed = nn.Embedding(len(columns), d_model)
-        # Value indices 0..max_card-1 are do() values; max_card means "not intervened".
-        self.null_value = max_card
-        self.val_embed = nn.Embedding(max_card + 1, d_model)
-
-        self.layer = nn.TransformerEncoderLayer(
-            d_model, nhead, dim_feedforward, dropout, batch_first=True
-        )
-        self.out = nn.Linear(d_model, latent_dim)
-        # Zero-init the output so training starts from the identity mapping z' = z.
-        nn.init.zeros_(self.out.weight)
-        nn.init.zeros_(self.out.bias)
-
-    def forward(self, z: torch.Tensor, values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        """
-        Apply the intervention.
-
-        Args:
-            z: (batch, latent_dim) latent representations.
-            values: (batch, n_columns) long tensor of do() category indices
-                (entries where mask is False are ignored).
-            mask: (batch, n_columns) bool tensor marking intervened columns.
-
-        Returns:
-            (batch, latent_dim) intervened latent representations.
-        """
-        batch = z.shape[0]
-        col_idx = torch.arange(len(self.columns), device=z.device).expand(batch, -1)
-        val_idx = torch.where(mask, values, torch.full_like(values, self.null_value))
-
-        tokens = torch.cat(
-            [
-                self.z_proj(z).unsqueeze(1),
-                self.col_embed(col_idx) + self.val_embed(val_idx),
-            ],
-            dim=1,
-        )
-        h = self.layer(tokens)
-        return z + self.out(h[:, 0])
 
     def save(self, path: str | Path) -> None:
-        """Persist constructor config + weights in one file (see LatentIntervention.load)."""
-        _save_module(self, path)
+        """Persist constructor config + weights in one file (see load)."""
+        path = Path(path)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save(
+            {"class": type(self).__name__, "config": self._config, "state_dict": self.state_dict()},
+            path,
+        )
 
     @classmethod
-    def load(cls, path: str | Path, device: str | torch.device | None = None) -> "LatentIntervention":
+    def load(cls, path: str | Path, device: str | torch.device | None = None):
         """Restore a manipulator saved with save(); returns it in eval mode."""
-        return _load_module(cls, path, device)
+        payload = torch.load(Path(path), map_location=device or "cpu", weights_only=True)
+        if payload.get("class", cls.__name__) != cls.__name__:
+            raise ValueError(f"checkpoint holds a {payload['class']}, not a {cls.__name__}")
+        config = dict(payload["config"])
+        config["columns"] = [ColumnSpec(name, card) for name, card in config["columns"]]
+        model = cls(**config)
+        model.load_state_dict(payload["state_dict"])
+        model.eval()
+        return model
 
 
 def make_objective(
     intervention: dict[str, int],
-    columns: list[ColumnSpec] = SCM_COLUMNS,
+    columns: list[ColumnSpec],
     batch_size: int = 1,
     device: str | torch.device | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -260,119 +224,10 @@ def make_objective(
     return values.expand(batch_size, -1).clone(), mask.expand(batch_size, -1).clone()
 
 
-def intervention_loss(
-    model: LatentIntervention,
-    decoder: SemanticDecoder,
-    z: torch.Tensor,
-    values: torch.Tensor,
-    mask: torch.Tensor,
-    s_prime: dict[str, torch.Tensor],
-    proximity_weight: float = 1.0,
-    sparsity_weight: float = 1.0,
-) -> tuple[torch.Tensor, dict[str, float]]:
-    """
-    Consistency loss against the counterfactual targets S' plus latent-space penalties.
-
-    The consistency term is the decoder's mean cross-entropy over *all* S columns:
-    descendants of the intervened node must move to their S' values while
-    non-descendants must keep their factual ones.
-    """
-    z_prime = model(z, values, mask)
-    consistency_loss = decoder.nll(z_prime, s_prime)
-    sparsity_loss = F.l1_loss(z_prime, z)
-    proximity_loss = F.mse_loss(z_prime, z)
-
-    total = consistency_loss + sparsity_weight * sparsity_loss + proximity_weight * proximity_loss
-    return total, {
-        "consistency": consistency_loss.item(),
-        "sparsity": sparsity_loss.item(),
-        "proximity": proximity_loss.item(),
-        "total": total.item(),
-    }
-
-
-def train_latent_intervention(
-    model: LatentIntervention,
-    decoder: SemanticDecoder,
-    latents: torch.Tensor,
-    intervention: dict[str, int],
-    s_prime_targets: dict[str, torch.Tensor],
-    epochs: int = 50,
-    batch_size: int = 64,
-    lr: float = 1e-4,
-    proximity_weight: float = 1.0,
-    sparsity_weight: float = 1.0,
-    seed: int | None = None,
-    device: str | torch.device | None = None,
-    verbose: bool = True,
-) -> list[dict[str, float]]:
-    """
-    Train the baseline manipulator on counterfactual pairs; the decoder stays frozen.
-
-    `latents` are the factual latent representations (n, latent_dim);
-    `s_prime_targets` maps each S column to its (n,) counterfactual values
-    (see targets_from_dataframe on the counterfactual sim CSV); `intervention`
-    is the do() spec those counterfactuals were generated under, e.g. {"G": 1}.
-    Returns per-epoch mean loss components.
-    """
-    device = torch.device(device) if device is not None else torch.device("cpu")
-    generator = torch.Generator(device=device)
-    if seed is not None:
-        generator.manual_seed(seed)
-
-    model.to(device).train()
-    decoder.to(device).eval()
-    decoder.requires_grad_(False)
-    latents = latents.to(device)
-    s_prime_targets = {k: v.to(device) for k, v in s_prime_targets.items()}
-    values, mask = make_objective(intervention, model.columns, batch_size=1, device=device)
-
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    n = latents.shape[0]
-    history: list[dict[str, float]] = []
-
-    for epoch in range(epochs):
-        perm = torch.randperm(n, generator=generator, device=device)
-        epoch_logs: list[dict[str, float]] = []
-        for start in range(0, n, batch_size):
-            idx = perm[start : start + batch_size]
-            batch_s_prime = {k: v[idx] for k, v in s_prime_targets.items()}
-            loss, logs = intervention_loss(
-                model,
-                decoder,
-                latents[idx],
-                values.expand(len(idx), -1),
-                mask.expand(len(idx), -1),
-                batch_s_prime,
-                proximity_weight=proximity_weight,
-                sparsity_weight=sparsity_weight,
-            )
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            epoch_logs.append(logs)
-        history.append(
-            {k: sum(log[k] for log in epoch_logs) / len(epoch_logs) for k in epoch_logs[0]}
-        )
-        if verbose and (epoch + 1) % max(1, epochs // 10) == 0:
-            log = history[-1]
-            print(
-                f"epoch {epoch + 1}/{epochs}  total {log['total']:.4f}  "
-                f"consistency {log['consistency']:.4f}  "
-                f"sparsity {log['sparsity']:.4f}  proximity {log['proximity']:.4f}"
-            )
-
-    model.eval()
-    return history
-
-
-# --- consistency target shared by Plan A and Plan B -----------------------------------
-
-
 @torch.no_grad()
 def consistency_target(
     decoder: SemanticDecoder,
-    h_s: SymbolicIntervention,
+    h_s: SymbolicKernel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     chunk: int = 512,
@@ -390,39 +245,206 @@ def consistency_target(
     return torch.cat(out, dim=0)
 
 
-def _forward_kl(pred_log: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
-    """D_KL(target || pred), mean over the batch. `pred_log` are log-probabilities."""
-    return F.kl_div(pred_log, target, reduction="batchmean")
+# --- shared training loop -----------------------------------------------------------
+
+
+# batch_loss(phase, ctx, generator, z, values, mask, idx) -> (loss, log-dict)
+_BatchLoss = Callable[
+    [str, dict, torch.Generator, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor],
+    tuple[torch.Tensor, dict[str, float]],
+]
+
+
+def _train(
+    model: _ManipulatorBase,
+    decoder: SemanticDecoder,
+    latents: torch.Tensor,
+    intervention: dict[str, int],
+    *,
+    phases: list[tuple[str, int]],
+    batch_size: int,
+    lr: float,
+    seed: int | None,
+    device: str | torch.device | None,
+    verbose: bool,
+    setup: Callable[[torch.device, torch.Generator, torch.Tensor], dict],
+    batch_loss: _BatchLoss,
+) -> list[dict[str, float]]:
+    """
+    Drive minibatch training over `phases` (name, n_epochs); the decoder stays frozen.
+
+    `setup` precomputes per-run context (targets, aligned tensors) once the device is
+    known; `batch_loss` computes the loss for one minibatch given that context.
+    Returns per-epoch mean loss components.
+    """
+    device = torch.device(device) if device is not None else torch.device("cpu")
+    generator = torch.Generator(device=device)
+    if seed is not None:
+        generator.manual_seed(seed)
+
+    model.to(device).train()
+    decoder.to(device).eval()
+    decoder.requires_grad_(False)
+    latents = latents.to(device)
+    values, mask = make_objective(intervention, model.columns, batch_size=1, device=device)
+    ctx = setup(device, generator, latents) or {}
+
+    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+    n = latents.shape[0]
+    multi = len(phases) > 1
+    history: list[dict[str, float]] = []
+
+    for phase, n_epochs in phases:
+        for epoch in range(n_epochs):
+            perm = torch.randperm(n, generator=generator, device=device)
+            logs: list[dict[str, float]] = []
+            for start in range(0, n, batch_size):
+                idx = perm[start : start + batch_size]
+                v, m = values.expand(len(idx), -1), mask.expand(len(idx), -1)
+                loss, log = batch_loss(phase, ctx, generator, latents[idx], v, m, idx)
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+                logs.append(log)
+            row = {k: sum(x[k] for x in logs) / len(logs) for k in logs[0]}
+            history.append(row)
+            if verbose and (epoch + 1) % max(1, n_epochs // (5 if multi else 10)) == 0:
+                tag = f"[{phase}] " if multi else ""
+                body = "  ".join(f"{k} {val:.4f}" for k, val in row.items() if k != "phase")
+                print(f"{tag}epoch {epoch + 1}/{n_epochs}  {body}")
+
+    model.eval()
+    return history
+
+
+# --- Plan 0: deterministic baseline ----------------------------------------------------
+
+
+class LatentIntervention(_ManipulatorBase):
+    """Single-layer transformer mapping (latent, do() spec) to an intervened latent."""
+
+    def __init__(
+        self,
+        latent_dim: int,
+        columns: list[ColumnSpec],
+        d_model: int = 128,
+        nhead: int = 4,
+        dim_feedforward: int = 256,
+        dropout: float = 0.1,
+    ) -> None:
+        super().__init__(
+            latent_dim,
+            columns,
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+        )
+        self.delta = _DeltaNet(latent_dim, self.columns, d_model, nhead, dim_feedforward, dropout)
+
+    def forward(self, z: torch.Tensor, values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """
+        Apply the intervention.
+
+        Args:
+            z: (batch, latent_dim) latent representations.
+            values: (batch, n_columns) long tensor of do() category indices
+                (entries where mask is False are ignored).
+            mask: (batch, n_columns) bool tensor marking intervened columns.
+
+        Returns:
+            (batch, latent_dim) intervened latent representations.
+        """
+        return z + self.delta(z, values, mask)
+
+
+def train_latent_intervention(
+    model: LatentIntervention,
+    decoder: SemanticDecoder,
+    latents: torch.Tensor,
+    intervention: dict[str, int],
+    s_prime: dict[str, torch.Tensor] | None = None,
+    *,
+    h_s: SymbolicKernel | None = None,  # unused; accepted for a uniform call site
+    epochs: int = 50,
+    batch_size: int = 64,
+    lr: float = 1e-4,
+    proximity_weight: float = 1.0,
+    sparsity_weight: float = 1.0,
+    seed: int | None = None,
+    device: str | torch.device | None = None,
+    verbose: bool = True,
+) -> list[dict[str, float]]:
+    """
+    Train the baseline manipulator on counterfactual pairs; the decoder stays frozen.
+
+    `latents` are the factual latent representations (n, latent_dim); `s_prime` maps each
+    S column to its (n,) counterfactual values (see targets_from_dataframe on the
+    counterfactual sim CSV); `intervention` is the do() spec those counterfactuals were
+    generated under, e.g. {"G": 1}. The consistency term is the decoder's mean
+    cross-entropy over *all* S columns: descendants of the intervened node must move to
+    their S' values while non-descendants keep their factual ones.
+    """
+    if s_prime is None:
+        raise ValueError("baseline training needs the counterfactual targets `s_prime`")
+
+    def setup(device: torch.device, _gen: torch.Generator, _z: torch.Tensor) -> dict:
+        return {"s": {k: v.to(device) for k, v in s_prime.items()}}
+
+    def batch_loss(_phase, ctx, _gen, z, v, m, idx):
+        z_prime = model(z, v, m)
+        consistency = decoder.nll(z_prime, {k: val[idx] for k, val in ctx["s"].items()})
+        sparsity, proximity, penalty = _penalties(z_prime - z, sparsity_weight, proximity_weight)
+        total = consistency + penalty
+        return total, {
+            "total": total.item(),
+            "consistency": consistency.item(),
+            "sparsity": sparsity.item(),
+            "proximity": proximity.item(),
+        }
+
+    return _train(
+        model,
+        decoder,
+        latents,
+        intervention,
+        phases=[("train", epochs)],
+        batch_size=batch_size,
+        lr=lr,
+        seed=seed,
+        device=device,
+        verbose=verbose,
+        setup=setup,
+        batch_loss=batch_loss,
+    )
 
 
 # --- Plan A: pre-additive noise (engression) -----------------------------------------
 
 
-class LatentInterventionA(nn.Module):
+class LatentInterventionPreAdditive(_ManipulatorBase):
     """z' = z + Delta_theta(z + eps, delta), eps ~ N(0, noise_std^2 I)."""
 
     def __init__(
         self,
         latent_dim: int,
-        columns: list[ColumnSpec] = SCM_COLUMNS,
+        columns: list[ColumnSpec],
         noise_std: float = 1.0,
         d_model: int = 128,
         nhead: int = 4,
         dim_feedforward: int = 256,
         dropout: float = 0.1,
     ) -> None:
-        super().__init__()
-        self.columns = list(columns)
+        super().__init__(
+            latent_dim,
+            columns,
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            noise_std=noise_std,
+        )
         self.noise_std = noise_std
-        self._config = {
-            "latent_dim": latent_dim,
-            "columns": [(c.name, c.n_categories) for c in self.columns],
-            "noise_std": noise_std,
-            "d_model": d_model,
-            "nhead": nhead,
-            "dim_feedforward": dim_feedforward,
-            "dropout": dropout,
-        }
         self.delta = _DeltaNet(latent_dim, self.columns, d_model, nhead, dim_feedforward, dropout)
 
     def forward(
@@ -467,20 +489,15 @@ class LatentInterventionA(nn.Module):
         composed = torch.logsumexp(log_joints, dim=0) - math.log(n_samples)
         return composed, zs - z
 
-    def save(self, path: str | Path) -> None:
-        _save_module(self, path)
 
-    @classmethod
-    def load(cls, path: str | Path, device: str | torch.device | None = None) -> "LatentInterventionA":
-        return _load_module(cls, path, device)
-
-
-def train_latent_intervention_a(
-    model: LatentInterventionA,
+def train_latent_intervention_preadditive(
+    model: LatentInterventionPreAdditive,
     decoder: SemanticDecoder,
-    h_s: SymbolicIntervention,
     latents: torch.Tensor,
     intervention: dict[str, int],
+    s_prime: dict[str, torch.Tensor] | None = None,  # unused; uniform call site
+    *,
+    h_s: SymbolicKernel | None = None,
     n_samples: int = 8,
     epochs: int = 50,
     batch_size: int = 64,
@@ -492,58 +509,38 @@ def train_latent_intervention_a(
     verbose: bool = True,
 ) -> list[dict[str, float]]:
     """Train Plan A on the forward-KL consistency objective (decoder + h_S frozen)."""
-    device = torch.device(device) if device is not None else torch.device("cpu")
-    generator = torch.Generator(device=device)
-    if seed is not None:
-        generator.manual_seed(seed)
+    if h_s is None:
+        raise ValueError("pre-additive training needs the symbolic kernel `h_s`")
 
-    model.to(device).train()
-    decoder.to(device).eval()
-    decoder.requires_grad_(False)
-    latents = latents.to(device)
-    target = consistency_target(decoder, h_s, latents, intervention).to(device)
-    values, mask = make_objective(intervention, model.columns, batch_size=1, device=device)
+    def setup(device: torch.device, _gen: torch.Generator, z: torch.Tensor) -> dict:
+        return {"target": consistency_target(decoder, h_s, z, intervention).to(device)}
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    n = latents.shape[0]
-    history: list[dict[str, float]] = []
+    def batch_loss(_phase, ctx, generator, z, v, m, idx):
+        composed, shifts = model.composed_log_joint(z, v, m, decoder, n_samples, generator)
+        kl = _forward_kl(composed, ctx["target"][idx])
+        sparsity, proximity, penalty = _penalties(shifts, sparsity_weight, proximity_weight)
+        total = kl + penalty
+        return total, {
+            "total": total.item(),
+            "kl": kl.item(),
+            "sparsity": sparsity.item(),
+            "proximity": proximity.item(),
+        }
 
-    for epoch in range(epochs):
-        perm = torch.randperm(n, generator=generator, device=device)
-        logs: list[dict[str, float]] = []
-        for start in range(0, n, batch_size):
-            idx = perm[start : start + batch_size]
-            composed, shifts = model.composed_log_joint(
-                latents[idx],
-                values.expand(len(idx), -1),
-                mask.expand(len(idx), -1),
-                decoder,
-                n_samples,
-                generator,
-            )
-            kl = _forward_kl(composed, target[idx])
-            sparsity = shifts.abs().mean()
-            proximity = shifts.pow(2).mean()
-            loss = kl + sparsity_weight * sparsity + proximity_weight * proximity
-
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            logs.append(
-                {
-                    "total": loss.item(),
-                    "kl": kl.item(),
-                    "sparsity": sparsity.item(),
-                    "proximity": proximity.item(),
-                }
-            )
-        history.append({k: sum(x[k] for x in logs) / len(logs) for k in logs[0]})
-        if verbose and (epoch + 1) % max(1, epochs // 10) == 0:
-            log = history[-1]
-            print(f"epoch {epoch + 1}/{epochs}  total {log['total']:.4f}  kl {log['kl']:.4f}")
-
-    model.eval()
-    return history
+    return _train(
+        model,
+        decoder,
+        latents,
+        intervention,
+        phases=[("train", epochs)],
+        batch_size=batch_size,
+        lr=lr,
+        seed=seed,
+        device=device,
+        verbose=verbose,
+        setup=setup,
+        batch_loss=batch_loss,
+    )
 
 
 # --- Plan B: discrete mixture over counterfactual states -----------------------------
@@ -598,13 +595,13 @@ class _AutoregWeights(nn.Module):
         return idx, logw - torch.logsumexp(logw, dim=-1, keepdim=True)
 
 
-class LatentInterventionB(nn.Module):
+class LatentInterventionDist(_ManipulatorBase):
     """h_Z(. | z, delta) = sum_s' w_theta(s' | z, delta) dirac_{z + Delta_phi(z, s')}."""
 
     def __init__(
         self,
         latent_dim: int,
-        columns: list[ColumnSpec] = SCM_COLUMNS,
+        columns: list[ColumnSpec],
         d_model: int = 128,
         nhead: int = 4,
         dim_feedforward: int = 256,
@@ -612,19 +609,17 @@ class LatentInterventionB(nn.Module):
         embed_dim: int = 16,
         top_k: int = 16,
     ) -> None:
-        super().__init__()
-        self.columns = list(columns)
+        super().__init__(
+            latent_dim,
+            columns,
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            embed_dim=embed_dim,
+            top_k=top_k,
+        )
         self.top_k = top_k
-        self._config = {
-            "latent_dim": latent_dim,
-            "columns": [(c.name, c.n_categories) for c in self.columns],
-            "d_model": d_model,
-            "nhead": nhead,
-            "dim_feedforward": dim_feedforward,
-            "dropout": dropout,
-            "embed_dim": embed_dim,
-            "top_k": top_k,
-        }
         self.w_theta = _AutoregWeights(
             latent_dim, self.columns, d_model, nhead, dim_feedforward, dropout, embed_dim
         )
@@ -663,21 +658,15 @@ class LatentInterventionB(nn.Module):
         composed = torch.logsumexp(torch.stack(components), dim=0)
         return composed, torch.stack(shifts)
 
-    def save(self, path: str | Path) -> None:
-        _save_module(self, path)
 
-    @classmethod
-    def load(cls, path: str | Path, device: str | torch.device | None = None) -> "LatentInterventionB":
-        return _load_module(cls, path, device)
-
-
-def train_latent_intervention_b(
-    model: LatentInterventionB,
+def train_latent_intervention_dist(
+    model: LatentInterventionDist,
     decoder: SemanticDecoder,
-    h_s: SymbolicIntervention,
     latents: torch.Tensor,
     intervention: dict[str, int],
-    s_prime_targets: dict[str, torch.Tensor],
+    s_prime: dict[str, torch.Tensor] | None = None,
+    *,
+    h_s: SymbolicKernel | None = None,
     pretrain_epochs: int = 30,
     joint_epochs: int = 20,
     batch_size: int = 64,
@@ -696,116 +685,126 @@ def train_latent_intervention_b(
     - **Pretrain** splits the bilevel problem into two supervised ones:
       w_theta distils the dense target (h_S . g)(. | z, delta); the realiser Delta_phi
       minimises -log g(s' | z + Delta_phi(z, s')) + l1||Delta||_1 + l2||Delta||_2^2 on the
-      true counterfactual states `s_prime_targets`.
+      true counterfactual states `s_prime`.
     - **Joint** fine-tunes both on the exact forward-KL consistency objective.
 
     Returns per-epoch mean loss components; the "phase" key is 0 for pretrain, 1 for joint.
     """
-    device = torch.device(device) if device is not None else torch.device("cpu")
-    generator = torch.Generator(device=device)
-    if seed is not None:
-        generator.manual_seed(seed)
+    if h_s is None or s_prime is None:
+        raise ValueError("dist training needs both `h_s` and `s_prime`")
 
-    model.to(device).train()
-    decoder.to(device).eval()
-    decoder.requires_grad_(False)
-    latents = latents.to(device)
-    s_cols = {k: v.to(device) for k, v in s_prime_targets.items()}
-    s_prime_idx = torch.stack([s_cols[c.name] for c in model.columns], dim=1)  # (n, n_cols)
-    target = consistency_target(decoder, h_s, latents, intervention).to(device)
-    values, mask = make_objective(intervention, model.columns, batch_size=1, device=device)
+    def setup(device: torch.device, _gen: torch.Generator, z: torch.Tensor) -> dict:
+        s_cols = {k: v.to(device) for k, v in s_prime.items()}
+        return {
+            "s_cols": s_cols,
+            "s_idx": torch.stack([s_cols[c.name] for c in model.columns], dim=1),  # (n, n_cols)
+            "target": consistency_target(decoder, h_s, z, intervention).to(device),
+        }
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=lr)
-    n = latents.shape[0]
-    history: list[dict[str, float]] = []
+    def batch_loss(phase, ctx, _gen, z, v, m, idx):
+        if phase == "pretrain":
+            w_kl = _forward_kl(model.w_theta.log_joint(z, v, m), ctx["target"][idx])
+            z_r = model.realise(z, ctx["s_idx"][idx])
+            realise_ce = decoder.nll(z_r, {k: val[idx] for k, val in ctx["s_cols"].items()})
+            _, _, realise_reg = _penalties(z_r - z, realiser_l1, realiser_l2)
+            total = w_kl + realise_ce + realise_reg
+            return total, {
+                "phase": 0.0,
+                "total": total.item(),
+                "w_kl": w_kl.item(),
+                "realise_ce": realise_ce.item(),
+            }
+        composed, shifts = model.composed_log_joint(z, v, m, decoder)
+        kl = _forward_kl(composed, ctx["target"][idx])
+        sparsity, proximity, penalty = _penalties(shifts, sparsity_weight, proximity_weight)
+        total = kl + penalty
+        return total, {
+            "phase": 1.0,
+            "total": total.item(),
+            "kl": kl.item(),
+            "sparsity": sparsity.item(),
+        }
 
-    def run_epoch(phase: int) -> dict[str, float]:
-        perm = torch.randperm(n, generator=generator, device=device)
-        logs: list[dict[str, float]] = []
-        for start in range(0, n, batch_size):
-            idx = perm[start : start + batch_size]
-            z = latents[idx]
-            v, m = values.expand(len(idx), -1), mask.expand(len(idx), -1)
-            if phase == 0:
-                w_kl = _forward_kl(model.w_theta.log_joint(z, v, m), target[idx])
-                z_r = model.realise(z, s_prime_idx[idx])
-                realise_ce = decoder.nll(z_r, {k: v_[idx] for k, v_ in s_cols.items()})
-                delta = z_r - z
-                realise_reg = realiser_l1 * delta.abs().mean() + realiser_l2 * delta.pow(2).mean()
-                loss = w_kl + realise_ce + realise_reg
-                logs.append(
-                    {
-                        "phase": 0.0,
-                        "total": loss.item(),
-                        "w_kl": w_kl.item(),
-                        "realise_ce": realise_ce.item(),
-                    }
-                )
-            else:
-                composed, shifts = model.composed_log_joint(z, v, m, decoder)
-                kl = _forward_kl(composed, target[idx])
-                sparsity = shifts.abs().mean()
-                proximity = shifts.pow(2).mean()
-                loss = kl + sparsity_weight * sparsity + proximity_weight * proximity
-                logs.append(
-                    {"phase": 1.0, "total": loss.item(), "kl": kl.item(), "sparsity": sparsity.item()}
-                )
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        return {k: sum(x[k] for x in logs) / len(logs) for k in logs[0]}
-
-    for phase, n_epochs in ((0, pretrain_epochs), (1, joint_epochs)):
-        for epoch in range(n_epochs):
-            row = run_epoch(phase)
-            history.append(row)
-            if verbose and (epoch + 1) % max(1, n_epochs // 5) == 0:
-                tag = "pretrain" if phase == 0 else "joint"
-                print(f"[{tag}] epoch {epoch + 1}/{n_epochs}  " + "  ".join(
-                    f"{k} {v:.4f}" for k, v in row.items() if k != "phase"
-                ))
-
-    model.eval()
-    return history
+    return _train(
+        model,
+        decoder,
+        latents,
+        intervention,
+        phases=[("pretrain", pretrain_epochs), ("joint", joint_epochs)],
+        batch_size=batch_size,
+        lr=lr,
+        seed=seed,
+        device=device,
+        verbose=verbose,
+        setup=setup,
+        batch_loss=batch_loss,
+    )
 
 
 if __name__ == "__main__":
-    # Smoke tests on random data: identity at init, then a short training run for each plan
-    # against a freshly (randomly) initialised frozen decoder and the closed-form h_S.
+    # Smoke tests on a random schema: identity at init, then a short training run for
+    # each plan against a randomly initialised frozen decoder and a stub h_S.
     torch.manual_seed(0)
     latent_dim, n = 128, 192
+    columns = [ColumnSpec(f"c{i}", int(k)) for i, k in enumerate(torch.randint(2, 4, (5,)))]
+    total_states = 1
+    for col in columns:
+        total_states *= col.n_categories
+
+    class _StubKernel:
+        """Identity h_S: every factual state is its own counterfactual (rows sum to 1)."""
+
+        columns = columns
+
+        def state_index(self, state: dict[str, int]) -> int:
+            idx = 0
+            for c in self.columns:
+                idx = idx * c.n_categories + int(state[c.name])
+            return idx
+
+        def transition_matrix(self, delta: dict[str, int]) -> torch.Tensor:
+            eye = torch.arange(total_states)
+            return torch.sparse_coo_tensor(
+                torch.stack([eye, eye]), torch.ones(total_states), (total_states, total_states)
+            ).coalesce()
+
+        def compose(self, g_probs: torch.Tensor, delta: dict[str, int]) -> torch.Tensor:
+            return g_probs
+
     z = torch.randn(n, latent_dim)
-    decoder = SemanticDecoder(latent_dim)
-    h_s = SymbolicIntervention.from_scm()
-    intervention = {"G": 1}
-    s_prime = {col.name: torch.randint(col.n_categories, (n,)) for col in SCM_COLUMNS}
-    s_prime["G"] = torch.ones(n, dtype=torch.long)
-    values, mask = make_objective(intervention, batch_size=n)
+    decoder = SemanticDecoder(latent_dim, columns)
+    h_s = _StubKernel()
+    intervention = {columns[1].name: 1}
+    s_prime = {col.name: torch.randint(col.n_categories, (n,)) for col in columns}
+    s_prime[columns[1].name] = torch.ones(n, dtype=torch.long)
+    values, mask = make_objective(intervention, columns, batch_size=n)
 
     # Plan 0 -- baseline
-    base = LatentIntervention(latent_dim)
+    base = LatentIntervention(latent_dim, columns)
     with torch.no_grad():
         assert torch.allclose(base(z, values, mask), z), "baseline: identity at init"
-    h0 = train_latent_intervention(base, decoder, z, intervention, s_prime, epochs=5, seed=0, verbose=False)
+    h0 = train_latent_intervention(
+        base, decoder, z, intervention, s_prime, epochs=5, seed=0, verbose=False
+    )
     print(f"[plan 0] total {h0[0]['total']:.4f} -> {h0[-1]['total']:.4f}")
 
     # Plan A -- engression
     gen = torch.Generator().manual_seed(0)
-    a = LatentInterventionA(latent_dim, noise_std=0.5)
+    a = LatentInterventionPreAdditive(latent_dim, columns, noise_std=0.5)
     with torch.no_grad():
         assert torch.allclose(a(z, values, mask, gen), z), "plan A: identity at init"
-    ha = train_latent_intervention_a(
-        a, decoder, h_s, z, intervention, n_samples=4, epochs=3, seed=0, verbose=False
+    ha = train_latent_intervention_preadditive(
+        a, decoder, z, intervention, h_s=h_s, n_samples=4, epochs=3, seed=0, verbose=False
     )
     print(f"[plan A] total {ha[0]['total']:.4f} -> {ha[-1]['total']:.4f}  kl {ha[-1]['kl']:.4f}")
 
     # Plan B -- discrete mixture
-    b = LatentInterventionB(latent_dim, top_k=8)
+    b = LatentInterventionDist(latent_dim, columns, top_k=8)
     with torch.no_grad():
         z_b = b(z, values, mask)
     assert torch.allclose(z_b, z), "plan B: realiser is identity at init"
-    hb = train_latent_intervention_b(
-        b, decoder, h_s, z, intervention, s_prime,
+    hb = train_latent_intervention_dist(
+        b, decoder, z, intervention, s_prime, h_s=h_s,
         pretrain_epochs=3, joint_epochs=2, seed=0, verbose=False,
     )
     pretrain = [r for r in hb if r["phase"] == 0.0][-1]
@@ -816,6 +815,6 @@ if __name__ == "__main__":
     with torch.no_grad():
         z_prime = b(z, values, mask)
     preds = decoder.predict(z_prime)
-    consistency = {c.name: (preds[c.name] == s_prime[c.name]).float().mean().item() for c in SCM_COLUMNS}
+    consistency = {c.name: (preds[c.name] == s_prime[c.name]).float().mean().item() for c in columns}
     print("[plan B] consistency accuracy:", {k: round(v, 2) for k, v in consistency.items()})
     print(f"[plan B] mean latent shift: {(z_prime - z).norm(dim=1).mean():.3f}")
