@@ -7,13 +7,13 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from exp.sim import run
+from exp.sim import helpers, paired_data, run, stage_cv, stage_simulate
 from exp.sim.generate_text import GenerationResult
 from exp.sim.pairing import build_pair_index, build_render_plan, materialize_binned_values
 
 
 def _saved_attempts(output: Path) -> dict[int, int]:
-    info = json.loads(run._generation_info_path(output).read_text(encoding="utf-8"))
+    info = json.loads(helpers.generation_info_path(output).read_text(encoding="utf-8"))
     return {int(row_id): int(count) for row_id, count in info["attempts"].items()}
 
 
@@ -60,6 +60,11 @@ def test_simulation_writes_shared_noise_pairs_and_bounded_split(tmp_path: Path) 
     config["split"] = {"seed": 7, "test_fraction": 0.2}
     config["paths"]["sim_dir"] = str(tmp_path / "sim")
     config["paths"]["pair_index"] = str(tmp_path / "sim" / "pair_index.csv")
+    # simulate archives the text outputs and the render plan too: every path it
+    # touches must be redirected, or the test rewrites the real data/ directory.
+    config["paths"]["render_plan"] = str(tmp_path / "sim" / "render_plan.csv")
+    config["paths"]["texts"] = str(tmp_path / "text" / "cv_factual.csv")
+    config["paths"]["texts_counterfactual"] = str(tmp_path / "text" / "cv_counterfactual.csv")
 
     run.stage_simulate(config)
 
@@ -135,7 +140,7 @@ def _paired_config(tmp_path: Path) -> dict:
             "is_identity": [False, True, False, True],
         }
     ).to_csv(sim_dir / "pair_index.csv", index=False)
-    run._write_json(sim_dir / "simulation_info.json", run._simulation_record(config))
+    helpers.write_json(sim_dir / "simulation_info.json", paired_data.simulation_record(config))
 
     template_frame = pd.DataFrame(
         {
@@ -152,12 +157,12 @@ def _paired_config(tmp_path: Path) -> dict:
         }
     )
     for kind, frame in (("templates", template_frame), ("personas", persona_frame)):
-        output, schema, id_column, expected, digest = run._pool_contract(config, kind)
-        run._prepare_generated_csv(
+        output, schema, id_column, expected, digest = helpers.pool_contract(config, kind)
+        helpers.prepare_generated_csv(
             output, schema, id_column, expected, digest, create=True
         )
         frame.to_csv(output, index=False)
-        run._finish_generation(output, expected, expected)
+        helpers.finish_generation(output, expected, expected)
     return config
 
 
@@ -176,7 +181,7 @@ def test_test_only_counterfactual_generation_and_identity_copy(
             finish_reason="stop",
         )
 
-    monkeypatch.setattr(run, "generate_text_result", fake_generate)
+    monkeypatch.setattr(stage_cv, "generate_text_result", fake_generate)
 
     run.stage_generate_texts(config)
     assert len(calls) == 4
@@ -219,7 +224,7 @@ def test_generation_resumes_and_rejects_changed_prompt_before_a_call(
             finish_reason="stop",
         )
 
-    monkeypatch.setattr(run, "generate_text_result", fake_generate)
+    monkeypatch.setattr(stage_cv, "generate_text_result", fake_generate)
     run.stage_generate_texts(config)
     run.stage_generate_texts(config)
     assert len(calls) == 2
@@ -248,24 +253,24 @@ def test_pair_index_must_match_the_recorded_seeded_split(tmp_path: Path) -> None
     pairs = pd.read_csv(config["paths"]["pair_index"])
     pairs["split"] = ["train", "test", "test", "train"]
     pairs.to_csv(config["paths"]["pair_index"], index=False)
-    run._write_json(
+    helpers.write_json(
         Path(config["paths"]["sim_dir"]) / "simulation_info.json",
-        run._simulation_record(config),
+        paired_data.simulation_record(config),
     )
 
     with pytest.raises(ValueError, match="seeded split"):
-        run._load_pair_inputs(config)
+        paired_data.load_pair_inputs(config)
 
 
 def test_generation_info_and_csv_must_exist_together(tmp_path: Path) -> None:
     output = tmp_path / "texts.csv"
-    run._write_json(
-        run._generation_info_path(output),
+    helpers.write_json(
+        helpers.generation_info_path(output),
         {"input_digest": "digest"},
     )
 
     with pytest.raises(RuntimeError, match="both exist or both be absent"):
-        run._prepare_generated_csv(
+        helpers.prepare_generated_csv(
             output,
             ["id", "text"],
             "id",
@@ -277,8 +282,8 @@ def test_generation_info_and_csv_must_exist_together(tmp_path: Path) -> None:
 
 def test_generation_attempts_are_persisted_and_capped(tmp_path: Path) -> None:
     output = tmp_path / "texts.csv"
-    info_path = run._generation_info_path(output)
-    run._write_json(info_path, {"attempts": {}})
+    info_path = helpers.generation_info_path(output)
+    helpers.write_json(info_path, {"attempts": {}})
     calls = []
     rejected_results = [
         GenerationResult("unfinished", model="mock-model", finish_reason="length"),
@@ -292,11 +297,11 @@ def test_generation_attempts_are_persisted_and_capped(tmp_path: Path) -> None:
         return rejected_results[len(calls) - 1]
 
     with pytest.raises(RuntimeError, match="exhausted its 3 generation attempts"):
-        run._generate_with_attempts(output, 7, 3, rejected)
+        helpers.generate_with_attempts(output, 7, 3, rejected)
     assert len(calls) == 3
     assert _saved_attempts(output) == {7: 3}
     with pytest.raises(RuntimeError, match="exhausted its 3 generation attempts"):
-        run._generate_with_attempts(output, 7, 3, rejected)
+        helpers.generate_with_attempts(output, 7, 3, rejected)
     assert len(calls) == 3
 
 
@@ -306,8 +311,8 @@ def test_archive_existing_uses_one_date_only_suffix(tmp_path: Path) -> None:
     first.write_text("data", encoding="utf-8")
     second.write_text("{}", encoding="utf-8")
 
-    stamp = run.datetime.now().strftime("%y-%m-%d")
-    run._archive_existing([first, second])
+    stamp = stage_simulate.datetime.now().strftime("%y-%m-%d")
+    stage_simulate._archive_existing([first, second])
 
     assert not first.exists()
     assert not second.exists()

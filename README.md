@@ -10,7 +10,7 @@ The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 26
 
 | Path | Contents |
 | --- | --- |
-| `exp/sim/` | Data generation pipeline: Python SCM, codebook, generation prompts (`prompts/`), seed statements + job titles, LLM plumbing, runner, `config.yaml` |
+| `exp/sim/` | Data generation pipeline: Python SCM, codebook, generation prompts (`prompts/`), seed statements + job titles, LLM plumbing, stage runner, `config.yaml` (own README) |
 | `exp/sim/R/` | Original SCM simulation in R, kept as the reference implementation (own README, renv) |
 | `src/` | Encoder, semantic decoder, latent manipulator, training/eval pipeline, `config.yaml` (per-module hyperparameters) |
 | `data/` | Generated artifacts (`sim/`, `text/`, `latents/` — only `text/` is tracked) and the older sampling pools |
