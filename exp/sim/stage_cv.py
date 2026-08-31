@@ -19,6 +19,7 @@ from exp.sim.helpers import (
     generate_with_attempts,
     generation_limit,
     max_generation_attempts,
+    validate_generation_settings,
     prepare_generated_csv,
     resolve_llm,
 )
@@ -85,7 +86,7 @@ def _copy_identities(
 def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
     ctx = render_context(config)
     prompt, prompt_templates = _cv_prompt(config)
-    generation_limit(config, 0)  # validate before identity rows or billed calls
+    validate_generation_settings(config)  # before identity rows or billed calls
     maximum = max_generation_attempts(config)
 
     factual_text = _load_factual_text(ctx) if counterfactual else None
@@ -114,32 +115,35 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
         missing = [unit_id for unit_id in missing if unit_id not in done]
 
     selected = missing[: generation_limit(config, len(missing))]
-    if selected:
-        base_url, api_key = resolve_llm(config)
-        world = "counterfactual" if counterfactual else "factual"
-        print(f"generating {len(selected)} {world} CVs")
-        for position, row_id in enumerate(selected, 1):
-            sample, concrete = ctx.render_inputs(row_id, counterfactual)
-            result = generate_with_attempts(
-                output,
-                row_id,
-                maximum,
-                lambda sample=sample: generate_text_result(
-                    sample,
-                    prompt,
-                    prompt_templates,
-                    api_key=api_key,
-                    base_url=base_url,
-                ),
-            )
-            _append_cv_row(
-                output,
-                ctx.cv_row(row_id, concrete, result.text, result, "generated"),
-            )
-            done.add(row_id)
-            if position % 25 == 0 or position == len(selected):
-                print(f"  {position}/{len(selected)}")
-    finish_generation(output, done, expected_ids)
+    try:
+        if selected:
+            base_url, api_key = resolve_llm(config)
+            world = "counterfactual" if counterfactual else "factual"
+            print(f"generating {len(selected)} {world} CVs")
+            for position, row_id in enumerate(selected, 1):
+                sample, concrete = ctx.render_inputs(row_id, counterfactual)
+                result = generate_with_attempts(
+                    output,
+                    row_id,
+                    maximum,
+                    lambda sample=sample: generate_text_result(
+                        sample,
+                        prompt,
+                        prompt_templates,
+                        api_key=api_key,
+                        base_url=base_url,
+                    ),
+                )
+                _append_cv_row(
+                    output,
+                    ctx.cv_row(row_id, concrete, result.text, result, "generated"),
+                )
+                done.add(row_id)
+                if position % 25 == 0 or position == len(selected):
+                    print(f"  {position}/{len(selected)}")
+    finally:
+        # rows already on disk must be reflected in the journal even if a row failed
+        finish_generation(output, done, expected_ids)
     print(f"{len(done)}/{len(expected_ids)} rows available in {output}")
 
 

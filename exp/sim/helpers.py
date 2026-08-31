@@ -132,6 +132,12 @@ def max_generation_attempts(config: Mapping[str, Any]) -> int:
     return attempts
 
 
+def validate_generation_settings(config: Mapping[str, Any]) -> None:
+    """Fail on invalid billing settings before any row is written or billed."""
+    generation_limit(config, 0)
+    max_generation_attempts(config)
+
+
 def resolve_llm(config: Mapping[str, Any]) -> tuple[str, str | None]:
     """Return the configured endpoint and API key, failing before any call."""
     llm = config.get("llm", {})
@@ -248,6 +254,29 @@ def finish_generation(output: Path, completed: set[int], expected: set[int]) -> 
 
 
 # --- generated pools ----------------------------------------------------------------
+
+
+def reset_failed_attempts(output: Path, id_column: str) -> int:
+    """Clear the retry budget of IDs that never produced a row, so they can be retried.
+
+    A per-ID budget is spent permanently, so an ID that burned its attempts on a
+    transient outage would otherwise fail every later run without calling.
+    """
+    info_path = generation_info_path(output)
+    if not output.exists() or not info_path.exists():
+        return 0
+    info = json.loads(info_path.read_text(encoding="utf-8"))
+    attempts = info.get("attempts", {})
+    if not attempts:
+        return 0
+    written = {str(row_id) for row_id in completed_ids(pd.read_csv(output), id_column)}
+    stale = [row_id for row_id in attempts if row_id not in written]
+    for row_id in stale:
+        del attempts[row_id]
+    if stale:
+        info["attempts"] = attempts
+        write_json(info_path, info)
+    return len(stale)
 
 
 def pool_contract(

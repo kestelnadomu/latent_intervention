@@ -35,17 +35,21 @@ def _generate_rows(
     todo: list[tuple[dict[str, Any], list[Any]]],
     prompt_path: str | Path,
     label: str,
-) -> set[int]:
-    """Generate and append the pending rows of a pool, respecting the billing cap."""
+    done: set[int],
+) -> None:
+    """Generate and append the pending rows of a pool, respecting the billing cap.
+
+    Accepted rows are added to ``done`` as they are written, so a caller can record
+    coverage even if a later row exhausts its attempts.
+    """
     maximum = max_generation_attempts(config)
     todo = todo[: generation_limit(config, len(todo))]
     if not todo:
-        return set()
+        return
     prompts = load_prompts(prompt_path)
     if len(prompts["prompts"]) != 1:
         raise ValueError(f"{label} prompt file must define exactly one prompt")
     base_url, api_key = resolve_llm(config)
-    written: set[int] = set()
     with open(out_path, "a", encoding="utf-8", newline="") as stream:
         writer = csv.writer(stream)
         for position, (sample, prefix) in enumerate(todo, 1):
@@ -64,10 +68,9 @@ def _generate_rows(
             )
             writer.writerow([*prefix, result.text])
             stream.flush()
-            written.add(row_id)
+            done.add(row_id)
             if position % 25 == 0 or position == len(todo):
                 print(f"  {position}/{len(todo)}")
-    return written
 
 
 def stage_generate_templates(config: dict[str, Any]) -> None:
@@ -84,8 +87,11 @@ def stage_generate_templates(config: dict[str, Any]) -> None:
         for template_id in sorted(expected)
         if template_id not in done
     ]
-    done |= _generate_rows(config, out_path, todo, config["prompts"]["templates"], "templates")
-    finish_generation(out_path, done, expected)
+    try:
+        _generate_rows(config, out_path, todo, config["prompts"]["templates"], "templates", done)
+    finally:
+        # rows already on disk must be reflected in the journal even if a row failed
+        finish_generation(out_path, done, expected)
     print(f"{len(done)}/{len(expected)} templates available in {out_path}")
 
 
@@ -102,6 +108,9 @@ def stage_generate_personas(config: dict[str, Any]) -> None:
         rng = np.random.default_rng([int(config["seed"]), RNG_PERSONAS, persona_id])
         title = titles[int(rng.integers(len(titles)))]
         todo.append(({"job_title": title}, [persona_id, title]))
-    done |= _generate_rows(config, out_path, todo, config["prompts"]["personas"], "personas")
-    finish_generation(out_path, done, expected)
+    try:
+        _generate_rows(config, out_path, todo, config["prompts"]["personas"], "personas", done)
+    finally:
+        # rows already on disk must be reflected in the journal even if a row failed
+        finish_generation(out_path, done, expected)
     print(f"{len(done)}/{len(expected)} personas available in {out_path}")

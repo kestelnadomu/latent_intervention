@@ -29,6 +29,12 @@ Order matters: `simulate` first, the two pools in any order, then the factual
 texts, then the counterfactual ones. `validate-pairs` re-checks everything and
 is safe to run at any point once the files exist.
 
+One maintenance stage makes no calls of its own:
+
+```bash
+uv run python -m exp.sim.run reset-attempts   # let IDs that burned their retries be retried
+```
+
 Smoke tests that need no API key or generated data:
 
 ```bash
@@ -48,6 +54,7 @@ uv run python -m exp.sim.symbolic       # the closed-form symbolic kernel h_S
 | `stage_pools.py` | `generate-templates` and `generate-personas`. Two thin wrappers over one billed row loop. |
 | `stage_cv.py` | `generate-texts` and `generate-counterfactual-texts` — one routine parameterized by world. |
 | `stage_validate.py` | `validate-pairs`. Coverage plus the cross-world checks that need X and X' side by side. |
+| `stage_reset.py` | `reset-attempts`. Clears spent retry budgets for IDs with no row yet. |
 
 ### Shared layers used by the stages
 
@@ -115,9 +122,10 @@ Generated texts are **tracked in git** (they cost credits), unlike the rest of
 - Re-running `simulate` archives the previous run's simulation *and* text outputs
   with a `_YY-MM-DD` suffix rather than overwriting them. Re-running it twice in
   one day fails instead of colliding.
-- A retry budget is spent permanently. If an ID burns all its attempts on a
-  transient outage, every later run fails that ID immediately without calling;
-  clearing its entry from `attempts` in the journal is currently the only reset.
+- A retry budget is counted across resumes, so an ID that burned its attempts on a
+  transient outage would otherwise fail every later run without calling. Run
+  `reset-attempts` to clear the budget of IDs that never produced a row; written
+  rows and every digest are left untouched.
 
 ## Configuration
 

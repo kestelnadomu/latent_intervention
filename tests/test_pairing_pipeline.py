@@ -319,3 +319,50 @@ def test_archive_existing_uses_one_date_only_suffix(tmp_path: Path) -> None:
     assert (tmp_path / f"sim_data_factual_{stamp}.csv").read_text(encoding="utf-8") == "data"
     archived_info = tmp_path / f"cv_factual_{stamp}.generation.json"
     assert archived_info.read_text(encoding="utf-8") == "{}"
+
+
+def test_spent_attempt_budget_is_cleared_only_for_unwritten_ids(tmp_path: Path) -> None:
+    output = tmp_path / "pool.csv"
+    helpers.write_json(
+        helpers.generation_info_path(output),
+        {"input_digest": "d", "attempts": {"1": 3, "2": 3}},
+    )
+    pd.DataFrame({"pool_id": [1], "text": ["written"]}).to_csv(output, index=False)
+
+    assert helpers.reset_failed_attempts(output, "pool_id") == 1
+
+    info = json.loads(helpers.generation_info_path(output).read_text(encoding="utf-8"))
+    assert info["attempts"] == {"1": 3}          # a written row keeps its history
+    assert info["input_digest"] == "d"           # digests are untouched
+
+    assert helpers.reset_failed_attempts(output, "pool_id") == 0
+
+
+def test_coverage_is_recorded_when_a_row_exhausts_its_attempts(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config = _paired_config(tmp_path)
+    calls = {"n": 0}
+
+    def flaky_generate(sample, prompt, templates, api_key=None, base_url=None):
+        calls["n"] += 1
+        if calls["n"] > 2:
+            raise RuntimeError("endpoint down")
+        return GenerationResult(
+            text=f"cv {calls['n']}",
+            response_id=f"r{calls['n']}",
+            model="m",
+            system_fingerprint="fp",
+            finish_reason="stop",
+        )
+
+    monkeypatch.setattr(stage_cv, "generate_text_result", flaky_generate)
+
+    with pytest.raises(RuntimeError, match="exhausted"):
+        run.stage_generate_texts(config)
+
+    output = Path(config["paths"]["texts"])
+    info = json.loads(helpers.generation_info_path(output).read_text(encoding="utf-8"))
+    assert info["n_completed"] == len(pd.read_csv(output))
+    assert info["n_completed"] > 0
+    assert info["complete"] is False
