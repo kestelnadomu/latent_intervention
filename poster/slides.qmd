@@ -81,17 +81,34 @@ $Z' = h_Z(Z)$ - counterfactual latent representation of $X$ <br>(e.g., a CV-repr
 :::
 :::
 
-## The Idea: Latent Interventions
+## The Idea: Modular Causally Aware Interventions
 
 ![$(h_S \circ g)(z) = (g \circ h_Z)(z)$](img/demo.svg)
 
-## The Current Status: Experimental Directions
-
-::: {.incremental}
-* $h_Z$ as a single-layer transformer vs. normalizing flow
-* Counterfactual point-estimates vs. distributions
+::: {.notes}
+- modular causally aware interventions in text classification
 :::
 
+## Visit my poster to discuss...
+
+::: {.columns}
+::: {.column}
+* $h_Z$ as a single-layer transformer vs. normalizing flow
+* counterfactual point-estimates vs. distributions
+* practicability of causal assumptions
+* applications beyond counterfactual fairness
+:::
+
+::: {.column}
+```{r}
+library(qrcode)
+
+plot(qr_code("https://leokestel.de/latent_intervention"))
+```
+[leokestel.de/latent_intervention](https://leokestel.de/latent_intervention)
+
+:::
+:::
 
 <!-- You can add a polaroid effect to embedded images:
 
