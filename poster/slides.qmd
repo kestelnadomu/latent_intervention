@@ -1,32 +1,111 @@
 ---
-title: "Counterfactual Latent Representations: A Neurosymbolic Approach"
+title: Counterfactual Latent Representations
+subtitle: A Neurosymbolic Approach
 format:
   mpim-revealjs: default
 author:
   - name: Leonhard Kestel
   - name: Christoph Kern
-date: 2026-06-09
+date: 2026-09-03
+footer: |
+  [leo.kestel@lmu.de](mailto:leo.kestel@lmu.de)
 ---
 
-## Introduction
+## The Problem: Counterfactual Fairness with Text Data
 
-The MPI-M Quarto theme is demonstrated in this example, which also provides examples of additional functionality that extends the usual Quarto options.
+An example:
 
-## Polaroid effect for images
+::: {.incremental}
+- Sensitive attributes influence screening and hiring decisions.
+- Algorithmic hiring systems offer opportunity to reduce stereotyping and discrimination
+- **BUT**: they inherit societal biases from their training data.
+:::
 
-You can add a polaroid effect to embedded images:
+::: {.fragment}
+,,**How would a person's CV look like if its sensitive attribute(s) were different?**''
+:::
 
-```{markdown}
+## What We Need: Causal Knowledge
+
+::: {.r-stack}
+
+::: {.fragment fragment-index=1}
+![](img/worlds0.svg){width="500"}
+:::
+::: {.fragment fragment-index=2}
+![](img/worlds1.svg){width="500"}
+:::
+::: {.fragment fragment-index=3}
+![](img/worlds2.svg){width="500"}
+:::
+::: {.fragment fragment-index=4}
+![](img/worlds3.svg){width="500"}
+:::
+::: {.fragment fragment-index=5}
+![](img/worlds4.svg){width="500"}
+:::
+::: {.fragment fragment-index=6}
+![](img/worlds5.svg){width="500"}
+:::
+
+:::
+
+::: {.columns}
+::: {.column width="45%"}
+
+::: {.fragment  fragment-index=1}
+### Known:
+$X$ - text input (e.g., a CV)
+:::
+::: {.fragment  fragment-index=2}
+$S$ - struct. features (e.g., extracted from CV)
+:::
+::: {.fragment  fragment-index=3}
+$h_S$ - counterfactual function in $S$ space (**causal knowledge**)
+:::
+::: {.fragment  fragment-index=4}
+$Z = f(X)$ - latent representation produced by a pre-trained encoder
+:::
+:::
+
+::: {.column width="10%"}
+:::
+
+::: {.column width="45%"}
+
+::: {.fragment  fragment-index=6}
+### Goal:
+$Z' = h_Z(Z)$ - counterfactual latent representation of $X$ <br>(e.g., a CV-representation of the same person if their gender were different)
+:::
+
+:::
+:::
+
+## The Idea: Latent Interventions
+
+![$(h_S \circ g)(z) = (g \circ h_Z)(z)$](img/demo.svg)
+
+## The Current Status: Experimental Directions
+
+::: {.incremental}
+* $h_Z$ as a single-layer transformer vs. normalizing flow
+* Counterfactual point-estimates vs. distributions
+:::
+
+
+<!-- You can add a polaroid effect to embedded images:
+
+```markdown
 ![Alt text](image.png){.polaroid}
 ```
 
 ::::{.columns}
 :::{.column}
-![MPG logo in plain style](MPG_Minerva_mpg-green.png){height=300px}
+![MPG logo in plain style](_extensions/mpimet/mpim/LMU_Logo_RGB_InvertiertGruen.png){height=300px}
 :::
 
 :::{.column}
-![MPG logo with polaroid effect](MPG_Minerva_mpg-green.png){height=300px .polaroid}
+![MPG logo with polaroid effect](_extensions/mpimet/mpim/LMU_Logo_RGB_InvertiertGruen.png){height=300px .polaroid}
 :::
 ::::
 
@@ -34,7 +113,7 @@ You can add a polaroid effect to embedded images:
 
 * You can use pre-defined colors that adhere to the MPI-M design guidelines
 * To apply a color, add the relevant CSS class:
-  ```{markdown}
+  ```markdown
   This is a sentence with [colored words]{.green} in between.
   ```
 * The available colors are [**darkgreen**]{.darkgreen}, [**green**]{.green}, [**lightgreen**]{.lightgreen}, and [**orange**]{.orange}
@@ -43,13 +122,13 @@ You can add a polaroid effect to embedded images:
 
 You can insert a transition slide by adding the `{.separator}` class to the heading:
 
-```{markdown}
+```markdown
 # New chapter {.separator}
 ```
 
 In addition, there are twelve numbered section separators available:
 
-```{markdown}
+```markdown
 # Chapter 01 {.separator-01}
 ```
 
@@ -61,4 +140,4 @@ _see next slides_
 
 ## More Information
 
-You can learn more about controlling the appearance of RevealJS output here: <https://quarto.org/docs/presentations/revealjs/>
+You can learn more about controlling the appearance of RevealJS output here: <https://quarto.org/docs/presentations/revealjs/> -->
