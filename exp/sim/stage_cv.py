@@ -1,8 +1,8 @@
 """Stages ``generate-texts`` and ``generate-counterfactual-texts``.
 
 Both worlds run through one routine: the factual pass renders X for every unit,
-the counterfactual pass renders X' for test units only and copies structured
-identities from the factual file without an API call.
+the counterfactual pass always renders test X' and optionally includes train X'.
+Structured identities are copied from the factual file without an API call.
 """
 
 from __future__ import annotations
@@ -84,13 +84,13 @@ def _copy_identities(
 
 
 def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
+    validate_generation_settings(config)  # before rows are written or calls are billed
     ctx = render_context(config)
     prompt, prompt_templates = _cv_prompt(config)
-    validate_generation_settings(config)  # before identity rows or billed calls
     maximum = max_generation_attempts(config)
 
     factual_text = _load_factual_text(ctx) if counterfactual else None
-    expected_ids = ctx.test_ids if counterfactual else ctx.all_ids
+    expected_ids = ctx.counterfactual_text_ids if counterfactual else ctx.all_ids
     output = ctx.output_path(counterfactual)
 
     existing = prepare_generated_csv(
@@ -153,5 +153,5 @@ def stage_generate_texts(config: dict[str, Any]) -> None:
 
 
 def stage_generate_counterfactual_texts(config: dict[str, Any]) -> None:
-    """Generate X' for test units, copying structured identities for free."""
+    """Generate configured X' rows, copying structured identities for free."""
     _generate_cv(config, counterfactual=True)

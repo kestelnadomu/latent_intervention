@@ -16,7 +16,8 @@ from exp.sim.render import generation_digest, render_context, validate_grounding
 def stage_validate_pairs(config: dict[str, Any]) -> None:
     """Validate coverage, grounding, and identity-copy semantics end to end."""
     ctx = render_context(config)
-    all_ids, test_ids = ctx.all_ids, ctx.test_ids
+    all_ids = ctx.all_ids
+    counterfactual_ids = ctx.counterfactual_text_ids
     factual_text = prepare_generated_csv(
         ctx.output_path(False),
         ctx.schema,
@@ -29,14 +30,14 @@ def stage_validate_pairs(config: dict[str, Any]) -> None:
         ctx.output_path(True),
         ctx.schema,
         "id",
-        test_ids,
+        counterfactual_ids,
         generation_digest(config, True),
         create=False,
     )
     if set(factual_text["id"]) != all_ids:
         raise ValueError("factual text coverage/schema is incomplete")
-    if set(counterfactual_text["id"]) != test_ids:
-        raise ValueError("counterfactual text coverage must equal test IDs exactly")
+    if set(counterfactual_text["id"]) != counterfactual_ids:
+        raise ValueError("counterfactual text coverage does not match the configured IDs")
 
     validate_grounding(ctx, factual_text, counterfactual=False)
     validate_grounding(
@@ -48,7 +49,7 @@ def stage_validate_pairs(config: dict[str, Any]) -> None:
 
     factual_by_id = factual_text.set_index("id")
     counterfactual_by_id = counterfactual_text.set_index("id")
-    for row_id in test_ids:
+    for row_id in counterfactual_ids:
         same_context = int(factual_by_id.at[row_id, "template_id"]) == int(
             counterfactual_by_id.at[row_id, "template_id"]
         ) and int(factual_by_id.at[row_id, "persona_id"]) == int(
@@ -65,4 +66,7 @@ def stage_validate_pairs(config: dict[str, Any]) -> None:
             )
             if unchanged_state and rendered_differently:
                 raise ValueError(f"unchanged bin was rendered differently for id={row_id}")
-    print(f"validated {len(all_ids)} factual units and {len(test_ids)} counterfactual test pairs")
+    print(
+        f"validated {len(all_ids)} factual units and "
+        f"{len(counterfactual_ids)} counterfactual pairs"
+    )

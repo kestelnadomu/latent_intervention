@@ -80,12 +80,38 @@ def test_encode_pairs_uses_one_encoder_and_one_canonical_artifact(tmp_path: Path
     assert torch.equal(z, payload["z"])
 
 
-def test_encode_pairs_rejects_incomplete_or_incorrect_test_pairs(tmp_path: Path) -> None:
+def test_encode_pairs_accepts_all_counterfactual_texts_but_encodes_test_only(
+    tmp_path: Path,
+) -> None:
+    StubEncoder.instances = 0
+    StubEncoder.calls = []
     config = _config(tmp_path)
     counterfactual = Path(config["paths"]["texts_counterfactual"])
-    pd.DataFrame({"id": [1], "text": ["x1-prime"]}).to_csv(counterfactual, index=False)
+    pd.DataFrame(
+        {
+            "id": [4, 2, 3, 1],
+            "text": ["x4", "x2", "x3-prime", "x1-prime"],
+        }
+    ).to_csv(counterfactual, index=False)
 
-    with pytest.raises(ValueError, match="equal test IDs"):
+    payload = encode_pairs(config, encoder_factory=StubEncoder)
+
+    assert StubEncoder.instances == 1
+    assert StubEncoder.calls == [["x1", "x2", "x3", "x4", "x1-prime"]]
+    assert payload["test_ids"] == [1, 2]
+    assert payload["is_identity"].tolist() == [False, True]
+    assert payload["z_prime"].shape == (2, 2)
+    assert torch.equal(payload["z_prime"][1], payload["z"][1])
+
+
+def test_encode_pairs_rejects_partial_or_incorrect_pairs(tmp_path: Path) -> None:
+    config = _config(tmp_path)
+    counterfactual = Path(config["paths"]["texts_counterfactual"])
+    pd.DataFrame(
+        {"id": [1, 2, 3], "text": ["x1-prime", "x2", "x3-prime"]}
+    ).to_csv(counterfactual, index=False)
+
+    with pytest.raises(ValueError, match="either test IDs or all pair-index IDs"):
         encode_pairs(config, encoder_factory=StubEncoder)
 
     _config(tmp_path)

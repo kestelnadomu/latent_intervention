@@ -132,10 +132,19 @@ def max_generation_attempts(config: Mapping[str, Any]) -> int:
     return attempts
 
 
+def include_train_counterfactual_texts(config: Mapping[str, Any]) -> bool:
+    """Whether the X' artifact includes train units as well as test units."""
+    value = config.get("generation", {}).get("include_train_counterfactual_texts", True)
+    if not isinstance(value, bool):
+        raise ValueError("generation.include_train_counterfactual_texts must be true or false")
+    return value
+
+
 def validate_generation_settings(config: Mapping[str, Any]) -> None:
     """Fail on invalid billing settings before any row is written or billed."""
     generation_limit(config, 0)
     max_generation_attempts(config)
+    include_train_counterfactual_texts(config)
 
 
 def resolve_llm(config: Mapping[str, Any]) -> tuple[str, str | None]:

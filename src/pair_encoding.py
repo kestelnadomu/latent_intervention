@@ -56,7 +56,7 @@ def _package_version(name: str) -> str | None:
 
 
 def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]:
-    """Encode all X and test-only X' once, copying identity latents exactly."""
+    """Encode all X and test X', copying identity latents exactly."""
     paths = config["paths"]
     pairs = _load_csv(paths["pair_index"], "pair index", {"id", "split", "is_identity"})
     factual = _load_csv(paths["texts"], "factual texts", {"id", "text"})
@@ -76,8 +76,12 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
     test_ids = test["id"].tolist()
     if factual["id"].tolist() != all_ids:
         raise ValueError("factual text IDs must equal all pair-index IDs")
-    if counterfactual["id"].tolist() != test_ids:
-        raise ValueError("counterfactual text IDs must equal test IDs exactly")
+    counterfactual_ids = counterfactual["id"].tolist()
+    if counterfactual_ids not in (test_ids, all_ids):
+        raise ValueError(
+            "counterfactual text IDs must equal either test IDs or all "
+            "pair-index IDs exactly"
+        )
     for label, frame in (("factual", factual), ("counterfactual", counterfactual)):
         if frame["text"].isna().any() or not frame["text"].astype(str).str.strip().all():
             raise ValueError(f"{label} texts must be non-empty")

@@ -29,13 +29,18 @@ Two sub-questions, to be reported separately:
 1. Simulate tabular data: factual $\mathbf S$ and counterfactual $\mathbf S'$ under $\delta$,
    sharing exogenous noise $\varepsilon$.
 2. Generate factual texts $X$ for train **and** test.
-3. Generate a complete counterfactual-text artifact for the **test set only**:
+3. Generate a complete counterfactual-text artifact for train and test by default, using
+   `generation.include_train_counterfactual_texts: true` (also the default when omitted). Set the
+   option to `false` to generate it for the **test set only**:
    - rows already at the target value are their own counterfactuals ($X' = X$ exactly) —
      never pay for these; under $do(\texttt{G}{=}1)$ that is ~50% of rows;
-   - generate $X'$ for every remaining nonidentity test unit. Ambiguous strata (those where
+   - generate $X'$ for every remaining selected nonidentity unit. Ambiguous strata (those where
      $\mathbf S'$ is not determined by $\mathbf S$) can be reported separately or reweighted
      during evaluation, without changing the random unit split or generation coverage.
 4. Split **by unit**: all worlds of one simulated candidate stay in the same split.
+
+Training $X'$ is generated for availability only and never enters the current training losses.
+$Z'=f(X')$ and counterfactual recovery evaluation remain restricted to held-out test units.
 
 ### Function Derivation
 
@@ -168,15 +173,15 @@ flowchart TB
 
     subgraph TXT["2 · Renderer, coupled context"]
         XF["X factual text<br/>train + test"]
-        XC["X' counterfactual text<br/>TEST ONLY"]
+        XC["X' counterfactual text<br/>train + test by default"]
     end
     SF -->|LLM| XF
     SC -->|LLM| XC
 
     XF -->|"f frozen"| Z["Z"]
-    XC -->|"f frozen"| ZP["Z' evaluation target"]
+    XC -->|"f frozen, test only"| ZP["Z' evaluation target"]
 
-    subgraph TRAIN["3 · Training — no counterfactual text anywhere"]
+    subgraph TRAIN["3 · Training — observed counterfactual text unused"]
         G["g : semantic kernel<br/>trained on Z and S"]
         HS["h_S : symbolic kernel<br/>closed form from ε-intervals"]
         HZ["h_Z : latent editor<br/>THE METHOD"]

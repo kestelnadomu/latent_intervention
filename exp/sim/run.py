@@ -5,7 +5,7 @@ Stages:
     generate-templates             narrative template pool
     generate-personas              persona pool
     generate-texts                 factual X for every unit
-    generate-counterfactual-texts  X' for test units only
+    generate-counterfactual-texts  X' for test units and optionally train units
     validate-pairs                 validate the complete paired-data contract
     reset-attempts                 clear spent retry budgets so failed IDs can be retried
 

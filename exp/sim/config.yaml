@@ -13,7 +13,7 @@ llm:
 n: 10
 seed: 1
 
-# Persisted unit split. Counterfactual text and latent pairs are held out to test.
+# Persisted unit split. Counterfactual latent evaluation is held out to test.
 split:
   seed: 42
   test_fraction: 0.2
@@ -50,7 +50,7 @@ paths:
   templates: data/text/templates.csv   # generated template pool (tracked: costs API credits)
   personas: data/text/personas.csv     # generated persona pool (tracked: costs API credits)
   texts: data/text/cv_factual.csv      # generated CV statements (tracked: costs API credits)
-  texts_counterfactual: data/text/cv_counterfactual.csv  # X' for test IDs only
+  texts_counterfactual: data/text/cv_counterfactual.csv  # X' for all IDs by default; see generation below
   pair_index: data/sim/pair_index.csv  # id, split, is_identity
   render_plan: data/sim/render_plan.csv  # shared template/persona/bin quantiles
 
@@ -64,6 +64,7 @@ pools:
   job_titles: exp/sim/job_titles.yaml
 
 generation:
+  include_train_counterfactual_texts: true  # true/omitted = all IDs; false = test IDs only
   n_templates: 50    # template pool size (one billed call each)
   n_personas: 100    # persona pool size (one billed call each)
   limit: null        # max IDs processed per stage run; null = all

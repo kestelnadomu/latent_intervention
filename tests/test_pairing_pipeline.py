@@ -166,10 +166,27 @@ def _paired_config(tmp_path: Path) -> dict:
     return config
 
 
-def test_test_only_counterfactual_generation_and_identity_copy(
-    tmp_path: Path, monkeypatch
+@pytest.mark.parametrize(
+    ("include_train", "expected_ids", "generated_ids", "identity_ids"),
+    [
+        pytest.param(None, {1, 2, 3, 4}, {1, 3}, {2, 4}, id="default-all"),
+        pytest.param(True, {1, 2, 3, 4}, {1, 3}, {2, 4}, id="explicit-all"),
+        pytest.param(False, {1, 2}, {1}, {2}, id="test-only"),
+    ],
+)
+def test_configured_counterfactual_generation_and_identity_copy(
+    tmp_path: Path,
+    monkeypatch,
+    include_train: bool | None,
+    expected_ids: set[int],
+    generated_ids: set[int],
+    identity_ids: set[int],
 ) -> None:
     config = _paired_config(tmp_path)
+    if include_train is None:
+        config["generation"].pop("include_train_counterfactual_texts", None)
+    else:
+        config["generation"]["include_train_counterfactual_texts"] = include_train
     calls = []
 
     def fake_generate(sample, *args, **kwargs):
@@ -186,27 +203,104 @@ def test_test_only_counterfactual_generation_and_identity_copy(
     run.stage_generate_texts(config)
     assert len(calls) == 4
     run.stage_generate_counterfactual_texts(config)
-    assert len(calls) == 5  # one nonidentity test call; the identity is copied
+    expected_calls = 4 + len(generated_ids)
+    assert len(calls) == expected_calls
     run.stage_generate_counterfactual_texts(config)
-    assert len(calls) == 5  # complete resume makes no calls
+    assert len(calls) == expected_calls  # complete resume makes no calls
 
     factual = pd.read_csv(config["paths"]["texts"]).set_index("id")
     counterfactual = pd.read_csv(config["paths"]["texts_counterfactual"]).set_index("id")
     assert set(factual.index) == {1, 2, 3, 4}
-    assert set(counterfactual.index) == {1, 2}
-    assert counterfactual.at[2, "text"] == factual.at[2, "text"]
-    assert counterfactual.at[2, "generation_mode"] == "identity_copy"
-    assert counterfactual.at[1, "generation_mode"] == "generated"
+    assert set(counterfactual.index) == expected_ids
+    for row_id in identity_ids:
+        assert counterfactual.at[row_id, "text"] == factual.at[row_id, "text"]
+        assert counterfactual.at[row_id, "generation_mode"] == "identity_copy"
+        assert pd.isna(counterfactual.at[row_id, "response_id"])
+    for row_id in generated_ids:
+        assert counterfactual.at[row_id, "generation_mode"] == "generated"
+        assert counterfactual.at[row_id, "model"] == "mock-model"
+        assert "Gender: Male" in counterfactual.at[row_id, "text"]
     assert counterfactual.at[1, "response_id"] == "response-5"
-    assert counterfactual.at[1, "model"] == "mock-model"
     assert counterfactual.at[1, "template_id"] == factual.at[1, "template_id"]
     assert counterfactual.at[1, "persona_id"] == factual.at[1, "persona_id"]
     assert counterfactual.at[1, "age"] == factual.at[1, "age"]
-    assert "Gender: Male" in counterfactual.at[1, "text"]
     attempts = _saved_attempts(Path(config["paths"]["texts_counterfactual"]))
-    assert attempts[1] == 1
-    assert 2 not in attempts
+    assert attempts == {row_id: 1 for row_id in generated_ids}
     run.stage_validate_pairs(config)
+
+
+def test_counterfactual_coverage_change_is_rejected_before_an_api_call(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config = _paired_config(tmp_path)
+    calls = []
+
+    def fake_generate(sample, *args, **kwargs):
+        calls.append(sample)
+        return GenerationResult(text="CV", model="mock-model", finish_reason="stop")
+
+    monkeypatch.setattr(stage_cv, "generate_text_result", fake_generate)
+    run.stage_generate_texts(config)
+    run.stage_generate_counterfactual_texts(config)
+    completed_calls = len(calls)
+
+    config["generation"]["include_train_counterfactual_texts"] = False
+    with pytest.raises(RuntimeError, match="incompatible"):
+        run.stage_generate_counterfactual_texts(config)
+    assert len(calls) == completed_calls
+
+
+def test_invalid_counterfactual_coverage_setting_fails_before_generation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config = _paired_config(tmp_path)
+    config["generation"]["include_train_counterfactual_texts"] = "yes"
+    calls = []
+
+    monkeypatch.setattr(
+        stage_cv,
+        "generate_text_result",
+        lambda *args, **kwargs: calls.append(True),
+    )
+    with pytest.raises(ValueError, match="must be true or false"):
+        run.stage_generate_texts(config)
+    assert calls == []
+    assert not Path(config["paths"]["texts"]).exists()
+
+
+@pytest.mark.parametrize(
+    ("problem", "message"),
+    [("missing", "coverage does not match"), ("unexpected", "unexpected IDs")],
+)
+def test_validation_rejects_incorrect_counterfactual_coverage(
+    tmp_path: Path, monkeypatch, problem: str, message: str
+) -> None:
+    config = _paired_config(tmp_path)
+
+    monkeypatch.setattr(
+        stage_cv,
+        "generate_text_result",
+        lambda sample, *args, **kwargs: GenerationResult(
+            text=f"CV::{sample['candidate_info']}",
+            model="mock-model",
+            finish_reason="stop",
+        ),
+    )
+    run.stage_generate_texts(config)
+    run.stage_generate_counterfactual_texts(config)
+
+    output = Path(config["paths"]["texts_counterfactual"])
+    frame = pd.read_csv(output)
+    if problem == "missing":
+        frame = frame.iloc[:-1]
+    else:
+        extra = frame.iloc[[0]].copy()
+        extra["id"] = 99
+        frame = pd.concat([frame, extra], ignore_index=True)
+    frame.to_csv(output, index=False)
+
+    with pytest.raises(ValueError, match=message):
+        run.stage_validate_pairs(config)
 
 
 def test_generation_resumes_and_rejects_changed_prompt_before_a_call(

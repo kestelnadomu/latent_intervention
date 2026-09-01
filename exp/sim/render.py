@@ -18,6 +18,7 @@ import pandas as pd
 
 from exp.sim.generate_text import DEFAULT_BASE_URL, GenerationResult, load_codebook_spec
 from exp.sim.helpers import (
+    include_train_counterfactual_texts,
     input_digest,
     load_pool,
     read_csv,
@@ -161,6 +162,11 @@ class RenderContext:
     @property
     def test_ids(self) -> set[int]:
         return set(self.pairs.loc[self.pairs["split"] == "test", "id"])
+
+    @property
+    def counterfactual_text_ids(self) -> set[int]:
+        """Units whose counterfactual texts belong to the configured artifact."""
+        return self.all_ids if include_train_counterfactual_texts(self.config) else self.test_ids
 
     def states(self, counterfactual: bool) -> pd.DataFrame:
         return self.counterfactual if counterfactual else self.factual

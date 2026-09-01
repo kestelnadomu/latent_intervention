@@ -14,14 +14,15 @@ simulation, kept as the reference implementation (own README, own `renv`).
 ## The pipeline
 
 Run everything from the repository root. Every `generate-*` stage is **billed** —
-one API call per row — so read [Cost and resumption](#cost-and-resumption) first.
+one API call per generated row, with identity copies free — so read
+[Cost and resumption](#cost-and-resumption) first.
 
 ```bash
 uv run python -m exp.sim.run simulate                      # S, S', epsilon, pair_index.csv
 uv run python -m exp.sim.run generate-templates            # 50 calls  -> templates.csv
 uv run python -m exp.sim.run generate-personas             # 100 calls -> personas.csv
 uv run python -m exp.sim.run generate-texts                # n calls   -> cv_factual.csv
-uv run python -m exp.sim.run generate-counterfactual-texts # test units only -> cv_counterfactual.csv
+uv run python -m exp.sim.run generate-counterfactual-texts # configured train/test coverage -> cv_counterfactual.csv
 uv run python -m exp.sim.run validate-pairs                # checks the whole contract
 ```
 
@@ -97,8 +98,11 @@ the intervened state — not by a resampled age or a different narrative voice.
 S' equals S, so X' is copied from X with no API call and `generation_mode` is
 recorded as `identity_copy` rather than `generated`.
 
-**Counterfactual texts cover test units only** — the split in `pair_index.csv`.
-Generating X' for the training half would defeat the held-out evaluation.
+**Counterfactual-text coverage is configurable.** By default (`true` or omitted),
+`generation.include_train_counterfactual_texts` creates X' for every unit;
+setting it to `false` creates X' for test units only. Training X' does not enter
+the current training losses, and counterfactual recovery evaluation remains on
+the held-out test units.
 
 ## Cost and resumption
 
