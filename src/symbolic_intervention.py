@@ -46,7 +46,7 @@ def load_symbolic_kernel(
 ) -> SymbolicKernel:
     """Instantiate the kernel pointed to by ``objects.symbolic_kernel`` in the sim config."""
     builder = load_config_object("symbolic_kernel", sim_config)
-    kernel = builder()
+    kernel = builder() if sim_config is None else builder(sim_config)
     if not isinstance(kernel, SymbolicKernel):
         raise TypeError(f"{builder!r} did not return a SymbolicKernel-compatible object")
     return kernel
