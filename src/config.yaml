@@ -63,9 +63,11 @@ finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.
 
 paths:
   texts: data/text/cv_factual.csv
+  texts_counterfactual: data/text/cv_counterfactual.csv
+  pair_index: data/sim/pair_index.csv
   sim_factual: data/sim/sim_data_factual.csv
   sim_counterfactual: data/sim/sim_data_counterfactual.csv
-  latents: data/latents/z_factual.pt
+  latents: data/latents/z_pairs.pt
   decoder_model: models/semantic_decoder.pt
   manipulator_model: models/latent_intervention.pt
   eval_report: reports/eval.json

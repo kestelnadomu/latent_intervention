@@ -15,6 +15,9 @@ downstream outcome Y (simulated, excluded from the structured state S).
 
 from __future__ import annotations
 
+from pathlib import Path
+from typing import Any
+
 import numpy as np
 
 from exp.sim.scm import SCM, LinearMechanism, NoiseSampler, linear_mechanism
@@ -58,15 +61,19 @@ NOISE_PARAMS: dict[str, tuple[float, float]] = {
 }
 
 
-def _nodes() -> list[ColumnSpec]:
+def _nodes(
+    sim_config: dict[str, Any] | str | Path | None = None,
+) -> list[ColumnSpec]:
     """Structured-state columns plus the outcome, from the sim config schema."""
-    columns, outcome = load_schema()
+    columns, outcome = load_schema(sim_config)
     return [*columns, outcome]
 
 
-def build_scm() -> SCM:
-    """Assemble the CV-screening SCM (all nodes, including the outcome Q)."""
-    nodes = _nodes()
+def build_scm(
+    sim_config: dict[str, Any] | str | Path | None = None,
+) -> SCM:
+    """Assemble the CV-screening SCM using the supplied schema config."""
+    nodes = _nodes(sim_config)
     card = {c.name: c.n_categories for c in nodes}
     mechanisms: dict[str, LinearMechanism] = {
         name: linear_mechanism(coeffs, 0, card[name] - 1)
@@ -75,9 +82,11 @@ def build_scm() -> SCM:
     return SCM(nodes=nodes, roots=ROOT_NODES, noise=dict(_NOISE), mechanisms=mechanisms)
 
 
-def build_symbolic_kernel() -> SymbolicIntervention:
-    """Assemble the closed-form h_S over the structured state S (Q excluded)."""
-    columns, _ = load_schema()
+def build_symbolic_kernel(
+    sim_config: dict[str, Any] | str | Path | None = None,
+) -> SymbolicIntervention:
+    """Assemble closed-form h_S using the supplied schema config (Q excluded)."""
+    columns, _ = load_schema(sim_config)
     return SymbolicIntervention.from_scm(columns, MECHANISM_COEFFS, NOISE_PARAMS)
 
 
