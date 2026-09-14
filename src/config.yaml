@@ -4,8 +4,14 @@
 seed: 42
 
 encoder:
+  variant: langvae       # toggle to: nomic
   model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
+  model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
   local_checkpoint: null   # path to a fine-tuned LangVAE folder (overrides model_name)
+  nomic_model_name: nomic-ai/nomic-embed-text-v1.5
+  nomic_model_revision: e5cf08aadaa33385f5990def41f7a23405aec398
+  nomic_code_revision: 7710840340a098cfb869c4f65e87cf2b1b70caca
+  nomic_task: classification
   max_len: 512
   batch_size: 16
   device: cpu
