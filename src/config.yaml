@@ -3,6 +3,11 @@
 
 seed: 42
 
+# Data-generation config carrying the schema, the do() query and the SCM/kernel
+# pointers (src/schema.py). Point at exp/sim/config_cv_screening.yaml, together
+# with its paths below, to rerun the archived CV-screening experiment.
+sim_config: exp/sim/config.yaml
+
 encoder:
   variant: langvae       # toggle to: nomic
   model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
@@ -67,13 +72,13 @@ finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.
   val_split: 0.1
   output_dir: models/langvae_cv
 
-paths:
-  texts: data/text/cv_factual.csv
-  texts_counterfactual: data/text/cv_counterfactual.csv
-  pair_index: data/sim/pair_index.csv
-  sim_factual: data/sim/sim_data_factual.csv
-  sim_counterfactual: data/sim/sim_data_counterfactual.csv
-  latents: data/latents/z_pairs.pt
-  decoder_model: models/semantic_decoder.pt
-  manipulator_model: models/latent_intervention.pt
-  eval_report: reports/eval.json
+paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/text, data/latents/z_pairs.pt
+  texts: data/text_talent/cv_factual.csv
+  texts_counterfactual: data/text_talent/cv_counterfactual.csv
+  pair_index: data/sim_talent/pair_index.csv
+  sim_factual: data/sim_talent/sim_data_factual.csv
+  sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
+  latents: data/latents/talent/z_pairs.pt
+  decoder_model: models/talent/semantic_decoder.pt
+  manipulator_model: models/talent/latent_intervention.pt
+  eval_report: reports/talent/eval.json
