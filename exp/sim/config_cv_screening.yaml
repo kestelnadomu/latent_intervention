@@ -1,3 +1,7 @@
+# ARCHIVED: LIBERTy CV-screening experiment (Table 9). Superseded by exp/sim/config.yaml
+# (talent SFM). Run with: uv run python -m exp.sim.run <stage> --config exp/sim/config_cv_screening.yaml
+#
+
 # Data generation pipeline configuration (exp/sim/run.py).
 # Text generation follows LIBERTy App. D.3 (arXiv 2601.10700): templates <-
 # seed statements, personas <- job titles, CVs <- template + candidate info +
@@ -54,11 +58,11 @@ paths:
   pair_index: data/sim/pair_index.csv  # id, split, is_identity
   render_plan: data/sim/render_plan.csv  # shared template/persona/bin quantiles
 
-codebook: exp/sim/codebook.yaml
+codebook: exp/sim/codebook_cv_screening.yaml
 prompts:
   templates: exp/sim/prompts/template_generation.yaml
   personas: exp/sim/prompts/persona_generation.yaml
-  cv: exp/sim/prompts/cv_generation.yaml
+  cv: exp/sim/prompts/cv_generation_cv_screening.yaml
 pools:
   seed_statements: exp/sim/seed_statements.yaml
   job_titles: exp/sim/job_titles.yaml
