@@ -1,15 +1,49 @@
-# `exp/sim` — the CV-screening experiment
+# `exp/sim` — the talent SFM experiment
 
 Everything experiment-specific lives here: the concrete SCM, the codebook and
 prompts that verbalize a structured state into a CV, and the stage runner that
 produces the paired data. The generic framework in `src/` reaches this folder
-only through `exp/sim/config.yaml` (via `src/schema.py`), never by importing it
-directly.
+only through a sim config (default `exp/sim/config.yaml`, selected by
+`sim_config` in `src/config.yaml`, read via `src/schema.py`), never by importing
+it directly.
 
-The SCM and the text generation reproduce the **CV Screening dataset of the
-LIBERTy paper** (arXiv 2601.10700): the structural equations are its Table 9,
-text generation follows its Appendix D.3. `exp/sim/R/` holds the original R
-simulation, kept as the reference implementation (own README, own `renv`).
+**Active experiment — talent SFM** (`config.yaml`, `talent_sfm.py`). This is the
+standard fairness model of Plecko & Bareinboim:
+
+- **X**: country of origin. 4 regions, and a concrete country is sampled per region.
+- **T**: talent, the SFM's confounder Z, renamed so it doesn't clash with the latent space.
+- **W**: mediators D (degree) and U (globally anchored university rank tier).
+- **Y**: qualification, the outcome.
+
+Talent is abstract and never stated in the text. It reaches the text only
+through four behavioural proxies, all caused by T alone:
+
+- P: completed projects
+- L: learning speed
+- H: solving hard problems
+- A: being sought out for advice
+
+The proxies are **auxiliary**: simulated and verbalized so T can be inferred
+from the text, but they are not part of the structured state. So:
+
+- S = {X, T, D, U} and |S| = 108.
+- The symbolic kernel over S stays exact.
+- Under do(X), T and the proxies stay unchanged.
+
+The text generation keeps the LIBERTy App. D.3 recipe and adds an evidence block:
+the proxies are written "show, don't tell", at their exact level.
+Run `uv run python -m exp.sim.talent_sfm` for the proxy correlations, Cronbach's
+α and the Bayes-optimal T accuracy, which is the ceiling for the decoder's T head.
+
+**Archived experiment — LIBERTy CV screening** (`config_cv_screening.yaml`,
+`cv_screening.py`, `codebook_cv_screening.yaml`,
+`prompts/cv_generation_cv_screening.yaml`). This reproduces the **CV Screening
+dataset of the LIBERTy paper** (arXiv 2601.10700): the structural equations are
+its Table 9, and text generation follows its Appendix D.3. Its artifacts stay in
+`data/sim/` and `data/text/cv_*.csv`. Rerun any stage with
+`--config exp/sim/config_cv_screening.yaml`. `exp/sim/R/` holds the original R
+simulation of that SCM, kept as the reference implementation (own README, own
+`renv`). The talent SFM is Python-only.
 
 ## The pipeline
 
@@ -40,8 +74,9 @@ Smoke tests that need no API key or generated data:
 
 ```bash
 uv run python -m exp.sim.scm            # generic SCM engine on random tensors
-uv run python -m exp.sim.cv_screening   # the concrete Table 9 equations
-uv run python -m exp.sim.symbolic       # the closed-form symbolic kernel h_S
+uv run python -m exp.sim.talent_sfm     # the active talent SFM: proxy validity, do(X) invariance
+uv run python -m exp.sim.cv_screening   # the archived Table 9 equations
+uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the active config
 ```
 
 ## File map
@@ -71,10 +106,12 @@ uv run python -m exp.sim.symbolic       # the closed-form symbolic kernel h_S
 
 | File | Role |
 | --- | --- |
-| `config.yaml` | n, seed, split, the do() query, the schema, object pointers, paths, prompts, billing caps. |
-| `cv_screening.py` | **The only place the Table 9 numbers live.** `build_scm()` and `build_symbolic_kernel()`. |
-| `codebook.yaml` | Level semantics: phrases per level, display labels, and numeric bins for A (age) and W (work years). |
-| `prompts/` | One chat prompt per stage — LIBERTy boxes D.12 (templates), D.13 (personas), D.14 (CVs). |
+| `config.yaml` | Talent SFM: n, seed, split, the do() query, the schema (incl. `auxiliary`), object pointers, paths, prompts, billing caps. |
+| `talent_sfm.py` | **The only place the talent-SFM numbers live.** `build_scm()`, `build_symbolic_kernel()`, `talent_posterior_accuracy()`. |
+| `codebook.yaml` | Talent SFM level semantics: phrases, labels, `hidden` (T), `bins` (P), `choices` (countries per region), `evidence` (L, H, A guidance), `forbidden_terms`. |
+| `prompts/cv_generation.yaml` | Talent SFM CV prompt: Box D.14 plus the show-don't-tell evidence block. |
+| `prompts/{template,persona}_generation.yaml` | LIBERTy boxes D.12 and D.13; the pools they produced are shared by both experiments. |
+| `*_cv_screening.*`, `cv_screening.py` | The archived LIBERTy Table 9 experiment (config, codebook, CV prompt, SCM). |
 | `seed_statements.yaml`, `job_titles.yaml` | Curated inputs the two pool stages draw from. |
 
 ### Generic engines (no node names, reusable)
@@ -87,11 +124,13 @@ uv run python -m exp.sim.symbolic       # the closed-form symbolic kernel h_S
 ## What the pipeline guarantees
 
 **Exact pairs.** The counterfactual simulation reuses the factual noise, so unit
-`i` in `sim_data_counterfactual.csv` is the same unit under `do(G=1)`.
+`i` in `sim_data_counterfactual.csv` is the same unit under the configured do()
+query (`do(X=3)` for the talent SFM).
 
 **One fixed context per unit.** `render_plan.csv` pins a template, a persona, and
-one quantile per binned field for each unit. X and X' therefore differ only by
-the intervened state — not by a resampled age or a different narrative voice.
+one quantile per sampled field (binned number or choice option) for each unit.
+X and X' therefore differ only by the intervened state — not by a resampled
+number, a different country position within the region, or a different narrative voice.
 `validate_grounding` replays the plan against each written CSV to prove it.
 
 **Free identity counterfactuals.** For units already at the intervention target,
@@ -133,10 +172,15 @@ Generated texts are **tracked in git** (they cost credits), unlike the rest of
 
 ## Configuration
 
-`config.yaml` is the single source of truth for the schema. `schema.columns` maps
-each structured column to its cardinality in decode order, and `schema.outcome`
-names the downstream outcome Q — simulated, but excluded from the codebook, the
-decoder heads, and the consistency loss. `objects` holds dotted `module:attr`
+`config.yaml` is the single source of truth for the schema:
+
+- `schema.columns` maps each structured column to its cardinality in decode order.
+- `schema.auxiliary` (optional) lists columns that are simulated and verbalized
+  but are not part of S. They are in the sim CSVs and the codebook, but not in
+  the decoder heads, the consistency loss or the pair identity check.
+  `src/` ignores them.
+- `schema.outcome` names the downstream outcome (Y), which is simulated but
+  excluded from the codebook, the decoder heads and the consistency loss. `objects` holds dotted `module:attr`
 pointers so `src/` can build the SCM and the symbolic kernel without importing
 this package.
 
@@ -148,5 +192,17 @@ to be deterministic.
 The API key is read from the environment variable named by `llm.api_key_env`
 (default `AZURE_OPENAI_API_KEY`). Never put the key in the config.
 
-If you change the structural equations in `cv_screening.py`, keep `schema.columns`
-here and the R reference in `R/utils/sim_scm.R` in sync.
+The codebook blocks, all optional except `columns`:
+
+| Block | Meaning |
+| --- | --- |
+| `columns`, `labels` | Phrase per level and display name for every verbalized column (schema columns + auxiliary − hidden). |
+| `hidden` | Schema columns that are decoded but never verbalized (T). |
+| `bins` | Numeric ranges; a concrete number is sampled inside the level's range. |
+| `choices` | Option lists per level. The render-plan quantile picks one, and the CV CSV stores its index. |
+| `evidence` | Not stated as a fact: rendered as writing guidance into the prompt's `{evidence_guidance}` block. |
+| `forbidden_terms` | Inlined into the prompt as `{forbidden_terms}`; `validate-pairs` reports texts that use them. |
+
+If you change the structural equations in `talent_sfm.py`, keep `schema` here in
+sync and rerun its smoke test. For `cv_screening.py`, also keep the R reference
+in `R/utils/sim_scm.R` in sync.
