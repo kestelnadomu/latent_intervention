@@ -30,6 +30,51 @@ from the text, but they are not part of the structured state. So:
 - The symbolic kernel over S stays exact.
 - Under do(X), T and the proxies stay unchanged.
 
+```mermaid
+flowchart LR
+    X["X country of origin"]
+    T["T talent (hidden)"]
+
+    subgraph W["W education"]
+      D["D degree"]
+      U["U university rank tier"]
+    end
+    Y["Y qualification"]
+
+    subgraph T_Proxies[Manifest proxies of T]
+      P["P completed projects"]
+      L["L learning speed"]
+      H["H hard problems"]
+      A["A sought out for advice"]
+    end
+
+    X -- 0.30 --> D
+    X -- 0.35 --> U
+    T -- 0.60 --> D
+    T -- 0.50 --> U
+    X -- 0.15 --> Y
+    T -- 0.40 --> Y
+    D -- 0.20 --> Y
+    U -- 0.20 --> Y
+    T -- 0.90 --> P
+    T -- 0.80 --> L
+    T -- 0.80 --> H
+    T -- 0.70 --> A
+
+    classDef state fill:#dbeafe,stroke:#1d4ed8,color:#0f172a
+    classDef hidden fill:#dbeafe,stroke:#1d4ed8,stroke-dasharray:5 3,color:#0f172a
+    classDef aux fill:#f1f5f9,stroke:#64748b,color:#0f172a
+    classDef outcome fill:#fef3c7,stroke:#b45309,color:#0f172a
+    class X,D,U state
+    class T hidden
+    class P,L,H,A aux
+    class Y outcome
+```
+
+Blue nodes form S (dashed: T, decoded but never verbalized); grey nodes are the
+auxiliary proxies; Y is the outcome. Edge labels are the linear mechanism
+weights from `talent_sfm.py`; X and T are independent roots.
+
 The text generation keeps the LIBERTy App. D.3 recipe and adds an evidence block:
 the proxies are written "show, don't tell", at their exact level.
 Run `uv run python -m exp.sim.talent_sfm` for the proxy correlations, Cronbach's
