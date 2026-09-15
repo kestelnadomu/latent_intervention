@@ -1,0 +1,75 @@
+# ARCHIVED: LIBERTy CV-screening experiment (Table 9). Superseded by exp/sim/config.yaml
+# (talent SFM). Run with: uv run python -m exp.sim.run <stage> --config exp/sim/config_cv_screening.yaml
+#
+
+# Data generation pipeline configuration (exp/sim/run.py).
+# Text generation follows LIBERTy App. D.3 (arXiv 2601.10700): templates <-
+# seed statements, personas <- job titles, CVs <- template + candidate info +
+# persona. Sampling params (model, max_tokens, temperature) live in the prompt
+# YAMLs' metadata; for Azure, `model` there must be the deployment name.
+
+# OpenAI-compatible chat endpoint. For Azure OpenAI use the v1 endpoint of your
+# resource; for Mistral: https://api.mistral.ai/v1 with MISTRAL_API_KEY.
+llm:
+  base_url: https://soda-counterfactual-cv.services.ai.azure.com/openai/v1
+  api_key_env: AZURE_OPENAI_API_KEY   # env var holding the key (never put the key itself here)
+
+n: 10
+seed: 1
+
+# Persisted unit split. Counterfactual latent evaluation is held out to test.
+split:
+  seed: 42
+  test_fraction: 0.2
+
+# do() intervention for the counterfactual dataset, e.g. do(G=1): male.
+intervention:
+  G: 1
+
+# Structured-state schema S: column -> cardinality (values 0..card-1), listed in
+# topological / autoregressive-decoding order. Read by src/schema.py; the generic
+# framework in src/ has no other knowledge of the columns. The concrete SCM that
+# produces these columns lives in exp/sim/cv_screening.py (see objects: below).
+schema:
+  columns:
+    R: 4
+    G: 2
+    A: 3
+    E: 4
+    S: 3
+    W: 3
+    V: 2
+    C: 2
+  outcome:
+    Q: 3   # downstream outcome Y: simulated, excluded from decoder heads and consistency loss
+
+# Dotted "module:attribute" pointers to the concrete experiment objects. src/
+# imports these via src/schema.py::load_object rather than importing exp/sim/ directly.
+objects:
+  scm: exp.sim.cv_screening:build_scm
+  symbolic_kernel: exp.sim.cv_screening:build_symbolic_kernel
+
+paths:
+  sim_dir: data/sim                    # sim_data_{factual,counterfactual,epsilon}.csv
+  templates: data/text/templates.csv   # generated template pool (tracked: costs API credits)
+  personas: data/text/personas.csv     # generated persona pool (tracked: costs API credits)
+  texts: data/text/cv_factual.csv      # generated CV statements (tracked: costs API credits)
+  texts_counterfactual: data/text/cv_counterfactual.csv  # X' for all IDs by default; see generation below
+  pair_index: data/sim/pair_index.csv  # id, split, is_identity
+  render_plan: data/sim/render_plan.csv  # shared template/persona/bin quantiles
+
+codebook: exp/sim/codebook_cv_screening.yaml
+prompts:
+  templates: exp/sim/prompts/template_generation.yaml
+  personas: exp/sim/prompts/persona_generation.yaml
+  cv: exp/sim/prompts/cv_generation_cv_screening.yaml
+pools:
+  seed_statements: exp/sim/seed_statements.yaml
+  job_titles: exp/sim/job_titles.yaml
+
+generation:
+  include_train_counterfactual_texts: true  # true/omitted = all IDs; false = test IDs only
+  n_templates: 50    # template pool size (one billed call each)
+  n_personas: 100    # persona pool size (one billed call each)
+  limit: null        # max IDs processed per stage run; null = all
+  max_attempts: 3    # total API calls allowed per stage and ID, persisted across resumes

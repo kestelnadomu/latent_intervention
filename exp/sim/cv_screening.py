@@ -4,9 +4,10 @@ The concrete CV-screening experiment: SCM and closed-form symbolic kernel.
 This is the single place the CV-screening numbers live. The structural equations
 are Table 9 of the LIBERTy paper (arXiv 2601.10700); text generation (elsewhere)
 follows its Appendix D.3. The structured-state schema (column names and
-cardinalities) is data in ``exp/sim/config.yaml`` and read via
-``src.schema.load_schema``; ``exp/sim/config.yaml`` points the framework here
-through its ``objects:`` block.
+cardinalities) is data in ``exp/sim/config_cv_screening.yaml`` (archived; the
+active experiment is ``exp/sim/talent_sfm.py``) and read via
+``src.schema.load_schema``; that config points the framework here through its
+``objects:`` block. The builders default to the archived config.
 
 Nodes: roots R (race), G (gender), A (age); then E (education), S (socio-economic
 status), W (work experience), V (volunteering), C (certificates); Q is the
@@ -25,6 +26,7 @@ from exp.sim.symbolic import SymbolicIntervention
 from src.schema import ColumnSpec, load_schema
 
 ROOT_NODES = ("R", "G", "A")
+ARCHIVED_CONFIG_PATH = Path(__file__).parent / "config_cv_screening.yaml"
 
 # Exogenous noise eps_i. Roots are drawn as their category directly; non-roots are
 # Normal(mu_i, sigma_i) added inside the linear mechanism.
@@ -65,7 +67,7 @@ def _nodes(
     sim_config: dict[str, Any] | str | Path | None = None,
 ) -> list[ColumnSpec]:
     """Structured-state columns plus the outcome, from the sim config schema."""
-    columns, outcome = load_schema(sim_config)
+    columns, outcome = load_schema(sim_config if sim_config is not None else ARCHIVED_CONFIG_PATH)
     return [*columns, outcome]
 
 
@@ -86,7 +88,7 @@ def build_symbolic_kernel(
     sim_config: dict[str, Any] | str | Path | None = None,
 ) -> SymbolicIntervention:
     """Assemble closed-form h_S using the supplied schema config (Q excluded)."""
-    columns, _ = load_schema(sim_config)
+    columns, _ = load_schema(sim_config if sim_config is not None else ARCHIVED_CONFIG_PATH)
     return SymbolicIntervention.from_scm(columns, MECHANISM_COEFFS, NOISE_PARAMS)
 
 

@@ -83,7 +83,7 @@ def stage_encode(config: dict[str, Any]) -> None:
 def stage_train_decoder(config: dict[str, Any]) -> None:
     """Train the semantic decoder on (latent, factual tabular) pairs."""
     z, ids = _load_latents(config)
-    columns, _ = load_schema()
+    columns, _ = load_schema(config.get("sim_config"))
     targets = _aligned_targets(config["paths"]["sim_factual"], ids, columns)
     cfg = config["semantic_decoder"]
     train_idx, val_idx = _split(len(ids), cfg["val_split"], config["seed"])
@@ -115,14 +115,14 @@ def stage_train_decoder(config: dict[str, Any]) -> None:
 def stage_train_manipulator(config: dict[str, Any]) -> None:
     """Train the manipulator against the frozen decoder and counterfactual targets."""
     z, ids = _load_latents(config)
-    intervention = load_intervention()
+    intervention = load_intervention(config.get("sim_config"))
     cfg = config["latent_intervention"]
     train_idx, _ = _split(len(ids), config["semantic_decoder"]["val_split"], config["seed"])
 
     dv = DECODER_VARIANTS[config["semantic_decoder"]["variant"]]
     decoder = dv.load(config["paths"]["decoder_model"])
     s_prime = _aligned_targets(config["paths"]["sim_counterfactual"], ids, decoder.columns)
-    h_s = load_symbolic_kernel()  # resolves objects.symbolic_kernel in exp/sim/config.yaml
+    h_s = load_symbolic_kernel(config.get("sim_config"))  # resolves objects.symbolic_kernel
 
     # shared kwargs for all manipulator variants
     model_kwargs = dict(
@@ -179,7 +179,7 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
 def stage_evaluate(config: dict[str, Any]) -> None:
     """Evaluate manipulator faithfulness on the validation split."""
     z, ids = _load_latents(config)
-    intervention = load_intervention()
+    intervention = load_intervention(config.get("sim_config"))
     _, val_idx = _split(len(ids), config["semantic_decoder"]["val_split"], config["seed"])
 
     dv = DECODER_VARIANTS[config["semantic_decoder"]["variant"]]

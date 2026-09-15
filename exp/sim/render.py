@@ -1,7 +1,7 @@
 """Deterministic CV rendering: what every generated text is grounded in.
 
-One persisted render plan (template, persona, and one quantile per binned
-field) fixes the context of a unit's factual and counterfactual CV, so the only
+One persisted render plan (template, persona, and one quantile per binned or
+choice field) fixes the context of a unit's factual and counterfactual CV, so the only
 difference between X and X' is the intervened structured state. ``RenderContext``
 bundles everything the CV and validation stages need; ``validate_grounding``
 replays the plan to check a written CSV against it.
@@ -24,7 +24,7 @@ from exp.sim.helpers import (
     read_csv,
     slug,
 )
-from exp.sim.paired_data import load_pair_inputs
+from exp.sim.paired_data import auxiliary_columns, load_pair_inputs
 from exp.sim.pairing import build_render_plan, materialize_binned_values
 
 RENDERER_VERSION = "liberty-fixed-context-v1"
@@ -38,23 +38,45 @@ RESPONSE_COLUMNS = [
 
 
 def load_render_spec(config: Mapping[str, Any]) -> dict[str, Any]:
-    """Load the codebook and check it covers exactly the configured schema."""
+    """
+    Load the codebook and check it covers exactly the verbalized columns.
+
+    Verbalized = (schema.columns + schema.auxiliary) minus the codebook's hidden
+    columns; every level of every verbalized column needs a phrase, and every
+    bins/choices/evidence entry must cover all levels of its column.
+    """
     spec = load_codebook_spec(config["codebook"])
     cardinalities = {str(k): int(v) for k, v in config["schema"]["columns"].items()}
-    if set(spec["columns"]) != set(cardinalities):
-        raise ValueError("codebook columns must exactly match schema.columns")
-    for column, cardinality in cardinalities.items():
+    cardinalities.update({column.name: column.n_categories for column in auxiliary_columns(config)})
+    unknown_hidden = set(spec["hidden"]) - set(cardinalities)
+    if unknown_hidden:
+        raise ValueError(f"hidden columns not in the schema: {sorted(unknown_hidden)}")
+    verbalized = {column: card for column, card in cardinalities.items() if column not in spec["hidden"]}
+    if set(spec["columns"]) != set(verbalized):
+        raise ValueError(
+            "codebook columns must exactly match schema.columns + schema.auxiliary minus hidden"
+        )
+    for column, cardinality in verbalized.items():
         levels = set(range(cardinality))
         if set(spec["columns"][column]) != levels:
             raise ValueError(f"codebook levels for {column} must be 0..{cardinality - 1}")
-        if column in spec["bins"] and set(spec["bins"][column]) != levels:
-            raise ValueError(f"bins for {column} must cover every category")
+        for block in ("bins", "choices", "evidence"):
+            if column in spec[block] and set(spec[block][column]) != levels:
+                raise ValueError(f"{block} for {column} must cover every category")
     return spec
 
 
+def sampled_columns(spec: Mapping[str, Any]) -> list[str]:
+    """Columns rendered from a render-plan quantile: bins first, then choices."""
+    return [*spec["bins"], *spec["choices"]]
+
+
 def cv_schema(spec: Mapping[str, Any]) -> tuple[list[str], dict[str, str]]:
-    """Column layout of a generated CV CSV and the header of each binned field."""
-    headers = {column: slug(spec["labels"].get(column, column)) for column in spec["bins"]}
+    """Column layout of a generated CV CSV and the header of each sampled field.
+
+    A binned field stores the concrete number, a choice field the option index.
+    """
+    headers = {column: slug(spec["labels"].get(column, column)) for column in sampled_columns(spec)}
     return [
         "id",
         "template_id",
@@ -70,14 +92,14 @@ def ensure_render_plan(
     pairs: pd.DataFrame,
     templates: pd.DataFrame,
     personas: pd.DataFrame,
-    binned: list[str],
+    sampled: list[str],
 ) -> pd.DataFrame:
     """Write the render plan on first use, or check the persisted one still matches."""
     expected = build_render_plan(
         pairs["id"],
         templates["template_id"],
         personas["persona_id"],
-        binned,
+        sampled,
         seed=int(config["seed"]),
     )
     path = Path(config["paths"]["render_plan"])
@@ -125,11 +147,26 @@ def _candidate_info(
 ) -> str:
     parts = []
     for column, levels in spec["columns"].items():
+        if column in spec["evidence"]:
+            continue  # rendered as guidance, not stated as a fact
         category = int(state[column])
         label = spec["labels"].get(column, column)
-        value = concrete[column] if column in concrete else levels[category]
+        if column in spec["choices"]:
+            value = spec["choices"][column][category][concrete[column]]
+        elif column in concrete:
+            value = concrete[column]
+        else:
+            value = levels[category]
         parts.append(f"{label}: {value}")
     return "[" + ", ".join(parts) + "]"
+
+
+def _evidence_guidance(state: Mapping[str, Any], spec: Mapping[str, Any]) -> str:
+    """One bullet of writing guidance per evidence column, at the state's level."""
+    return "\n".join(
+        f"- {spec['labels'].get(column, column)}: {levels[int(state[column])]}"
+        for column, levels in spec["evidence"].items()
+    )
 
 
 # --- the shared rendering context ----------------------------------------------------
@@ -141,7 +178,7 @@ class RenderContext:
 
     config: Mapping[str, Any]
     spec: dict[str, Any]
-    binned: list[str]
+    sampled: list[str]  # binned and choice columns, in render-plan order
     schema: list[str]
     headers: dict[str, str]
     templates: pd.DataFrame  # indexed by template_id
@@ -186,11 +223,14 @@ class RenderContext:
         plan = self.plan_by_id.loc[row_id]
         template = self.templates.loc[int(plan["template_id"])]
         persona = self.personas.loc[int(plan["persona_id"])]
-        concrete = materialize_binned_values(state, self.spec["bins"], plan)
+        concrete = materialize_binned_values(state, self.spec["bins"], plan, self.spec["choices"])
         sample = {
             "cv_template": template["text"],
             "candidate_info": _candidate_info(state, self.spec, concrete),
             "persona_details": f"Job Title: {persona['job_title']}\n{persona['text']}",
+            # extra keys are ignored by prompts without these placeholders
+            "evidence_guidance": _evidence_guidance(state, self.spec),
+            "forbidden_terms": ", ".join(self.spec["forbidden_terms"]),
         }
         return sample, concrete
 
@@ -208,7 +248,7 @@ class RenderContext:
             row_id,
             int(plan["template_id"]),
             int(plan["persona_id"]),
-            *(concrete[column] for column in self.binned),
+            *(concrete[column] for column in self.sampled),
             text,
             result.response_id if result else None,
             result.model if result else None,
@@ -222,15 +262,15 @@ def render_context(config: Mapping[str, Any]) -> RenderContext:
     """Load S/S', the pools, and the render plan into one checked context."""
     factual, counterfactual, pairs = load_pair_inputs(config)
     spec = load_render_spec(config)
-    binned = list(spec["bins"])
+    sampled = sampled_columns(spec)
     schema, headers = cv_schema(spec)
     templates = load_pool(config, "templates")
     personas = load_pool(config, "personas")
-    plan = ensure_render_plan(config, pairs, templates, personas, binned)
+    plan = ensure_render_plan(config, pairs, templates, personas, sampled)
     return RenderContext(
         config=config,
         spec=spec,
-        binned=binned,
+        sampled=sampled,
         schema=schema,
         headers=headers,
         templates=templates.set_index("template_id"),

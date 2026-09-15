@@ -5,6 +5,7 @@
 /_site/
 *_files
 *.html
+*.pdf
 
 # R
 *.Rproj*
@@ -12,6 +13,7 @@
 
 # Generated pipeline artifacts (regenerable; data/text/ stays tracked: texts cost API credits)
 data/sim/
+data/sim_talent/
 data/latents/
 models/
 reports/
@@ -80,3 +82,4 @@ PLAN.md
 # Other CSV data are ignored; billed text artifacts remain trackable.
 *.csv
 !data/text/*.csv
+!data/text_talent/*.csv

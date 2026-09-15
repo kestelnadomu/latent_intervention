@@ -74,7 +74,7 @@ def _copy_identities(
         if not ctx.pairs_by_id.at[row_id, "is_identity"]:
             continue
         factual_row = factual_by_id.loc[row_id]
-        concrete = {column: int(factual_row[ctx.headers[column]]) for column in ctx.binned}
+        concrete = {column: int(factual_row[ctx.headers[column]]) for column in ctx.sampled}
         _append_cv_row(
             output,
             ctx.cv_row(row_id, concrete, str(factual_row["text"]), None, "identity_copy"),

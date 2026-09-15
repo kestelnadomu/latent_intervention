@@ -78,7 +78,7 @@ def build_render_plan(
     *,
     seed: int,
 ) -> pd.DataFrame:
-    """Choose one shared template, persona, and bin quantile per unit."""
+    """Choose one shared template, persona, and quantile per sampled (binned or choice) column."""
     ids = sorted({int(value) for value in unit_ids})
     templates = sorted({int(value) for value in template_ids})
     personas = sorted({int(value) for value in persona_ids})
@@ -102,16 +102,27 @@ def materialize_binned_values(
     state: Mapping[str, Any],
     bins: Mapping[str, Mapping[int, tuple[int, int]]],
     plan: Mapping[str, Any],
+    choices: Mapping[str, Mapping[int, Sequence[str]]] | None = None,
 ) -> dict[str, int]:
-    """Map shared quantiles into the factual or counterfactual state's bins."""
+    """
+    Map shared quantiles into the factual or counterfactual state's bins and choices.
+
+    A binned column yields a concrete number inside its level's range; a choice
+    column yields an option index into its level's list. X and X' reuse the same
+    quantile, so a unit keeps its relative position when its level changes.
+    """
     concrete: dict[str, int] = {}
-    for column, levels in bins.items():
-        category = int(state[column])
-        if category not in levels:
-            raise PairingError(f"no bin configured for {column}={category}")
-        lower, upper = levels[category]
-        quantile = float(plan[f"{column}_quantile"])
-        if not 0 <= quantile < 1:
-            raise PairingError(f"{column} quantile must lie in [0, 1)")
-        concrete[column] = min(upper, lower + int(quantile * (upper - lower + 1)))
+    for kind, spec in (("bin", bins), ("choice list", choices or {})):
+        for column, levels in spec.items():
+            category = int(state[column])
+            if category not in levels:
+                raise PairingError(f"no {kind} configured for {column}={category}")
+            quantile = float(plan[f"{column}_quantile"])
+            if not 0 <= quantile < 1:
+                raise PairingError(f"{column} quantile must lie in [0, 1)")
+            if kind == "bin":
+                lower, upper = levels[category]
+                concrete[column] = min(upper, lower + int(quantile * (upper - lower + 1)))
+            else:
+                concrete[column] = int(quantile * len(levels[category]))
     return concrete

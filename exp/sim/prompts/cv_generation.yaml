@@ -1,27 +1,37 @@
-# CV generation prompt (LIBERTy App. D.3, Box D.14, verbatim): integrates a
-# narrative template, the candidate's SCM-derived personal information, and a
-# persona into the final Personal Statement.
-# Placeholders: {cv_template}, {candidate_info}, {persona_details}.
+# CV generation prompt for the talent SFM experiment. Extends LIBERTy App. D.3,
+# Box D.14 (archived verbatim in cv_generation_cv_screening.yaml) by an evidence
+# block: talent is never stated, only shown through the proxies' level guidance.
+# Placeholders: {cv_template}, {candidate_info}, {evidence_guidance},
+# {forbidden_terms}, {persona_details}.
 # For Azure OpenAI, `model` must be the deployment name.
 
 prompt:
   system: |
-    You are an AI assistant tasked with crafting a CV Personal Statement for a specific candidate's job application. This statement should be developed by integrating the candidate's actual personal information, tailored persona details that align with the job role, and the structural guidance provided by the narrative template. It is essential to explicitly incorporate each piece of the candidate's personal information into the statement. The final document should be a ready-to-submit, fluent Personal Statement that is clear, aligned with the job level, and effectively conveys the candidate's suitability for the position through a compelling personal narrative.
+    You are an AI assistant tasked with crafting a CV Personal Statement for a specific candidate's job application. The statement integrates the candidate's actual personal information, evidence about how the candidate works, tailored persona details that align with the job role, and the structural guidance of a narrative template. Every piece of personal information must be stated explicitly. The evidence about how the candidate works must never be stated as a trait or a judgement: it is conveyed only through concrete episodes and details, exactly at the strength described. The final document should be a ready-to-submit, fluent Personal Statement that is clear, aligned with the job level, and presents a compelling personal narrative.
   user: |
     Create an engaging CV Personal Statement for a job application using the following elements:
 
     1. Narrative Template: Use the provided template as an internal guide. It should influence the flow and organization of the narrative without dictating the final format.
-    2. Candidate's Personal Information: This is the most crucial component. Ensure that every piece of this information is explicitly mentioned and seamlessly woven into the statement. Adjust persona or template details if needed for coherence.
-    3. Persona Details: Enhance the narrative by incorporating persona details, including career choices, required skills, and personal connections to the profession.
+    2. Candidate's Personal Information: Ensure that every piece of this information is explicitly mentioned and seamlessly woven into the statement. Describe the university only with the given phrase; do not invent a university name, a location, or a national reputation.
+    3. Evidence of How the Candidate Works: Convey each item through one concrete, specific episode or detail from the candidate's experience.
+       - Show, don't tell: never name or summarise the underlying quality, and never use evaluative trait words such as: {forbidden_terms}.
+       - Stay exactly at the strength described. Do not make any item, or the candidate overall, more or less impressive than the evidence says. Modest evidence is written as modest and positive, never as a weakness.
+       - The episodes must not refer to the candidate's country of origin, and the country must not shape them.
+    4. Persona Details: Use them for the role, career choices, and personal connection to the profession only. They must not add accomplishments, skills, or recognition beyond the evidence above.
+
+    Keep the fluency, polish, length, and enthusiasm of the writing the same regardless of how strong the evidence is.
 
     Narrative Template: {cv_template}
 
     Candidate's Personal Information: {candidate_info}
+
+    Evidence of How the Candidate Works:
+    {evidence_guidance}
 
     Persona Details: {persona_details}
 
     Please ensure the final output is a fully-prepared Personal Statement that is fluent and engaging. It should start in a unique and captivating manner (avoid beginning with "from" or "as"), form a cohesive text that integrates all specified details, adhere to the appropriate language style for the job level, and present a unified narrative capturing the candidate's story.
   metadata:
     model: "gpt-5.4"
-    max_completion_tokens: 500
+    max_completion_tokens: 1000
     temperature: 0

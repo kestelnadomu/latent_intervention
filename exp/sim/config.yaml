@@ -1,8 +1,12 @@
-# Data generation pipeline configuration (exp/sim/run.py).
-# Text generation follows LIBERTy App. D.3 (arXiv 2601.10700): templates <-
-# seed statements, personas <- job titles, CVs <- template + candidate info +
-# persona. Sampling params (model, max_tokens, temperature) live in the prompt
-# YAMLs' metadata; for Azure, `model` there must be the deployment name.
+# Data generation pipeline configuration (exp/sim/run.py) — talent SFM experiment.
+# The standard fairness model of Plecko & Bareinboim: X country of origin, T talent
+# (the SFM's Z), W = {D degree, U university rank tier}, Y qualification; T only
+# reaches the text through behavioural proxies P, L, H, A (exp/sim/talent_sfm.py).
+# Text generation keeps the LIBERTy App. D.3 recipe (template + candidate info +
+# persona), extended by an evidence block for the proxies. Sampling params (model,
+# max_tokens, temperature) live in the prompt YAMLs' metadata; for Azure, `model`
+# there must be the deployment name.
+# The previous LIBERTy CV-screening experiment is archived in config_cv_screening.yaml.
 
 # OpenAI-compatible chat endpoint. For Azure OpenAI use the v1 endpoint of your
 # resource; for Mistral: https://api.mistral.ai/v1 with MISTRAL_API_KEY.
@@ -18,41 +22,42 @@ split:
   seed: 42
   test_fraction: 0.2
 
-# do() intervention for the counterfactual dataset, e.g. do(G=1): male.
+# do() intervention for the counterfactual dataset, e.g. do(X=3): country of
+# origin in region 3 (see codebook.yaml).
 intervention:
-  G: 1
+  X: 3
 
 # Structured-state schema S: column -> cardinality (values 0..card-1), listed in
 # topological / autoregressive-decoding order. Read by src/schema.py; the generic
-# framework in src/ has no other knowledge of the columns. The concrete SCM that
-# produces these columns lives in exp/sim/cv_screening.py (see objects: below).
+# framework in src/ has no other knowledge of the columns.
 schema:
   columns:
-    R: 4
-    G: 2
-    A: 3
-    E: 4
-    S: 3
-    W: 3
-    V: 2
-    C: 2
+    X: 4   # country of origin (region, ordinal by simulated access gap)
+    T: 3   # talent: decoded, never verbalized (codebook hidden)
+    D: 3   # degree
+    U: 3   # university rank tier (globally anchored)
+  auxiliary:   # simulated + verbalized so T is inferable from text; not in S (ignored by src/)
+    P: 3   # completed projects
+    L: 3   # learning speed
+    H: 3   # solving hard problems
+    A: 3   # sought out for advice
   outcome:
-    Q: 3   # downstream outcome Y: simulated, excluded from decoder heads and consistency loss
+    Y: 3   # qualification: simulated, excluded from decoder heads and consistency loss
 
 # Dotted "module:attribute" pointers to the concrete experiment objects. src/
 # imports these via src/schema.py::load_object rather than importing exp/sim/ directly.
 objects:
-  scm: exp.sim.cv_screening:build_scm
-  symbolic_kernel: exp.sim.cv_screening:build_symbolic_kernel
+  scm: exp.sim.talent_sfm:build_scm
+  symbolic_kernel: exp.sim.talent_sfm:build_symbolic_kernel
 
 paths:
-  sim_dir: data/sim                    # sim_data_{factual,counterfactual,epsilon}.csv
-  templates: data/text/templates.csv   # generated template pool (tracked: costs API credits)
-  personas: data/text/personas.csv     # generated persona pool (tracked: costs API credits)
-  texts: data/text/cv_factual.csv      # generated CV statements (tracked: costs API credits)
-  texts_counterfactual: data/text/cv_counterfactual.csv  # X' for all IDs by default; see generation below
-  pair_index: data/sim/pair_index.csv  # id, split, is_identity
-  render_plan: data/sim/render_plan.csv  # shared template/persona/bin quantiles
+  sim_dir: data/sim_talent                    # sim_data_{factual,counterfactual,epsilon}.csv
+  templates: data/text/templates.csv          # shared template pool (tracked: costs API credits)
+  personas: data/text/personas.csv            # shared persona pool (tracked: costs API credits)
+  texts: data/text_talent/cv_factual.csv      # generated CV statements (tracked: costs API credits)
+  texts_counterfactual: data/text_talent/cv_counterfactual.csv  # X' for all IDs by default; see generation below
+  pair_index: data/sim_talent/pair_index.csv  # id, split, is_identity
+  render_plan: data/sim_talent/render_plan.csv  # shared template/persona/quantiles
 
 codebook: exp/sim/codebook.yaml
 prompts:

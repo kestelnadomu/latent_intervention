@@ -1,0 +1,63 @@
+# Codebook: level semantics of the SCM columns, aligned with Table 9 of the
+# LIBERTy paper (arXiv 2601.10700, App. D.3.1) whose CV Screening SCM this
+# simulation reproduces. Q is the downstream outcome and is deliberately absent.
+#
+# columns: {column: {level index: phrase}} — used to verbalize a row into the
+#   candidate information list (candidate_info_from_row in generate_text.py).
+# labels:  display name per column in that list.
+# bins:    numeric ranges for binned columns; a concrete value is sampled
+#   uniformly inside the row's bin (paper's examples: "Age: 41",
+#   "Relevant Work Experience: 9").
+
+columns:
+  R:
+    0: "Black or African American"
+    1: "Hispanic or Latino"
+    2: "White"
+    3: "Asian"
+  G:
+    0: "Female"
+    1: "Male"
+  A:
+    0: "24-32 years"
+    1: "33-44 years"
+    2: "45-55 years"
+  E:
+    0: "High School"
+    1: "Bachelor's"
+    2: "Master's"
+    3: "Doctorate"
+  S:
+    0: "Low"
+    1: "Medium"
+    2: "High"
+  W:
+    0: "2-5 years"
+    1: "6-10 years"
+    2: "11-25 years"
+  V:
+    0: "No"
+    1: "Yes"
+  C:
+    0: "No"
+    1: "Yes"
+
+labels:
+  R: "Race"
+  G: "Gender"
+  A: "Age"
+  E: "Education Level"
+  S: "Socioeconomic Status"
+  W: "Relevant Work Experience"
+  V: "Volunteering"
+  C: "Professional Certificates"
+
+bins:
+  A:
+    0: [24, 32]
+    1: [33, 44]
+    2: [45, 55]
+  W:
+    0: [2, 5]
+    1: [6, 10]
+    2: [11, 25]
