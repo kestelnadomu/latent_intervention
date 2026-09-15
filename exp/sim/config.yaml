@@ -1,0 +1,76 @@
+# Data generation pipeline configuration (exp/sim/run.py) — talent SFM experiment.
+# The standard fairness model of Plecko & Bareinboim: X country of origin, T talent
+# (the SFM's Z), W = {D degree, U university rank tier}, Y qualification; T only
+# reaches the text through behavioural proxies P, L, H, A (exp/sim/talent_sfm.py).
+# Text generation keeps the LIBERTy App. D.3 recipe (template + candidate info +
+# persona), extended by an evidence block for the proxies. Sampling params (model,
+# max_tokens, temperature) live in the prompt YAMLs' metadata; for Azure, `model`
+# there must be the deployment name.
+# The previous LIBERTy CV-screening experiment is archived in config_cv_screening.yaml.
+
+# OpenAI-compatible chat endpoint. For Azure OpenAI use the v1 endpoint of your
+# resource; for Mistral: https://api.mistral.ai/v1 with MISTRAL_API_KEY.
+llm:
+  base_url: https://soda-counterfactual-cv.services.ai.azure.com/openai/v1
+  api_key_env: AZURE_OPENAI_API_KEY   # env var holding the key (never put the key itself here)
+
+n: 10
+seed: 1
+
+# Persisted unit split. Counterfactual latent evaluation is held out to test.
+split:
+  seed: 42
+  test_fraction: 0.2
+
+# do() intervention for the counterfactual dataset, e.g. do(X=3): country of
+# origin in region 3 (see codebook.yaml).
+intervention:
+  X: 3
+
+# Structured-state schema S: column -> cardinality (values 0..card-1), listed in
+# topological / autoregressive-decoding order. Read by src/schema.py; the generic
+# framework in src/ has no other knowledge of the columns.
+schema:
+  columns:
+    X: 4   # country of origin (region, ordinal by simulated access gap)
+    T: 3   # talent: decoded, never verbalized (codebook hidden)
+    D: 3   # degree
+    U: 3   # university rank tier (globally anchored)
+  auxiliary:   # simulated + verbalized so T is inferable from text; not in S (ignored by src/)
+    P: 3   # completed projects
+    L: 3   # learning speed
+    H: 3   # solving hard problems
+    A: 3   # sought out for advice
+  outcome:
+    Y: 3   # qualification: simulated, excluded from decoder heads and consistency loss
+
+# Dotted "module:attribute" pointers to the concrete experiment objects. src/
+# imports these via src/schema.py::load_object rather than importing exp/sim/ directly.
+objects:
+  scm: exp.sim.talent_sfm:build_scm
+  symbolic_kernel: exp.sim.talent_sfm:build_symbolic_kernel
+
+paths:
+  sim_dir: data/sim_talent                    # sim_data_{factual,counterfactual,epsilon}.csv
+  templates: data/text/templates.csv          # shared template pool (tracked: costs API credits)
+  personas: data/text/personas.csv            # shared persona pool (tracked: costs API credits)
+  texts: data/text_talent/cv_factual.csv      # generated CV statements (tracked: costs API credits)
+  texts_counterfactual: data/text_talent/cv_counterfactual.csv  # X' for all IDs by default; see generation below
+  pair_index: data/sim_talent/pair_index.csv  # id, split, is_identity
+  render_plan: data/sim_talent/render_plan.csv  # shared template/persona/quantiles
+
+codebook: exp/sim/codebook.yaml
+prompts:
+  templates: exp/sim/prompts/template_generation.yaml
+  personas: exp/sim/prompts/persona_generation.yaml
+  cv: exp/sim/prompts/cv_generation.yaml
+pools:
+  seed_statements: exp/sim/seed_statements.yaml
+  job_titles: exp/sim/job_titles.yaml
+
+generation:
+  include_train_counterfactual_texts: true  # true/omitted = all IDs; false = test IDs only
+  n_templates: 50    # template pool size (one billed call each)
+  n_personas: 100    # persona pool size (one billed call each)
+  limit: null        # max IDs processed per stage run; null = all
+  max_attempts: 3    # total API calls allowed per stage and ID, persisted across resumes

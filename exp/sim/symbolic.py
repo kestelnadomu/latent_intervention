@@ -5,7 +5,8 @@ rounded-and-clipped SCM.
 Generic over the SCM: the graph, mechanism weights and noise parameters are all
 passed in (use :meth:`SymbolicIntervention.from_scm` with a known SCM, or
 :meth:`SymbolicIntervention.fit` to estimate the noise from a factual sample).
-The concrete CV-screening kernel is assembled in ``exp/sim/cv_screening.py``.
+The concrete kernels are assembled in ``exp/sim/talent_sfm.py`` (active) and
+``exp/sim/cv_screening.py`` (archived).
 
 For each non-root node ``s_i = clip_round(m_i(pa_i) + eps_i)`` with
 ``eps_i ~ Normal(mu_i, sigma_i)``, the three-step counterfactual recipe is exact:
@@ -262,13 +263,13 @@ class SymbolicIntervention:
 
 
 if __name__ == "__main__":
-    # Smoke test: closed-form h_S vs. empirical transition counts from the concrete
-    # CV-screening SCM/kernel (the one place a real experiment is referenced here).
-    from exp.sim.cv_screening import build_scm, build_symbolic_kernel
+    # Smoke test: closed-form h_S vs. empirical transition counts from the SCM and
+    # kernel of the active experiment, resolved through exp/sim/config.yaml.
+    from src.schema import load_config_object, load_intervention
 
-    h_s = build_symbolic_kernel()
-    scm = build_scm()
-    delta = {"G": 1}
+    h_s = load_config_object("symbolic_kernel")()
+    scm = load_config_object("scm")()
+    delta = load_intervention()
     m = h_s.transition_matrix(delta)
     dense = m.to_dense()
     assert torch.allclose(dense.sum(1), torch.ones(dense.shape[0]), atol=1e-4)
