@@ -3,7 +3,7 @@ Text generation from tabular samples via an OpenAI-compatible chat API.
 
 LLM plumbing for the text-generation pipeline (exp/sim/run.py):
 1. Load inputs: load_samples (CSV rows), load_prompts (chat prompt YAML),
-   load_codebook_spec (column phrases + labels + bins).
+   load_codebook_spec (column phrases + labels + bins/choices/evidence/hidden).
 2. Verbalize: candidate_info_from_row (row -> paper-style candidate info list,
    concrete values sampled inside binned columns), verbalize_row (row ->
    {col}_text placeholders).
@@ -99,20 +99,64 @@ def load_codebook_spec(yaml_path: str | Path) -> dict[str, Any]:
     Load the full codebook spec (exp/sim/codebook.yaml).
 
     Returns {"columns": {col: {index: phrase}}, "labels": {col: display name},
-    "bins": {col: {index: (lo, hi)}}}; `labels` and `bins` are optional in the
-    YAML and default to empty.
+    "bins": {col: {index: (lo, hi)}}, "choices": {col: {index: [option, ...]}},
+    "evidence": {col: {index: guidance}}, "hidden": [col, ...],
+    "forbidden_terms": [term, ...]}. Everything except `columns` is optional in
+    the YAML and defaults to empty:
+
+    - `bins`: a concrete number is sampled inside the level's range;
+    - `choices`: a concrete option (e.g. a country) is picked from the level's list;
+    - `evidence`: the column is not stated as a fact but rendered as writing
+      guidance in a separate `{evidence_guidance}` prompt block;
+    - `hidden`: schema columns that are decoded but never verbalized (absent
+      from `columns`);
+    - `forbidden_terms`: words the generated text must avoid (reported by
+      validate-pairs, and available to the prompt as `{forbidden_terms}`).
     """
     data = _load_yaml(yaml_path)
     if not isinstance(data, dict) or "columns" not in data:
         raise ValueError(f"Codebook YAML must have a top-level 'columns' key, got {type(data)}")
     columns = {str(col): {int(k): str(v) for k, v in levels.items()} for col, levels in data["columns"].items()}
     labels = {str(col): str(label) for col, label in data.get("labels", {}).items()}
-    bins: dict[str, dict[int, tuple[int, int]]] = {}
-    for col, ranges in data.get("bins", {}).items():
-        if str(col) not in columns:
-            raise ValueError(f"bins column '{col}' not in codebook columns {list(columns)}")
-        bins[str(col)] = {int(k): (int(lo), int(hi)) for k, (lo, hi) in ranges.items()}
-    return {"columns": columns, "labels": labels, "bins": bins}
+
+    def _known(block: str) -> dict[str, Any]:
+        entries = data.get(block) or {}
+        for col in entries:
+            if str(col) not in columns:
+                raise ValueError(f"{block} column '{col}' not in codebook columns {list(columns)}")
+        return entries
+
+    bins = {
+        str(col): {int(k): (int(lo), int(hi)) for k, (lo, hi) in ranges.items()}
+        for col, ranges in _known("bins").items()
+    }
+    choices: dict[str, dict[int, list[str]]] = {}
+    for col, levels in _known("choices").items():
+        choices[str(col)] = {}
+        for k, options in levels.items():
+            if not isinstance(options, list) or not options:
+                raise ValueError(f"choices for {col}={k} must be a non-empty list")
+            choices[str(col)][int(k)] = [str(option) for option in options]
+    evidence = {
+        str(col): {int(k): str(v) for k, v in levels.items()}
+        for col, levels in _known("evidence").items()
+    }
+    overlap = (set(bins) & set(choices)) | ((set(bins) | set(choices)) & set(evidence))
+    if overlap:
+        raise ValueError(f"columns can be only one of bins/choices/evidence: {sorted(overlap)}")
+    hidden = [str(col) for col in data.get("hidden") or []]
+    if set(hidden) & set(columns):
+        raise ValueError(f"hidden columns must not be verbalized in columns: {sorted(set(hidden) & set(columns))}")
+    forbidden = [str(term) for term in data.get("forbidden_terms") or []]
+    return {
+        "columns": columns,
+        "labels": labels,
+        "bins": bins,
+        "choices": choices,
+        "evidence": evidence,
+        "hidden": hidden,
+        "forbidden_terms": forbidden,
+    }
 
 
 def verbalize_row(row: Sample, codebook: dict[str, dict[int, str]]) -> dict[str, str]:

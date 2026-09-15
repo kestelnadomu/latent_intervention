@@ -15,11 +15,24 @@ import pandas as pd
 
 from exp.sim.helpers import coerce_bool, read_csv, sha256_file
 from exp.sim.pairing import PairingError, build_pair_index
+from src.schema import ColumnSpec
 
 
 def state_columns(config: Mapping[str, Any]) -> list[str]:
     """Names of the structured-state columns, in decode order."""
     return [str(column) for column in config["schema"]["columns"]]
+
+
+def auxiliary_columns(config: Mapping[str, Any]) -> list[ColumnSpec]:
+    """
+    Auxiliary columns (``schema.auxiliary``): simulated and verbalized, but outside S.
+
+    They exist only to make hidden S columns inferable from text, so they enter
+    neither the decoder heads, the consistency loss, nor the pair identity check.
+    Absent in schemas without them.
+    """
+    auxiliary = config["schema"].get("auxiliary") or {}
+    return [ColumnSpec(str(name), int(card)) for name, card in auxiliary.items()]
 
 
 def split_settings(config: Mapping[str, Any]) -> tuple[int, float]:
@@ -87,9 +100,10 @@ def load_pair_inputs(
             "simulation_info.json is incompatible with the current configuration or files"
         )
     columns = state_columns(config)
-    factual = read_csv(sim_dir / "sim_data_factual.csv", "factual simulation", columns)
+    rendered = [*columns, *(column.name for column in auxiliary_columns(config))]
+    factual = read_csv(sim_dir / "sim_data_factual.csv", "factual simulation", rendered)
     counterfactual = read_csv(
-        sim_dir / "sim_data_counterfactual.csv", "counterfactual simulation", columns
+        sim_dir / "sim_data_counterfactual.csv", "counterfactual simulation", rendered
     )
     pairs = read_csv(config["paths"]["pair_index"], "pair index", ("split", "is_identity"))
     ids = factual["id"].tolist()
