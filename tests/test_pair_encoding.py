@@ -106,7 +106,7 @@ def test_encode_pairs_accepts_all_counterfactual_texts_but_encodes_test_only(
     assert StubEncoder.calls == [["x1", "x2", "x3", "x4", "x1-prime"]]
     assert payload["test_ids"] == [1, 2]
     assert payload["is_identity"].tolist() == [False, True]
-    assert payload["z_prime"].shape == (2, 2)
+    assert payload["z_prime"].shape == (2, StubEncoder.latent_dim)
     assert torch.equal(payload["z_prime"][1], payload["z"][1])
 
 

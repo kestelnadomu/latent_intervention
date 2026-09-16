@@ -74,3 +74,13 @@ generation:
   n_personas: 100    # persona pool size (one billed call each)
   limit: null        # max IDs processed per stage run; null = all
   max_attempts: 3    # total API calls allowed per stage and ID, persisted across resumes
+
+# Token budget for CV texts (exp/sim/text_length.py), counted with the GPT-2
+# tokenizer the LangVAE encoder uses (src/encoder.py truncates at max_len=512).
+# Over-budget responses are rejected and retried within max_attempts;
+# validate-pairs reports rows over budget. Not part of the generation digest, so
+# changing it does not invalidate existing rows. Remove the section to disable.
+text_length:
+  tokenizer: gpt2
+  tokenizer_revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
+  max_tokens: 500

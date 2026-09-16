@@ -48,9 +48,9 @@ The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test 
 
 | Object | Coverage | Artifact |
 | --- | --- | --- |
-| `S`, `S'` | All units | `data/sim/sim_data_{factual,counterfactual}.csv` |
-| `X` | All units | `data/text/cv_factual.csv` |
-| `X'` | All units by default; test only when configured | `data/text/cv_counterfactual.csv` |
+| `S`, `S'` | All units | `data/sim_talent/sim_data_{factual,counterfactual}.csv` |
+| `X` | All units | `data/text_talent/cv_factual.csv` |
+| `X'` | All units by default; test only when configured | `data/text_talent/cv_counterfactual.csv` |
 | `Z=f(X)` | All units | `z` in `data/latents/z_pairs.pt` |
 | `Z'=f(X')` | Test units only | `z_prime` in `data/latents/z_pairs.pt` |
 
