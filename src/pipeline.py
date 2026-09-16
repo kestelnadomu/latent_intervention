@@ -27,10 +27,12 @@ from src.config import load_config
 from src.latent_intervention import (
     LatentIntervention,
     LatentInterventionPreAdditive,
+    LatentInterventionNoiseToken,
     LatentInterventionDist,
     make_objective,
     train_latent_intervention,
     train_latent_intervention_dist,
+    train_latent_intervention_noise_token,
     train_latent_intervention_preadditive,
 )
 from src.schema import load_intervention, load_schema
@@ -50,6 +52,7 @@ DECODER_VARIANTS = {
 INTERVENTION_VARIANTS = {
     "baseline": LatentIntervention,
     "pre_additive": LatentInterventionPreAdditive,
+    "noise_token": LatentInterventionNoiseToken,
     "dist": LatentInterventionDist
 }
 
@@ -158,6 +161,16 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
         model = LatentInterventionPreAdditive(**model_kwargs, noise_std=pa["noise_std"])
         train_latent_intervention_preadditive(
             model=model, epochs=cfg["epochs"], n_samples=pa["n_samples"], **train_kwargs
+        )
+    elif cfg["variant"] == "noise_token":
+        nt = cfg["noise_token"]
+        model = LatentInterventionNoiseToken(**model_kwargs, noise_dim=nt["noise_dim"])
+        train_latent_intervention_noise_token(
+            model=model,
+            epochs=cfg["epochs"],
+            n_samples=nt["n_samples"],
+            entropy_weight=nt["entropy_weight"],
+            **train_kwargs,
         )
     elif cfg["variant"] == "dist":
         d = cfg["dist"]

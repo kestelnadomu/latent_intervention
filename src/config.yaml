@@ -40,13 +40,14 @@ latent_intervention:
   # variant: which h_Z parameterisation (docs/architecture/latent_intervention.md)
   #   baseline   -> LatentIntervention  (Plan 0: deterministic z' = z + T(z,delta), per-column CE)
   #   pre_additive -> LatentInterventionPreAdditive (Plan A: z' = z + Delta(z+eps,delta), MC forward-KL)
+  #   noise_token -> LatentInterventionNoiseToken (Plan C: z' = z + Delta(z,eps,delta), eps its own token, MC forward-KL + entropy)
   #   dist    -> LatentInterventionDist (Plan B: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
   variant: baseline
   d_model: 128
   nhead: 4
   dim_feedforward: 256
   dropout: 0.1
-  epochs: 50             # baseline / pre_additive
+  epochs: 50             # baseline / pre_additive / noise_token
   batch_size: 64
   lr: 1.0e-4
   sparsity_weight: 1.0    # alpha: L1 penalty on z' - z
@@ -54,6 +55,10 @@ latent_intervention:
   pre_additive:
     noise_std: 1.0        # sigma of the pre-additive noise eps ~ N(0, sigma^2 I)
     n_samples: 8          # M: Monte-Carlo samples for the g . h_Z composition
+  noise_token:
+    noise_dim: 4          # k: size of the outsourced noise eps ~ N(0, I_k)
+    n_samples: 8          # M: Monte-Carlo samples for the g . h_Z composition
+    entropy_weight: 0.1   # weight of E_eps[H(g(. | z'_eps))]; forces the mixture to come from eps
   dist:
     embed_dim: 16         # w_theta decoded-prefix embedding size
     top_k: 16             # retained counterfactual states s' in the exact composition
