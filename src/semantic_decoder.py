@@ -3,17 +3,18 @@ Semantic kernel g: maps a frozen latent z to a distribution over the structured 
 
     g(s | z): Z -> Delta(S)
 
-Two parameterisations (see docs/architecture/semantic_decoder.md):
+Two parameterisations (config `semantic_decoder.variant`; see
+docs/architecture/semantic_decoder.md):
 
-- SemanticDecoderA -- Plan A: shared MLP trunk + one independent categorical head per
-  column, p(s | z) = prod_i p(s_i | z). Asserts the columns conditionally independent
-  given z (technically false); the smallest thing that runs end-to-end.
-- SemanticDecoderB -- Plan B: same trunk, each head additionally conditioned on an
-  embedding of the already-decoded prefix, p(s | z) = prod_i p(s_i | s_<i, z). Exact
-  joint, no independence assumption.
+- SemanticDecoder (`independent`): shared MLP trunk + one independent categorical head per
+  column, g(s | z) = prod_i g(s_i | z). Assumes the columns conditionally independent given
+  z; exact whenever at most one column (typically the hidden T) is uncertain.
+- SemanticAutoRegDecoder (`autoregressive`): same trunk, each head additionally conditioned
+  on embeddings of the earlier columns, g(s | z) = prod_i g(s_i | s_<i, z). Exact joint.
 
-Both are trained with train_semantic_decoder on (latents, tabular targets) pairs under
-the cross-entropy objective L_g = E[CE(g(. | z), s)].
+Both are trained with train_semantic_decoder on (latents, tabular targets) pairs under the
+cross-entropy objective L_g = E[-log g(s | z)]. Note the scales: SemanticDecoder.nll is the
+mean per-column CE, SemanticAutoRegDecoder.nll the full joint NLL.
 """
 
 from pathlib import Path
@@ -37,7 +38,10 @@ def _mlp_trunk(latent_dim: int, hidden_dim: int, n_hidden: int, dropout: float) 
 
 
 class SemanticDecoder(nn.Module):
-    """Parent class of Plan A and Plan B: MLP trunk + one independent categorical head per column."""
+    """Independent heads (`independent`): MLP trunk + one categorical head per column.
+
+    Also the base class of SemanticAutoRegDecoder (shared config, trunk, save/load).
+    """
     def __init__(
             self,
             latent_dim: int,
@@ -101,7 +105,7 @@ class SemanticDecoder(nn.Module):
 
 
 class SemanticAutoRegDecoder(SemanticDecoder):
-    """Plan B: same trunk, heads conditioned on an embedding of the decoded prefix."""
+    """Autoregressive heads (`autoregressive`): heads also see embeddings of the decoded prefix."""
 
     def __init__(
             self,
@@ -162,7 +166,7 @@ class SemanticAutoRegDecoder(SemanticDecoder):
     def log_joint(self, z: torch.Tensor) -> torch.Tensor:
         """Dense (batch, |S|) log-probabilities by enumerating the autoregressive product.
 
-        Column-major order over ``self.columns``, matching SemanticDecoderA.log_joint.
+        Column-major order over ``self.columns``, matching SemanticDecoder.log_joint.
         """
         h = self.trunk(z)
         batch = z.shape[0]
@@ -289,7 +293,7 @@ if __name__ == "__main__":
     for c in columns:
         n_states *= c.n_categories
 
-    for name, ctor in (("A", SemanticDecoder), ("B", SemanticAutoRegDecoder)):
+    for name, ctor in (("independent", SemanticDecoder), ("autoregressive", SemanticAutoRegDecoder)):
         decoder = ctor(latent_dim, columns)
         history = train_semantic_decoder(decoder, z, targets, epochs=5, verbose=False)
         joint = decoder.log_joint(z[:4])

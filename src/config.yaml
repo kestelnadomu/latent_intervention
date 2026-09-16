@@ -23,8 +23,8 @@ encoder:
 
 semantic_decoder:
   # variant: which g parameterisation (docs/architecture/semantic_decoder.md)
-  #   independent    -> SemanticDecoder (Plan A: one head per column, p(s|z) = prod_i p(s_i|z))
-  #   autoregressive -> SemanticAutoRegDecoder (Plan B: p(s|z) = prod_i p(s_i|s_<i,z), exact joint)
+  #   independent    -> SemanticDecoder (one head per column, g(s|z) = prod_i g(s_i|z))
+  #   autoregressive -> SemanticAutoRegDecoder (g(s|z) = prod_i g(s_i|s_<i,z), exact joint)
   variant: independent
   hidden_dim: 256
   n_hidden: 2
