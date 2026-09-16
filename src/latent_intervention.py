@@ -2,36 +2,33 @@
 Latent editor h_Z(z' | z, delta): Z -> Delta(Z).
 
 Freeze f, g, h_S; train h_Z so the two paths from z to a distribution over counterfactual
-states agree (h_S . g == g . h_Z). See docs/architecture/latent_intervention.md.
+states agree (h_S . g == g . h_Z). See docs/architecture/latent_intervention.md, which holds
+the overview table, benefits and caveats of every plan.
 
-Three parameterisations:
+Five parameterisations (config `latent_intervention.variant`):
 
-- LatentIntervention  -- Plan 0 (baseline): deterministic residual transformer
-  z' = z + T_theta(z, delta). Cannot represent the multimodality of (h_S . g) in the
-  ambiguous strata; kept as a baseline, trained by per-column CE against S'.
-- LatentInterventionPreAdditive -- Plan A (engression): z' = z + Delta_theta(z + eps, delta),
-  eps ~ N(0, sigma^2 I). h_Z is the pushforward of eps; a nonlinear Delta_theta folds a
-  unimodal eps onto separated modes. Composition g . h_Z needs Monte Carlo.
-- LatentInterventionNoiseToken -- Plan B (outsourced noise): z' = z + Delta_theta(z, eps, delta),
-  eps ~ N(0, I_k) enters as its own transformer token, so z reaches Delta intact. Trained
-  on the MC forward KL plus a per-sample decoder-entropy penalty that forces the mixture to
-  come from eps rather than from g's ambiguity at a single z'. Discretising eps with a
-  learned prior recovers Plan C.
-- LatentInterventionDist -- Plan C (discrete mixture):
-  h_Z(. | z, delta) = sum_s' w_theta(s' | z, delta) * dirac_{z + Delta_phi(z, s')}.
-  w_theta is an autoregressive head over S (the SCM internalised, no h_S at inference);
-  Delta_phi is a deterministic realiser. Composition is an exact finite sum over the
-  retained top-k s'. Trained pretrain-then-joint.
-- LatentInterventionParticles -- Plan D (particle set):
-  h_Z(. | z, delta) = sum_j w_j(z, delta) * dirac_{z + Delta_j(z, delta)}, j = 1..d.
-  d learned query tokens yield d unlabelled particles (and, optionally, their weights)
-  deterministically; the composition is an exact finite sum. Trained on forward KL plus
-  the weighted per-particle entropy.
+- LatentIntervention (`baseline`) -- Plan 0: deterministic z' = z + Delta_theta(z, delta).
+  Trained by per-column CE against the simulated S'; learns the per-column marginals of the
+  counterfactual and cannot represent its multimodality.
+- LatentInterventionPreAdditive (`pre_additive`) -- Plan A (engression):
+  z' = z + Delta_theta(z + eps, delta), eps ~ N(0, sigma^2 I). Monte-Carlo composition.
+- LatentInterventionNoiseToken (`noise_token`) -- Plan B (outsourced noise):
+  z' = z + Delta_theta(z, eps, delta), eps ~ N(0, I_r) as its own token, so z reaches
+  Delta intact. Monte-Carlo composition + per-sample entropy term.
+- LatentInterventionDist (`dist`) -- Plan C (discrete mixture over states):
+  h_Z = sum_{s' in top-k} w_theta(s' | z, delta) * dirac_{z + Delta_phi(z, s')}.
+  w_theta is an autoregressive head distilled from h_S . g; Delta_phi is a do()-agnostic
+  realiser. Exact composition; trained pretrain-then-joint.
+- LatentInterventionParticles (`particles`) -- Plan D (particle set):
+  h_Z = sum_j w_j(z, delta) * dirac_{z + Delta_j(z, delta)}, j = 1..d, from d learned
+  query tokens. Exact composition + weighted per-particle entropy term.
 
-The consistency objective (Plan A/B/C/D) is
+The consistency objective (Plans A-D) is
     L = E_z[ D_KL( (h_S . g)(. | z, delta) || (g . h_Z)(. | z, delta) ) ]
-        + alpha ||z' - z||_1 + beta ||z' - z||_2^2
-with forward (mass-covering) KL over the dense |S| = prod(cardinalities) vector.
+        + lambda * E_{z' ~ h_Z}[ H(g(. | z')) ]                  (Plans B, D)
+        + alpha * mean|z' - z| + beta * mean (z' - z)^2
+with forward (mass-covering) KL over the dense |S| = prod(cardinalities) vector. The
+penalties average over latent dimensions and over samples / components / particles.
 
 Common scaffolding (config + persistence, the training loop, the latent-space penalties)
 lives in `_ManipulatorBase` and `_train`; each plan supplies only its model body and its
@@ -823,6 +820,22 @@ class LatentInterventionDist(_ManipulatorBase):
         idx, _ = self.w_theta.top_k(z, values, mask, 1)
         return self.realise(z, unflatten_state_index(idx[:, 0], self.columns))
 
+    def sample(
+        self,
+        z: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        n_samples: int,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """(n_samples, batch, latent_dim) draws: s' ~ renormalised top-k w_theta, then realise."""
+        idx, logw = self.w_theta.top_k(z, values, mask, self.top_k)  # (batch, k)
+        pick = torch.multinomial(logw.exp(), n_samples, replacement=True, generator=generator)
+        states = idx.gather(1, pick)  # (batch, n_samples)
+        return torch.stack(
+            [self.realise(z, unflatten_state_index(states[:, m], self.columns)) for m in range(n_samples)]
+        )
+
     def composed_log_joint(
         self,
         z: torch.Tensor,
@@ -1207,6 +1220,7 @@ if __name__ == "__main__":
               f"  eff {hd[-1]['eff_particles']:.2f}  distinct {hd[-1]['distinct_states']:.2f}")
 
     with torch.no_grad():
+        assert b.sample(z[:4], values[:4], mask[:4], 3, gen).shape == (3, 4, latent_dim)
         z_prime = b(z, values, mask)
     preds = decoder.predict(z_prime)
     consistency = {c.name: (preds[c.name] == s_prime[c.name]).float().mean().item() for c in columns}

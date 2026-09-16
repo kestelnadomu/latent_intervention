@@ -222,7 +222,12 @@ def stage_evaluate(config: dict[str, Any]) -> None:
     z_val = z[val_idx]
     values, mask = make_objective(intervention, decoder.columns, batch_size=len(val_idx))
     with torch.no_grad():
-        z_prime = model(z_val, values, mask)
+        if isinstance(model, (LatentInterventionPreAdditive, LatentInterventionNoiseToken)):
+            # stochastic plans: one seeded draw per text, reproducible across runs
+            generator = torch.Generator().manual_seed(config["seed"])
+            z_prime = model(z_val, values, mask, generator)
+        else:
+            z_prime = model(z_val, values, mask)
     preds = decoder.predict(z_prime)
 
     consistency = {

@@ -18,6 +18,7 @@ Code: `src/latent_intervention.py`; select a plan with `latent_intervention.vari
 | $w$ | mixture weights |
 | $M$, $k$, $d$, $r$ | Monte Carlo samples, top-$k$ states, particles, noise dimension |
 | $\alpha$, $\beta$, $\lambda$ | L1, L2 and entropy weights |
+| $\overline{\lvert v\rvert}$, $\overline{v^2}$ | mean absolute / mean squared entry of $v$ |
 
 ## Overview
 
@@ -36,7 +37,7 @@ weights of C from $h_S\circ g$ instead of learning them gives the most symbolic 
 
 ## Shared objective
 
-$$\mathcal L = \mathbb E_z\Big[D_{\mathrm{KL}}\big((h_S\circ g)(\cdot\mid z,\delta)\,\big\|\,(g\circ h_Z)(\cdot\mid z,\delta)\big)\Big] + \lambda\,\mathbb E_{z'\sim h_Z}\big[H\big(g(\cdot\mid z')\big)\big] + \alpha\lVert z'-z\rVert_1 + \beta\lVert z'-z\rVert_2^2$$
+$$\mathcal L = \mathbb E_z\Big[D_{\mathrm{KL}}\big((h_S\circ g)(\cdot\mid z,\delta)\,\big\|\,(g\circ h_Z)(\cdot\mid z,\delta)\big)\Big] + \lambda\,\mathbb E_{z'\sim h_Z}\big[H\big(g(\cdot\mid z')\big)\big] + \alpha\,\overline{\lvert z'-z\rvert} + \beta\,\overline{(z'-z)^2}$$
 
 * **Target.** $(h_S\circ g)(\cdot\mid z,\delta) = M_\delta^\top g(\cdot\mid z)$ is a dense
   $\lvert\mathcal S\rvert$-vector. $g$ and $h_S$ are frozen, so it is precomputed once.
@@ -54,6 +55,9 @@ $$\mathcal L = \mathbb E_z\Big[D_{\mathrm{KL}}\big((h_S\circ g)(\cdot\mid z,\del
   is ambiguous, or spreading $z'$ over points where $g$ is confident. Both give the same
   $g\circ h_Z$. The per-sample entropy prefers the second. It applies to A and C as well, but is
   not wired in there yet.
+* **Penalties** (L1 sparsity, L2 proximity) are *means*, over the 128 latent dimensions and over
+  samples, components or particles (`_penalties`). So $\alpha$ and $\beta$ are on a per-dimension
+  scale, about $1/128$ of the equivalent weight on $\lVert\cdot\rVert_1$ or $\lVert\cdot\rVert_2^2$.
 * Plan 0 skips the KL and trains per-column cross-entropy against the simulated $\mathbf s'$.
 
 ```python
@@ -215,13 +219,14 @@ $$h_Z(\cdot\mid z,\delta) = \sum_{\mathbf s'\in\text{top-}k} w(\mathbf s'\mid z,
     trained;
   * *unit* (planned): $w_\theta$ trained by likelihood on the true $\mathbf s'$.
 * **Mixture.** Keep the top-$k$ states, renormalise their weights, and realise each one.
-  Sampling means drawing $\mathbf s'$ from $w$ and realising it. `forward()` returns the argmax
+  `sample()` draws $\mathbf s'$ from $w$ and realises it. `forward()` returns the argmax
   component.
 * **Training.**
-  * Pretraining: distil $w_\theta$, and fit $\Delta_\phi$ with
-    $-\log g(\mathbf s'\mid z^*_{\mathbf s'}) + \alpha\lVert\Delta\rVert_1 + \beta\lVert\Delta\rVert_2^2$
-    on the true $\mathbf s'$.
-  * Joint phase: fine-tune both on the exact KL.
+  * Pretraining: distil $w_\theta$, and fit $\Delta_\phi$ on the true $\mathbf s'$ with
+    `decoder.nll` (mean per-column cross-entropy, i.e. the joint NLL divided by the number of
+    columns for the factorised $g$) plus its *own* L1/L2 weights `realiser_l1` and `realiser_l2`,
+    not $\alpha$ and $\beta$.
+  * Joint phase: fine-tune both on the exact KL, with $\alpha$ and $\beta$ on the realised shifts.
 
 **Benefits**
 * Composition is exact: no inner expectation and no sampling variance.
@@ -257,7 +262,7 @@ def composed_log_joint(self, z, values, mask, decoder):
     zs = [self.realise(z, unflatten_state_index(idx[:, j], self.columns)) for j in range(idx.shape[1])]
     comps = [logw[:, j:j+1] + decoder.log_joint(z_j) for j, z_j in enumerate(zs)]
     return torch.logsumexp(torch.stack(comps), dim=0), torch.stack(zs) - z
-# pretrain: w_theta <- KL(target || w_theta);  realiser <- -log g(s' | z*_s') + l1 + l2 (true s')
+# pretrain: w_theta <- KL(target || w_theta);  realiser <- decoder.nll(z*_s', s') + realiser_l1/l2 (true s')
 # joint:    KL(target || composed) + alpha/beta on the realised shifts
 ```
 
@@ -319,7 +324,7 @@ def particles(self, z, values, mask):
 ## Evaluation
 
 `src/pipeline.py evaluate` currently scores **one** $z'$ per text by argmax accuracy against
-$\mathbf s'$. That is fair to Plan 0 but undersells A–D. Report per plan:
+$\mathbf s'$ (for A/B, one draw seeded with the global seed; for C/D, the top component). That is fair to Plan 0 but undersells A–D. Report per plan:
 
 * the KL of $g\circ h_Z$ against $h_S\circ g$ (exact for C/D, $M$ samples for A/B);
 * the log-likelihood of the true $\mathbf s'$ under $g\circ h_Z$ (the unit-level view);
