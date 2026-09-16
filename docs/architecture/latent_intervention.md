@@ -331,12 +331,39 @@ $\mathbf s'$. That is fair to Plan 0 but undersells A–D. Report per plan:
 Every plan optimises latents to convince a frozen classifier, which is the textbook construction
 of an adversarial example. $\Delta$ can find off-manifold directions that make $g$ read
 $\mathbf s'$, while $z'$ is nowhere near a real counterfactual latent. The result would be
-excellent RQ1a numbers with worthless RQ1b recovery. Defences:
+excellent RQ1a numbers with worthless RQ1b recovery. Anything downstream of $z'$ (decoding it,
+or a fairness penalty on a predictor $p(Z')$) would then be meaningless.
 
-* **Use the VAE prior.** Penalise $z'$ that is implausible under $p(z)\approx\mathcal N(0,I)$ or the
-  aggregate posterior. This is the only term that specifically punishes going off-manifold; L1/L2
-  only limit step size.
+Why the risk is high here:
+
+* In 128 dimensions with an MLP probe, very small steps can flip $g$.
+* L1/L2 proximity *favours* the smallest convincing edit, which is the textbook adversarial
+  perturbation. These penalties limit step size, not plausibility.
+* LangVAE posterior means have near-constant (partly collapsed) dimensions. $g$'s response to
+  them is untested, so they are a free channel for fooling it.
+
+**Check first** (on the encoded held-out counterfactual pairs):
+
+1. Is $\lVert z'-f(x')\rVert < \lVert z-f(x')\rVert$?
+2. Independent probe: does a second $g$ (different seed or architecture) agree with $g$ on $z'$?
+   Disagreement on $z'$, but not on real latents, means the edits are adversarial.
+3. Round trip $g(f(\mathrm{dec}(z')))$. Only meaningful after fine-tuning LangVAE.
+
+**Defences if a check fails** (not implemented; add only if needed):
+
+* **Whitened L2 in place of L2**, keeping L1: $\beta\,(z'-z)^\top\hat\Sigma^{-1}(z'-z)$.
+  * $\hat\Sigma$ is the shrinkage covariance of the training latents (use $\hat\Sigma+\epsilon I$
+    or Ledoit–Wolf, since the collapsed dimensions make it nearly singular).
+  * It is still a deviation penalty, but moves along directions where real latents do not vary
+    become expensive.
+  * Planned as `proximity: euclidean | mahalanobis`, applied in `_penalties` for all plans. $\beta$
+    must be retuned.
+  * Do *not* use an absolute term $\lVert z'-\mu\rVert_{\hat\Sigma^{-1}}$: it pulls every $z'$
+    towards the average CV. Use $\mathcal N(0,I)$ neither, because posterior means are not
+    distributed that way. If more is needed, add a one-sided typicality hinge
+    $\max(0, \lVert z'-\mu\rVert^2_{\hat\Sigma^{-1}} - \lVert z-\mu\rVert^2_{\hat\Sigma^{-1}})$.
 * Keep dropout active in $g$ at edit time, or use an ensemble of $g$.
+* A learned density model on the latents, if the Gaussian picture is too coarse.
 * Identity check: $\mathbf s'=\mathbf s \Rightarrow z'\approx z$. It is cheap and catches
   adversarial drift immediately.
 
