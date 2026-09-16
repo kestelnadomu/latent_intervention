@@ -1,229 +1,373 @@
 # Latent editor $h_Z$
 
-$$h_Z(z' \mid z, \delta): \mathcal Z \to \Delta(\mathcal Z)$$
+$$h_Z(\cdot \mid z, \delta): \mathcal Z \to \Delta(\mathcal Z)$$
 
-* Freeze $f, g, h_S$
-* train $h_Z$ on the objective below
-* Noise input lets $h_Z$ internalise $h_S$'s ambiguity, so **no SCM is needed at inference**.
+Freeze $f$, $g$ and $h_S$, then train $h_Z$ so that the two paths from $z$ to a distribution over
+counterfactual states agree: $h_S\circ g = g\circ h_Z$.
+Code: `src/latent_intervention.py`; select a plan with `latent_intervention.variant` in `src/config.yaml`.
 
-## Why a kernel, not a plain transformer $z \mapsto z'$?
+**Notation.**
 
-* naive baseline: deterministic net $z' = T_\theta(z, \delta)$ (a residual transformer over $[z\text{-token},\ \delta\text{-tokens}]$)
-* why a distributional approach: target is a distribution:
-  * $(h_S\circ g)(\cdot\mid z,\delta)$ is genuinely multimodal in the ambiguous strata (is $\texttt{E}'$ 1 or 2?)
-  * distinct, separated regions of $\mathcal Z$ decode to each mode
-  * Under the mass-covering **forward** KL, a single $z'$ is dragged to a point *between* the modes that decodes to neither — the   "averaging incompatible targets" failure.
-  * A location family ($z' = z + \mu_\theta + \sigma_\theta\odot u$, post-additive Gaussian) fails the same way for the same reason
+| symbol | meaning |
+|---|---|
+| $z \in \mathcal Z = \mathbb R^{128}$, $z'$ | factual latent, edited latent |
+| $\delta$ | the do() action, e.g. do($X{=}3$), encoded as one token per column |
+| $\mathbf s, \mathbf s' \in \mathcal S$ | factual / counterfactual structured state, $\lvert\mathcal S\rvert = 108$ |
+| $\mathbb 1_{z}$ | point mass (Dirac) at $z$ |
+| $\Delta_\theta$ | shift network, always residual and zero-initialised ($h_Z = \mathrm{id}$ at start) |
+| $w$ | mixture weights |
+| $M$, $k$, $d$, $r$ | Monte Carlo samples, top-$k$ states, particles, noise dimension |
+| $\alpha$, $\beta$, $\lambda$ | L1, L2 and entropy weights |
 
-## Open question: unit or distributional counterfactual?
+## Overview
 
-To be argued openly in the paper, not settled by fiat. Both readings are defensible and the
-plans commit to different ones.
+| plan | `variant` / class | $h_Z(\cdot\mid z,\delta)$ | $g\circ h_Z$ computed by | weights from | label per component |
+|---|---|---|---|---|---|
+| 0 | `baseline` / `LatentIntervention` | $\mathbb 1_{z+\Delta_\theta(z,\delta)}$ | one $g$ pass | — | — |
+| A | `pre_additive` / `LatentInterventionPreAdditive` | pushforward of $\varepsilon\sim\mathcal N(0,\sigma^2 I_{128})$ through $z+\Delta_\theta(z+\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — |
+| B | `noise_token` / `LatentInterventionNoiseToken` | pushforward of $\varepsilon\sim\mathcal N(0,I_r)$ through $z+\Delta_\theta(z,\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — |
+| C | `dist` / `LatentInterventionDist` | $\sum_{\mathbf s'} w_\theta(\mathbf s'\mid z,\delta)\,\mathbb 1_{z+\Delta_\phi(z,\mathbf s')}$ | exact, $k$ passes | learned $w_\theta$ (distilled from $h_S\circ g$) | state $\mathbf s'$ |
+| D | `particles` / `LatentInterventionParticles` | $\sum_{j=1}^d w_j(z,\delta)\,\mathbb 1_{z+\Delta_{\theta,j}(z,\delta)}$ | exact, $d$ passes | learned $w_j$ (or uniform) | none |
 
-**For the unit counterfactual.** A text is one unit. Pearl's rung-3 counterfactual of a unit
-is *deterministic* once its exogenous noise is known: one text, one counterfactual. The spread
-in $(h_S\circ g)(\cdot\mid z,\delta)$ has two sources, and neither belongs to the unit:
+The plans run from least to most structure in $h_Z$. A and B use continuous noise. C and D are
+finite mixtures: C indexes its components by symbolic states, D by unlabelled slots. Taking the
+weights of C from $h_S\circ g$ instead of learning them gives the most symbolic end
+(C-sym, see Plan C).
 
-* **coarseness of $\mathcal S$**: $T$ is hidden, and where $D$ and $U$ sit inside their bins
-  is unknown, so $h_S$ maps a discretised state to a spread of $\mathbf s'$;
-* **information discarded by $g$**: $z$ may carry evidence about the exogenous noise (the
-  proxies $P, L, H, A$; wording) that $g(z)$ drops.
+## Shared objective
 
-If $z$ carries that evidence, $p(\mathbf S'\mid z)$ is *sharper* than $h_S\circ g$. The
-consistency KL then forces $h_Z$ to be less informative than the text allows. Plan 0 is in
-effect trained on this reading: its per-column CE uses the simulated $\mathbf S'$ with the
-true unit noise, so it estimates the marginals of $p(\mathbf S'_j\mid z)$.
+$$\mathcal L = \mathbb E_z\Big[D_{\mathrm{KL}}\big((h_S\circ g)(\cdot\mid z,\delta)\,\big\|\,(g\circ h_Z)(\cdot\mid z,\delta)\big)\Big] + \lambda\,\mathbb E_{z'\sim h_Z}\big[H\big(g(\cdot\mid z')\big)\big] + \alpha\lVert z'-z\rVert_1 + \beta\lVert z'-z\rVert_2^2$$
 
-**For the distributional counterfactual.** The only counterfactual semantics we can *check* is
-the symbolic one. $h_S$ is the ground truth we own, and $g$ is the only lens on $z$. A target
-sharper than $h_S\circ g$ is an unverifiable claim about what the encoder "knows". It also
-makes the result depend on how much noise information the LLM happened to leak into the text.
-Under abduction uncertainty an honest manipulator should return a *distribution* of
-counterfactual latents, each one a plausible text. That is the neurosymbolic promise:
-$h_Z$ inherits the SCM's uncertainty.
-
-**What the experiment can say.** The talent SFM makes the gap measurable:
-
-* `talent_posterior_accuracy()` gives the Bayes-optimal recovery of $T$ from the verbalised
-  proxies;
-* compare $\mathrm{KL}\big(p(\mathbf S'\mid\text{true noise})\,\|\,g\circ h_Z\big)$ for Plan 0
-  (unit target) against Plans A/B/C (symbolic target), per stratum of $g$'s confidence.
-
-Where $g$ is confident the two targets coincide. In the ambiguous strata the difference
-between them measures how much information beyond $\mathcal S$ the latent carries.
-
-## Plan A — Pre-additive noise (engression)
-
-$$z' = z + \Delta_\theta(z + \varepsilon,\ \delta), \qquad \varepsilon \sim \mathcal N(0, \sigma^2 I)$$
-
-* $h_Z(\cdot\mid z,\delta)$ is the pushforward of $\varepsilon$ through this map
-* nonlinear $\Delta_\theta$ can fold a unimodal $\varepsilon$ onto separated modes
-* Composition needs Monte Carlo:
-
-$$(g\circ h_Z)(\cdot\mid z,\delta) \approx \tfrac1M\textstyle\sum_m g\big(\cdot\mid z+\Delta_\theta(z+\varepsilon_m,\delta)\big)$$
-
-* convexity of $D_{\mathrm{KL}}$ in its second argument this is an *upper bound* on the true objective — a valid surrogate, but $M$ forward passes of $g$ per example and gradient variance
-that is worst in exactly the ambiguous strata the study is built to test.
-
-```python
-class LatentInterventionA(nn.Module):
-    """z' = z + Delta_theta(z + eps, delta), eps ~ N(0, noise_std^2 I)."""
-
-    def forward(self, z, values, mask, generator=None):
-        eps = self.noise_std * torch.randn(z.shape, device=z.device, generator=generator)
-        return z + self.delta(z + eps, values, mask)          # Delta_theta: zero-init residual
-
-    def composed_log_joint(self, z, values, mask, decoder, n_samples, generator=None):
-        """MC estimate of log (g . h_Z)(. | z, delta): log-mean-exp of g's dense joint."""
-        zs = torch.stack([self.forward(z, values, mask, generator) for _ in range(n_samples)])
-        log_joints = torch.stack([decoder.log_joint(z_m) for z_m in zs])   # (M, batch, |S|)
-        composed = torch.logsumexp(log_joints, dim=0) - math.log(n_samples)
-        return composed, zs - z                                            # (batch, |S|), shifts
-
-# training: loss = D_KL(target || composed) + alpha||z'-z||_1 + beta||z'-z||_2^2
-#   target = (h_S . g)(. | z, delta), precomputed once against the frozen decoder + h_S
-# src/latent_intervention.py :: LatentInterventionA, train_latent_intervention_a
-```
-
-## Plan C — Outsourced noise token
-
-$$z' = z + \Delta_\theta(z,\ \varepsilon,\ \delta), \qquad \varepsilon \sim \mathcal N(0, I_k)$$
-
-* $\varepsilon$ enters $\Delta_\theta$ as its **own token**: $[z\text{-token},\ \varepsilon\text{-token},\ \delta\text{-tokens}]$.
-  Unlike Plan A, the latent reaches the network intact. Plan A's full-dimensional
-  $z+\varepsilon$ mixes noise into the conditioning, so part of its effect is smoothing.
-* Noise outsourcing: any conditional law can be written as $F(z, U)$. The counterfactual
-  uncertainty here is low-dimensional ($T$, plus where $D$ and $U$ sit inside their bins),
-  so $k \approx 2\text{–}8$.
-* **Identifiability of the mechanism.** Forward KL in $\mathcal S$ cannot tell apart
-  (a) ignoring $\varepsilon$ and parking $z'$ where $g$ is ambiguous (the Plan 0 solution) from
-  (b) using $\varepsilon$ to scatter $z'$ over points where $g$ is confident. Both give the
-  same $g\circ h_Z$. A per-sample entropy term prefers (b):
-
-$$\mathcal L_C = D_{\mathrm{KL}}\big((h_S\circ g)\,\|\,\widehat{g\circ h_Z}\big) + \lambda\,\mathbb E_\varepsilon\big[H\big(g(\cdot\mid z'_\varepsilon)\big)\big] + \alpha\lVert z'-z\rVert_1 + \beta\lVert z'-z\rVert_2^2$$
-
-* Diagnostic `spread`: the mean norm of the per-dimension std of $z'$ across $\varepsilon$.
-  A value near 0 means $\varepsilon$ is ignored.
-* **Bridge to Plan B:** make $\varepsilon$ discrete with a learned prior $w_\theta$ and the
-  construction becomes Plan B's mixture.
-* The same entropy term applies to Plan A, which has the same ambiguity.
-
-```python
-# src/latent_intervention.py :: LatentInterventionNoiseToken, train_latent_intervention_noise_token
-# config: latent_intervention.variant: noise_token  (noise_dim, n_samples, entropy_weight)
-```
-
-## Plan B — Discrete mixture over counterfactual states (preferred)
-
-$$h_Z(\cdot \mid z,\delta) = \sum_{\mathbf s' \in \mathcal S} w_\theta(\mathbf s' \mid z,\delta)\ \ \delta_{\,z + \Delta_\phi(z, \mathbf s')}$$
-
-* $w_\theta$: internal head with the same (autoregressive) architecture as $g$.
-* $\Delta_\phi$ is **deterministic realiser**
-  * so each component is a point mass
-  * $h_Z$ has no Lebesgue density
-  * "sample $z'$" means sample $\mathbf s'$, then evaluate.
-* At inference only $z$ and $\delta$ are inputs — $h_S$ is internalised in $w_\theta$'s weights.
-
-* *components are Dirac --> composition is exact with no inner expectation:
-
-$$(g\circ h_Z)(\cdot\mid z,\delta) = \sum_{\mathbf s'} w_\theta(\mathbf s'\mid z,\delta)\ g\big(\cdot\mid z+\Delta_\phi(z,\mathbf s')\big)$$
-
-* good realiser --> $g(\cdot \mid z + \Delta_\phi(z,\mathbf s')) \approx \delta_{\mathbf s'}$
-* --> KL collapses to $D_{\mathrm{KL}}\big((h_S\circ g)\,\|\,w_\theta\big)$. That splits one
-hard bilevel problem into two ordinary supervised ones:
-
-* **$w_\theta$**: distil the exact 3456-vector $(h_S\circ g)(\cdot \mid z,\delta)$.
-  * Dense target
-  * no sampling, no gradient-through-samples variance
-* **$\Delta_\phi$**: minimise $-\log g(\mathbf s' \mid z + \Delta_\phi(z,\mathbf s')) + \alpha\lVert\Delta\rVert_1 + \beta\lVert\Delta\rVert_2^2$ against frozen $g$.
-
-* Then fine-tune end-to-end on the true KL to absorb the $\approx$. Pretrain-then-joint, not either
-alone. **The advantage is in the pretraining** — evaluating the sum above still costs one $g$
-pass per retained $\mathbf s'$, comparable to $M$-sample Monte Carlo under A.
-
-```python
-class LatentInterventionB(nn.Module):
-    """h_Z(. | z, delta) = sum_s' w_theta(s' | z, delta) dirac_{z + Delta_phi(z, s')}."""
-
-    def __init__(self, latent_dim, columns=SCM_COLUMNS, top_k=16, ...):
-        self.w_theta  = _AutoregWeights(latent_dim, columns, ...)   # same arch as g, + delta
-        self.realiser = _DeltaNet(latent_dim, columns, ...)         # Delta_phi(z, s'), deterministic
-
-    def realise(self, z, s_prime):                                  # s_prime: (batch, n_cols)
-        mask = torch.ones_like(s_prime, dtype=torch.bool)
-        return z + self.realiser(z, s_prime, mask)
-
-    def forward(self, z, values, mask):                             # inference: argmax w_theta
-        idx, _ = self.w_theta.top_k(z, values, mask, 1)
-        return self.realise(z, unflatten_state_index(idx[:, 0], self.columns))
-
-    def composed_log_joint(self, z, values, mask, decoder):
-        """Exact log (g . h_Z) over the retained top-k s' -- no inner expectation."""
-        idx, logw = self.w_theta.top_k(z, values, mask, self.top_k)          # (batch, k)
-        comps = [logw[:, j:j+1] + decoder.log_joint(self.realise(z, unflatten_state_index(idx[:, j], self.columns)))
-                 for j in range(idx.shape[1])]
-        return torch.logsumexp(torch.stack(comps), dim=0)
-
-# pretrain:  w_theta  -> D_KL( (h_S . g)(. | z, delta) || w_theta )        (dense target)
-#            Delta_phi -> -log g(s' | z + Delta_phi(z, s')) + l1||Delta||_1 + l2||Delta||_2^2   (true s')
-# joint:     D_KL(target || composed_log_joint) + alpha/beta proximity on the realised shifts
-# src/latent_intervention.py :: LatentInterventionB, train_latent_intervention_b
-```
-
-**Truncation is not free.** $(h_S\circ g)$ is a $g$-weighted mixture over all $\mathbf s$, so its
-support is the union of the rows $h_S(\cdot\mid\mathbf s,\delta)$ over $\{\mathbf s : g(\mathbf s\mid z) > 0\}$
-— up to $14K$ for $g$-support $K$, not 14. The max-14 figure is a property of a *single row* of
-$M_\delta$. Truncation collapses to lossless only where $g$ is near one-hot, i.e. it is lossy
-exactly in the ambiguous rows of interest. Measure the composed support empirically before
-fixing $k$.
-
-**Design consequence**, to state openly: routing everything through $\mathbf s'$ makes $h_Z$ an
-information bottleneck — it can only produce counterfactuals expressible in $\mathcal S$. A gives
-up less, but that extra freedom is *unsupervised* (the objective constrains $z'$ only in
-directions $g$ can read), so the loss could not have taught it either way.
-
-Structurally this is close to GPT's $G \to K \to Q$, with $w_\theta$ playing $K_S$'s role. The two
-differences that matter both survive: **$Z'$ never enters a loss**, and **inference needs no SCM**.
-
-## Shared risk: adversarial edits against a frozen probe
-
-Both designs optimise a latent to maximise a frozen classifier's confidence — the textbook
-adversarial-example construction. $\Delta$ will find off-manifold directions that convince $g$ of
-$\mathbf s'$ while $z'$ sits nowhere near a real counterfactual latent, producing excellent RQ1a
-numbers with worthless RQ1b recovery. Defenses:
-
-- **Use the VAE prior.** LangVAE gives $p(z)\approx\mathcal N(0,I)$ for free; penalise $z'$
-  implausible under the aggregate posterior. This is the only term that specifically punishes
-  going off-manifold — L1/L2 proximity to $z$ merely limits step size.
-- Keep dropout live in $g$ at edit time, or ensemble $g$; fooling an ensemble is much harder.
-- Treat the identity check ($\mathbf S' = \mathbf S \Rightarrow z' \approx z$) as a first-class
-  diagnostic — cheap, and it catches adversarial drift immediately.
-
----
-
-# Consistency constraint and objective
-
-* two paths from $z$ to a distribution over counterfactual states agree:
-
-$$h_S \circ g \;=\; g \circ h_Z$$
-
-$$\mathcal L = \mathbb E_{z}\Big[\, D_{\mathrm{KL}}\big(\,(h_S \circ g)(\cdot \mid z,\delta)\ \big\|\ (g \circ h_Z)(\cdot \mid z,\delta)\,\big) \,\Big] + \alpha \lVert z' - z\rVert_1 + \beta \lVert z' - z \rVert_2^2$$
-
-Direction matters: **forward** KL is mass-covering, which is what we want — $h_Z$ must not collapse onto one mode when the symbolic counterfactual is genuinely ambiguous.
+* **Target.** $(h_S\circ g)(\cdot\mid z,\delta) = M_\delta^\top g(\cdot\mid z)$ is a dense
+  $\lvert\mathcal S\rvert$-vector. $g$ and $h_S$ are frozen, so it is precomputed once.
+* **Composition.** $(g\circ h_Z)(\mathbf s) = \int g(\mathbf s\mid z')\,h_Z(dz'\mid z,\delta)$: the
+  sum over all possible $z'$ ("draw $z'$, then read $\mathbf s$ off it").
+  * Plan 0 has a single point, so there is nothing to sum.
+  * A and B estimate the integral with the Monte Carlo average $\tfrac1M\sum_m g(\cdot\mid z'_m)$.
+  * C and D have finitely many points, so the sum is exact with weights $w$.
+  * The average is taken over **probabilities** (log-sum-exp in code). Both alternatives are
+    wrong: $g(\text{mean } z')$ is Plan 0's between-modes point, and a mean over log-probabilities
+    is a mode-seeking geometric mean.
+* **Forward KL** is mass-covering: $h_Z$ must not collapse onto one mode when the symbolic
+  counterfactual is ambiguous.
+* **Entropy term (B, D).** The KL alone cannot tell apart two solutions: parking $z'$ where $g$
+  is ambiguous, or spreading $z'$ over points where $g$ is confident. Both give the same
+  $g\circ h_Z$. The per-sample entropy prefers the second. It applies to A and C as well, but is
+  not wired in there yet.
+* Plan 0 skips the KL and trains per-column cross-entropy against the simulated $\mathbf s'$.
 
 ```python
 @torch.no_grad()
-def consistency_target(decoder, h_s, latents, intervention):
-    """(n, |S|) target (h_S . g)(. | z, delta) = M_delta^T @ g(. | z), frozen -> precompute once."""
+def consistency_target(decoder, h_s, latents, intervention):  # (n, |S|) = M_delta^T g(. | z)
     m_t = h_s.transition_matrix(intervention).t().coalesce()
-    g_probs = decoder.log_joint(latents).exp()
-    return torch.sparse.mm(m_t, g_probs.t()).t()
+    return torch.sparse.mm(m_t, decoder.log_joint(latents).exp().t()).t()
 
-def _forward_kl(pred_log, target):                     # D_KL(target || pred), batch mean
+def _forward_kl(pred_log, target):  # D_KL(target || pred), batch mean
     return F.kl_div(pred_log, target, reduction="batchmean")
 ```
 
-Both Plan A and Plan B share this target and this direction; only `pred_log` — the estimate of
-$\log(g\circ h_Z)$ — differs (Monte Carlo vs. exact top-$k$ sum). The `src/latent_intervention.py`
-baseline `LatentIntervention` (Plan 0) skips the KL entirely and trains per-column CE against a
-single $\mathbf s'$ — the deterministic map the section head argues against.
+---
+
+## Plan 0 — Deterministic baseline
+
+```mermaid
+flowchart LR
+  z((z)) --> D["Δθ(z, δ)"]
+  a((δ)) --> D
+  D --> zp((z')) --> g[g] --> P["g(· | z')"]
+```
+
+$$z' = z + \Delta_\theta(z, \delta)$$
+
+* Residual transformer over $[z\text{-token}, \delta\text{-tokens}]$.
+* The map is deterministic, but $g\circ h_Z$ is still a distribution. All of its randomness
+  comes from $g$'s uncertainty at the single point $z'$.
+* Per-column cross-entropy against the simulated $\mathbf s'$ is minimised when
+  $g(\cdot\mid z') = p(\mathbf S'_j\mid z)$ for each column $j$. So Plan 0 learns the
+  posterior-predictive **marginals** of the counterfactual.
+
+**Benefits**
+* Simplest option: one $g$ pass, and no $h_S$ needed during training.
+* The natural shape of a *unit* counterfactual (see the open question below). It is trained on
+  the true unit noise, so it can use information in $z$ beyond $g(z)$.
+
+**Caveats**
+* $(h_S\circ g)$ is multimodal in the ambiguous strata. A single $z'$ is then pulled to a point
+  *between* the modes that decodes to neither. A post-additive Gaussian
+  $z+\mu_\theta+\sigma_\theta\odot u$ fails the same way.
+* With the factorised $g$ (`SemanticDecoder`), it is mean-field by construction: it cannot express
+  correlations such as $D$ and $U$ moving together under uncertainty about $T$.
+* With the autoregressive $g$, $z'$ must sit where $g$ is ambiguous in exactly the right
+  proportions. That is off the text manifold, so decoding it gives a blend rather than a CV.
+
+```python
+def forward(self, z, values, mask):
+    return z + self.delta(z, values, mask)
+# loss: decoder.nll(z', s_prime) + alpha * L1 + beta * L2
+```
+
+---
+
+## Plan A — Pre-additive noise (engression)
+
+```mermaid
+flowchart LR
+  z((z)) --> plus(("+")) --> D["Δθ(z+ε, δ)"]
+  e(("ε ~ N(0,σ²I)")) --> plus
+  a((δ)) --> D
+  D --> zp(("z'₁…z'_M")) --> g[g] --> avg["mean over M"]
+```
+
+$$z' = z + \Delta_\theta(z+\varepsilon,\ \delta), \qquad \varepsilon\sim\mathcal N(0,\sigma^2 I_{128}), \qquad (g\circ h_Z) \approx \tfrac1M \textstyle\sum_m g(\cdot\mid z'_m)$$
+
+* $h_Z$ is the pushforward of $\varepsilon$. A nonlinear $\Delta_\theta$ can fold the unimodal
+  noise onto separated modes.
+* $g\circ h_Z$ is computed with Monte Carlo ($M$ samples).
+* In engression (Shen & Meinshausen), the noise is what produces the distribution. The model is
+  trained with the energy score, so it is genuine distributional regression. The *pre-additive*
+  placement is what buys extrapolation and robustness outside the training support.
+
+**Benefits**
+* Can represent arbitrary, including multimodal, distributions in $\mathcal Z$, with no
+  bottleneck through $\mathcal S$.
+* Well-known method with extrapolation guarantees for pre-additive noise.
+
+**Caveats**
+* Full-dimensional noise is added on top of the conditioning signal. $\Delta_\theta$ cannot tell
+  the two apart, so part of $\varepsilon$'s effect is to blur $z$. Plan B separates them.
+* The spread between samples comes only from $\Delta_\theta$'s nonlinearity. Locally it is
+  $\approx J\varepsilon$, so folding the noise onto separate modes needs steep functions.
+* The log-mean-exp estimate is biased for small $M$ (by Jensen, an upper bound on the KL).
+  Gradient variance is highest in the ambiguous strata. An energy score on sampled
+  $(z',\mathbf s')$ pairs would be closer to engression.
+* No entropy term yet, so it can ignore $\varepsilon$.
+
+```python
+def forward(self, z, values, mask, generator=None):
+    eps = self.noise_std * torch.randn(z.shape, generator=generator)
+    return z + self.delta(z + eps, values, mask)
+# composed_log_joint: _mc_mixture(M samples, decoder) -> logsumexp - log M
+```
+
+---
+
+## Plan B — Outsourced noise token
+
+```mermaid
+flowchart LR
+  z((z)) --> D["Δθ(z, ε, δ)"]
+  e(("ε ~ N(0,I_r)")) --> D
+  a((δ)) --> D
+  D --> zp(("z'₁…z'_M")) --> g[g] --> avg["mean over M"]
+```
+
+$$z' = z + \Delta_\theta(z,\ \varepsilon,\ \delta), \qquad \varepsilon\sim\mathcal N(0, I_r), \qquad (g\circ h_Z) \approx \tfrac1M \textstyle\sum_m g(\cdot\mid z'_m)$$
+
+* $\varepsilon$ enters as its **own token**: $[z\text{-token}, \varepsilon\text{-token}, \delta\text{-tokens}]$.
+* Noise outsourcing: any conditional distribution can be written as $F(z, U)$. The counterfactual
+  uncertainty here is low-dimensional ($T$, plus where $D$ and $U$ sit inside their bins), so
+  $r\approx 2\text{–}8$.
+* Trained on the Monte Carlo KL plus the entropy term.
+
+**Benefits**
+* $z$ reaches $\Delta_\theta$ intact, so noise and conditioning are separate.
+* $r$ is an interpretable knob: the dimension of the counterfactual uncertainty.
+* The entropy term forces the mixture to come from $\varepsilon$, not from $g$'s ambiguity.
+
+**Caveats**
+* Same Monte Carlo cost and bias as Plan A.
+* The network can still learn to ignore $\varepsilon$. Watch the `spread` diagnostic (norm of
+  the per-dimension std of $z'$ across $\varepsilon$). A value near 0 means $\varepsilon$ is
+  ignored.
+* $\lambda$ trades sharpness against the KL. It is untuned (default 0.1).
+
+```python
+def forward(self, z, values, mask, generator=None):
+    eps = torch.randn(z.shape[0], self.noise_dim, generator=generator)
+    return z + self.delta(z, values, mask, eps)  # _DeltaNet(noise_dim=r) adds the ε-token
+# loss: KL(target || _mc_mixture) + lambda * E[H(g(z'))] + penalties; logs `spread`
+```
+
+---
+
+## Plan C — Discrete mixture over counterfactual states
+
+```mermaid
+flowchart LR
+  z((z)) --> W["w(s' | z, δ)"] --> K["top-k states s'"]
+  a((δ)) --> W
+  K --> R["realiser Δφ(z, s')"]
+  z --> R
+  R --> zs(("z*_s'")) --> g[g] --> sum["Σ w · g"]
+```
+
+$$h_Z(\cdot\mid z,\delta) = \sum_{\mathbf s'\in\text{top-}k} w(\mathbf s'\mid z,\delta)\ \mathbb 1_{z^*_{\mathbf s'}}, \qquad z^*_{\mathbf s'} = z + \Delta_\phi(z,\mathbf s'), \qquad (g\circ h_Z) = \sum_{\mathbf s'} w(\mathbf s'\mid z,\delta)\, g(\cdot\mid z^*_{\mathbf s'})$$
+
+* **Realiser.** $\Delta_\phi$ maps $z$ and a target state $\mathbf s'$ to $z^*_{\mathbf s'}$,
+  which $g$ should read as $\mathbf s'$. It never sees $\delta$: it is a do()-agnostic
+  "make $g$ read $\mathbf s'$" editor.
+* **Weights.** $w$ is the **counterfactual** distribution over $\mathcal S$ given the text and
+  the action, not a posterior over the factual state. $\delta$ enters $h_Z$ only here. There are
+  three options:
+  * *distilled* (implemented): $w_\theta$ is an autoregressive head, like $g$, trained on
+    $D_{\mathrm{KL}}(h_S\circ g \,\|\, w_\theta)$;
+  * *C-sym* (planned): $w = (h_S\circ g)(\cdot\mid z,\delta)$ exactly, so only $\Delta_\phi$ is
+    trained;
+  * *unit* (planned): $w_\theta$ trained by likelihood on the true $\mathbf s'$.
+* **Mixture.** Keep the top-$k$ states, renormalise their weights, and realise each one.
+  Sampling means drawing $\mathbf s'$ from $w$ and realising it. `forward()` returns the argmax
+  component.
+* **Training.**
+  * Pretraining: distil $w_\theta$, and fit $\Delta_\phi$ with
+    $-\log g(\mathbf s'\mid z^*_{\mathbf s'}) + \alpha\lVert\Delta\rVert_1 + \beta\lVert\Delta\rVert_2^2$
+    on the true $\mathbf s'$.
+  * Joint phase: fine-tune both on the exact KL.
+
+**Benefits**
+* Composition is exact: no inner expectation and no sampling variance.
+* With a sharp realiser, $g(\cdot\mid z^*_{\mathbf s'})\approx\mathbb 1_{\mathbf s'}$, and the KL
+  reduces to $D_{\mathrm{KL}}(h_S\circ g\,\|\,w)$. The bilevel problem splits into two
+  supervised ones.
+* Every component carries a symbolic label, so it is interpretable.
+* C-sym makes the weights consistent by construction. Any remaining error comes from the realiser
+  alone.
+
+**Caveats**
+* **Why learn $w_\theta$ at all?** $h_S\circ g$ is cheap and exact at $\lvert\mathcal S\rvert=108$.
+  Distilling it can only lose accuracy. In the joint phase, $w_\theta$ can also drift to hide
+  realiser errors. A learned $w_\theta$ earns its place only in the *unit* variant, for an
+  intractable $\mathcal S$, or when the SCM is unavailable at deployment. Hence C-sym.
+* **"Any state" is not what training does yet.** $\Delta_\phi$ is pretrained only on each unit's
+  true $\mathbf s'$. Other top-$k$ states are seen only through the joint KL. Fix: pretrain on
+  states sampled from $h_S\circ g$ or uniformly from $\mathcal S$.
+* **Sharpness is not identified.** The joint KL can pull $z^*_{\mathbf s'}$ towards ambiguous
+  positions. Add the entropy term.
+* **Truncation is lossy where it matters.** The support of $h_S\circ g$ is the union of the rows
+  of $M_\delta$ over $g$'s support. It is small only where $g$ is near one-hot, i.e. not in the
+  ambiguous strata. Measure it before fixing $k$.
+* **Bottleneck.** $h_Z$ can only produce counterfactuals expressible in $\mathcal S$. Plans A, B
+  and D give up less, but their extra freedom is unsupervised.
+* Cost: $k$ passes of $g$, comparable to Monte Carlo with $M=k$. The gain is in the pretraining.
+* Structurally close to GPT's $G\to K\to Q$, with $w_\theta$ in $K_S$'s role. $Z'$ never enters
+  a loss.
+
+```python
+def composed_log_joint(self, z, values, mask, decoder):
+    idx, logw = self.w_theta.top_k(z, values, mask, self.top_k)        # (batch, k)
+    zs = [self.realise(z, unflatten_state_index(idx[:, j], self.columns)) for j in range(idx.shape[1])]
+    comps = [logw[:, j:j+1] + decoder.log_joint(z_j) for j, z_j in enumerate(zs)]
+    return torch.logsumexp(torch.stack(comps), dim=0), torch.stack(zs) - z
+# pretrain: w_theta <- KL(target || w_theta);  realiser <- -log g(s' | z*_s') + l1 + l2 (true s')
+# joint:    KL(target || composed) + alpha/beta on the realised shifts
+```
+
+---
+
+## Plan D — Deterministic particle set
+
+```mermaid
+flowchart LR
+  z((z)) --> T["transformer + d queries"]
+  a((δ)) --> T
+  T --> zj(("z₁…z_d")) --> g[g] --> sum["Σ w_j · g"]
+  T --> wj["w₁…w_d"] --> sum
+```
+
+$$h_Z(\cdot\mid z,\delta) = \sum_{j=1}^d w_j(z,\delta)\ \mathbb 1_{z_j}, \qquad z_j = z + \Delta_{\theta,j}(z,\delta), \qquad (g\circ h_Z) = \sum_j w_j\, g(\cdot\mid z_j)$$
+
+* $\Delta_\theta(z,\delta)\in\mathbb R^{d\times128}$ produces $d$ points deterministically. $g$
+  translates each one to $\mathcal S$, and the weighted sum gives a distribution over states.
+* DETR-style: $d$ learned query tokens attend to $[z\text{-token}, \delta\text{-tokens}]$. Each
+  query's output is one shift and, optionally, one weight logit.
+* The output layers are zero-initialised, so all particles start at $z$ with uniform weights. The
+  random query embeddings break the symmetry.
+* Trained on the exact KL plus the weighted per-particle entropy $\sum_j w_j H(g(\cdot\mid z_j))$.
+  The shift penalties apply to every particle, unweighted.
+* Relation to the other plans:
+  * C without labels;
+  * B with the noise replaced by $d$ learned codes;
+  * close to multiple-hypothesis prediction (Rupprecht et al. 2017), but with a KL loss in
+    $\mathcal S$ instead of winner-take-all.
+
+**Benefits**
+* Exact and deterministic: no sampling, no $h_S$ or labels at inference, no realiser supervision.
+* No bottleneck through $\mathcal S$. Labels can still be read off afterwards via
+  $\arg\max g(z_j)$.
+* Clean ablation against C-sym. Weights and locations go from fully symbolic to fully learned.
+
+**Caveats**
+* **Uniform weights** (`uniform_weights: true`) limit resolution to steps of $1/d$. The model then
+  makes particles ambiguous to fill in fractions. Learned weights are the default.
+* **Collapse and dead particles.** Watch `eff_particles` ($1/\sum_j w_j^2$) and
+  `distinct_states` (number of distinct $\arg\max g$ over the particles).
+* $d$ should be at least the support of $h_S\circ g$ (same measurement as C's $k$). Start with
+  $d = 16$.
+* The particles are constrained only in directions $g$ can read, so off-manifold drift is the main
+  risk (see below).
+
+```python
+def particles(self, z, values, mask):
+    tokens = torch.cat([self.vec_proj(z)[:, None], self.cond(values, mask), self.queries.expand(len(z), -1, -1)], 1)
+    h = self.layer(tokens)[:, -self.n_particles:]                      # (batch, d, d_model)
+    log_w = F.log_softmax(self.weight_head(h).squeeze(-1), -1)          # or -log d if uniform
+    return self.out(h).transpose(0, 1), log_w                          # (d, batch, 128), (batch, d)
+# composed = logsumexp_j(log_w_j + g.log_joint(z + shift_j)); loss = KL + lambda * sum_j w_j H_j + penalties
+```
+
+---
+
+## Evaluation
+
+`src/pipeline.py evaluate` currently scores **one** $z'$ per text by argmax accuracy against
+$\mathbf s'$. That is fair to Plan 0 but undersells A–D. Report per plan:
+
+* the KL of $g\circ h_Z$ against $h_S\circ g$ (exact for C/D, $M$ samples for A/B);
+* the log-likelihood of the true $\mathbf s'$ under $g\circ h_Z$ (the unit-level view);
+* both split by strata of $g$'s confidence, since that is where the plans differ;
+* the mean per-sample entropy, plus `spread` (A/B) or `eff_particles` / `distinct_states` (D).
+
+## Shared risk: adversarial edits against a frozen probe
+
+Every plan optimises latents to convince a frozen classifier, which is the textbook construction
+of an adversarial example. $\Delta$ can find off-manifold directions that make $g$ read
+$\mathbf s'$, while $z'$ is nowhere near a real counterfactual latent. The result would be
+excellent RQ1a numbers with worthless RQ1b recovery. Defences:
+
+* **Use the VAE prior.** Penalise $z'$ that is implausible under $p(z)\approx\mathcal N(0,I)$ or the
+  aggregate posterior. This is the only term that specifically punishes going off-manifold; L1/L2
+  only limit step size.
+* Keep dropout active in $g$ at edit time, or use an ensemble of $g$.
+* Identity check: $\mathbf s'=\mathbf s \Rightarrow z'\approx z$. It is cheap and catches
+  adversarial drift immediately.
+
+## Open question: unit or distributional counterfactual?
+
+To be argued openly in the paper. The plans commit to different readings: Plan 0 (and C-unit)
+target the unit counterfactual, while A, B, D and C-distilled/C-sym target the distributional
+one.
+
+**For the unit counterfactual.** A text is one unit, and its rung-3 counterfactual is deterministic
+once the exogenous noise is known. The spread in $h_S\circ g$ has two sources, and neither belongs
+to the unit:
+
+* the coarseness of $\mathcal S$: $T$ is hidden, and where $D$ and $U$ sit inside their bins is
+  unknown;
+* information discarded by $g$: the proxies $P, L, H, A$ and the wording.
+
+If $z$ carries that evidence, $p(\mathbf S'\mid z)$ is sharper than $h_S\circ g$, and the
+consistency KL makes $h_Z$ less informative than the text allows.
+
+**For the distributional counterfactual.** The symbolic counterfactual is the only one we can
+*check*. $h_S$ is the ground truth we own, and $g$ is the only lens on $z$. Anything sharper is an
+unverifiable claim about what the encoder "knows", and it depends on how much noise the LLM happened
+to leak into the text. Under uncertainty about the factual state, an honest manipulator returns a distribution of plausible
+counterfactual latents, inheriting the SCM's uncertainty.
+
+**What the experiment can say.**
+
+* `talent_posterior_accuracy()` gives the Bayes-optimal recovery of $T$.
+* Compare $\mathrm{KL}(p(\mathbf S'\mid\text{true noise})\,\|\,g\circ h_Z)$ across the plans,
+  split by strata of $g$'s confidence.
+
+Where $g$ is confident, the two targets coincide. In the ambiguous strata, the difference between
+them measures how much information beyond $\mathcal S$ the latent carries.

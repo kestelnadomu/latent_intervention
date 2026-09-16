@@ -40,14 +40,15 @@ latent_intervention:
   # variant: which h_Z parameterisation (docs/architecture/latent_intervention.md)
   #   baseline   -> LatentIntervention  (Plan 0: deterministic z' = z + T(z,delta), per-column CE)
   #   pre_additive -> LatentInterventionPreAdditive (Plan A: z' = z + Delta(z+eps,delta), MC forward-KL)
-  #   noise_token -> LatentInterventionNoiseToken (Plan C: z' = z + Delta(z,eps,delta), eps its own token, MC forward-KL + entropy)
-  #   dist    -> LatentInterventionDist (Plan B: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
+  #   noise_token -> LatentInterventionNoiseToken (Plan B: z' = z + Delta(z,eps,delta), eps its own token, MC forward-KL + entropy)
+  #   dist    -> LatentInterventionDist (Plan C: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
+  #   particles -> LatentInterventionParticles (Plan D: sum_j w_j(z,delta) dirac_{z+Delta_j(z,delta)}, exact KL + entropy)
   variant: baseline
   d_model: 128
   nhead: 4
   dim_feedforward: 256
   dropout: 0.1
-  epochs: 50             # baseline / pre_additive / noise_token
+  epochs: 50             # baseline / pre_additive / noise_token / particles
   batch_size: 64
   lr: 1.0e-4
   sparsity_weight: 1.0    # alpha: L1 penalty on z' - z
@@ -66,6 +67,10 @@ latent_intervention:
     joint_epochs: 20      # end-to-end forward-KL fine-tune
     realiser_l1: 1.0      # L1 on Delta_phi during pretraining
     realiser_l2: 1.0      # L2 on Delta_phi during pretraining
+  particles:
+    n_particles: 16       # d: particles per latent; >= support of (h_S . g)
+    uniform_weights: false  # true = w_j = 1/d (ablation; resolution 1/d)
+    entropy_weight: 0.1   # weight of sum_j w_j H(g(. | z_j))
 
 finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.py)
   epochs: 5

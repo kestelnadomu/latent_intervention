@@ -29,10 +29,12 @@ from src.latent_intervention import (
     LatentInterventionPreAdditive,
     LatentInterventionNoiseToken,
     LatentInterventionDist,
+    LatentInterventionParticles,
     make_objective,
     train_latent_intervention,
     train_latent_intervention_dist,
     train_latent_intervention_noise_token,
+    train_latent_intervention_particles,
     train_latent_intervention_preadditive,
 )
 from src.schema import load_intervention, load_schema
@@ -53,7 +55,8 @@ INTERVENTION_VARIANTS = {
     "baseline": LatentIntervention,
     "pre_additive": LatentInterventionPreAdditive,
     "noise_token": LatentInterventionNoiseToken,
-    "dist": LatentInterventionDist
+    "dist": LatentInterventionDist,
+    "particles": LatentInterventionParticles,
 }
 
 def _load_latents(config: dict[str, Any]) -> tuple[torch.Tensor, list[int]]:
@@ -185,6 +188,21 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
             realiser_l2=d["realiser_l2"],
             **train_kwargs,
         )
+    elif cfg["variant"] == "particles":
+        pt = cfg["particles"]
+        model = LatentInterventionParticles(
+            **model_kwargs,
+            n_particles=pt["n_particles"],
+            uniform_weights=pt["uniform_weights"],
+        )
+        train_latent_intervention_particles(
+            model=model,
+            epochs=cfg["epochs"],
+            entropy_weight=pt["entropy_weight"],
+            **train_kwargs,
+        )
+    else:
+        raise ValueError(f"unknown latent_intervention.variant {cfg['variant']!r}")
     model.save(config["paths"]["manipulator_model"])
     print(f"wrote {config['paths']['manipulator_model']} (intervention {intervention})")
 
