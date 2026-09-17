@@ -108,7 +108,8 @@ def load_config_object(
 
 
 # --- flat state <-> per-column indices -------------------------------------------------
-# Column-major over ``columns``: idx = ((s_0 * k_1) + s_1) * k_2 + ...
+# Mixed-radix schema order: idx = ((s_0 * k_1) + s_1) * k_2 + ...
+# The last schema column varies fastest.
 # Matches SemanticDecoder.log_joint and the symbolic kernel's state_index order.
 
 

@@ -44,7 +44,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from src.schema import ColumnSpec, flat_state_index, unflatten_state_index
-from src.semantic_decoder import SemanticDecoder
+from src.semantic_decoder import SemanticDecoder, SemanticDecoderModel
 from src.symbolic_intervention import SymbolicKernel
 
 __all__ = [
@@ -139,7 +139,7 @@ def _autoreg_log_joint(
     """Dense (batch, |S|) log-probabilities of an autoregressive product over `columns`.
 
     Each head sees `context` plus embeddings of the already-decoded prefix; states are
-    enumerated in column-major order (matches SemanticDecoder.log_joint).
+    enumerated in mixed-radix schema order, with the last column varying fastest.
     """
     batch = context.shape[0]
     acc = context.new_zeros(batch, 1)
@@ -267,7 +267,7 @@ def make_objective(
 
 @torch.no_grad()
 def consistency_target(
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     h_s: SymbolicKernel,
     latents: torch.Tensor,
     intervention: dict[str, int],
@@ -298,7 +298,7 @@ _BatchLoss = Callable[
 
 def _train(
     model: _ManipulatorBase,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     *,
@@ -401,7 +401,7 @@ class LatentIntervention(_ManipulatorBase):
 
 def train_latent_intervention(
     model: LatentIntervention,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     s_prime: dict[str, torch.Tensor] | None = None,
@@ -517,7 +517,7 @@ class LatentInterventionPreAdditive(_ManipulatorBase):
         z: torch.Tensor,
         values: torch.Tensor,
         mask: torch.Tensor,
-        decoder: SemanticDecoder,
+        decoder: SemanticDecoderModel,
         n_samples: int,
         generator: torch.Generator | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -532,7 +532,7 @@ class LatentInterventionPreAdditive(_ManipulatorBase):
 
 def train_latent_intervention_preadditive(
     model: LatentInterventionPreAdditive,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     s_prime: dict[str, torch.Tensor] | None = None,  # unused; uniform call site
@@ -841,7 +841,7 @@ class LatentInterventionDist(_ManipulatorBase):
         z: torch.Tensor,
         values: torch.Tensor,
         mask: torch.Tensor,
-        decoder: SemanticDecoder,
+        decoder: SemanticDecoderModel,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Exact log (g . h_Z)(. | z, delta) over the retained top-k s', shape (batch, |S|),
@@ -859,7 +859,7 @@ class LatentInterventionDist(_ManipulatorBase):
 
 def train_latent_intervention_dist(
     model: LatentInterventionDist,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     s_prime: dict[str, torch.Tensor] | None = None,

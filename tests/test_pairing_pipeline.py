@@ -11,6 +11,11 @@ from exp.sim import helpers, paired_data, run, stage_cv, stage_simulate
 from exp.sim.generate_text import GenerationResult
 from exp.sim.pairing import build_pair_index, build_render_plan, materialize_binned_values
 
+# The pairing pipeline is exercised on the active talent-SFM config
+# (exp/sim/config.yaml): do(X=3) with S = {X, T, D, U}, proxies P, L, H, A and
+# outcome Y. T and the proxies are invariant under do(X).
+WESTERN_EUROPE = ["Germany", "France", "the Netherlands", "Spain"]
+
 
 def _saved_attempts(output: Path) -> dict[int, int]:
     info = json.loads(helpers.generation_info_path(output).read_text(encoding="utf-8"))
@@ -19,17 +24,17 @@ def _saved_attempts(output: Path) -> dict[int, int]:
 
 def test_pair_index_and_render_plan_are_order_independent() -> None:
     factual = pd.DataFrame(
-        {"id": range(1, 11), "G": [0, 1] * 5, "E": [0, 1, 2, 0, 1] * 2}
+        {"id": range(1, 11), "X": [0, 3] * 5, "D": [0, 1, 2, 0, 1] * 2}
     )
     counterfactual = factual.copy()
-    counterfactual["G"] = 1
-    counterfactual.loc[counterfactual["id"] == 1, "E"] = 1
+    counterfactual["X"] = 3
+    counterfactual.loc[counterfactual["id"] == 1, "D"] = 1
 
-    first = build_pair_index(factual, counterfactual, ["G", "E"], seed=17)
+    first = build_pair_index(factual, counterfactual, ["X", "D"], seed=17)
     second = build_pair_index(
         factual.sample(frac=1, random_state=3),
         counterfactual.sample(frac=1, random_state=4),
-        ["G", "E"],
+        ["X", "D"],
         seed=17,
     )
 
@@ -38,19 +43,22 @@ def test_pair_index_and_render_plan_are_order_independent() -> None:
     assert first.loc[first["id"] == 2, "is_identity"].item()
     assert not first.loc[first["id"] == 1, "is_identity"].item()
 
-    plan = build_render_plan(first["id"], [3, 1, 2], [2, 1], ["A", "W"], seed=9)
+    plan = build_render_plan(first["id"], [3, 1, 2], [2, 1], ["P", "X"], seed=9)
     reordered = build_render_plan(
-        reversed(first["id"].tolist()), [2, 3, 1], [1, 2], ["A", "W"], seed=9
+        reversed(first["id"].tolist()), [2, 3, 1], [1, 2], ["P", "X"], seed=9
     )
     pd.testing.assert_frame_equal(plan, reordered)
 
     row = plan.iloc[0]
-    bins = {"A": {0: (24, 32), 1: (33, 44)}, "W": {0: (2, 5), 1: (6, 10)}}
-    factual_values = materialize_binned_values({"A": 0, "W": 0}, bins, row)
-    counterfactual_values = materialize_binned_values({"A": 0, "W": 1}, bins, row)
-    assert factual_values["A"] == counterfactual_values["A"]
-    assert 2 <= factual_values["W"] <= 5
-    assert 6 <= counterfactual_values["W"] <= 10
+    bins = {"P": {0: (1, 2), 1: (3, 5), 2: (6, 9)}}
+    choices = {"X": {0: ["Nigeria", "Ghana", "Kenya"], 3: ["Germany", "France", "Spain"]}}
+    factual_values = materialize_binned_values({"P": 1, "X": 0}, bins, row, choices)
+    counterfactual_values = materialize_binned_values({"P": 1, "X": 3}, bins, row, choices)
+    assert factual_values["P"] == counterfactual_values["P"]  # proxy invariant under do(X)
+    assert 3 <= factual_values["P"] <= 5
+    # the shared quantile keeps the option position when the region changes
+    assert factual_values["X"] == counterfactual_values["X"]
+    assert 0 <= counterfactual_values["X"] < 3
 
 
 def test_simulation_writes_shared_noise_pairs_and_bounded_split(tmp_path: Path) -> None:
@@ -74,14 +82,14 @@ def test_simulation_writes_shared_noise_pairs_and_bounded_split(tmp_path: Path) 
     pairs = pd.read_csv(tmp_path / "sim" / "pair_index.csv")
 
     assert set(factual["id"]) == set(counterfactual["id"]) == set(epsilon["id"])
-    assert (counterfactual["G"] == 1).all()
-    assert factual["R"].equals(counterfactual["R"])
-    assert factual["A"].equals(counterfactual["A"])
+    assert (counterfactual["X"] == 3).all()
+    for invariant in ("T", "P", "L", "H", "A"):  # not descendants of X
+        assert factual[invariant].equals(counterfactual[invariant])
     assert (pairs["split"] == "test").sum() == 2
     assert (pairs["split"] == "train").sum() == 9
 
     columns = list(config["schema"]["columns"])
-    target_rows = factual["G"] == 1
+    target_rows = factual["X"] == 3
     assert factual.loc[target_rows, columns].equals(counterfactual.loc[target_rows, columns])
     assert pairs.set_index("id").loc[factual.loc[target_rows, "id"], "is_identity"].all()
 
@@ -97,6 +105,7 @@ def _paired_config(tmp_path: Path) -> dict:
     config["n"] = 4
     config["split"] = {"seed": 25, "test_fraction": 0.5}
     config["generation"].update({"n_templates": 2, "n_personas": 2, "limit": None})
+    config.pop("text_length", None)  # no tokenizer download; see the budget test
     config["paths"].update(
         {
             "sim_dir": str(sim_dir),
@@ -119,15 +128,15 @@ def _paired_config(tmp_path: Path) -> dict:
     factual = pd.DataFrame(
         [
             [1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [2, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            [3, 2, 0, 2, 2, 2, 2, 0, 0, 2],
-            [4, 3, 1, 0, 3, 2, 1, 1, 0, 1],
+            [2, 3, 1, 1, 1, 1, 1, 1, 1, 1],
+            [3, 1, 2, 2, 0, 2, 2, 0, 2, 2],
+            [4, 3, 0, 0, 2, 1, 0, 2, 1, 1],
         ],
-        columns=["id", "R", "G", "A", "E", "S", "W", "V", "C", "Q"],
+        columns=["id", "X", "T", "D", "U", "P", "L", "H", "A", "Y"],
     )
-    counterfactual = factual.copy()
-    counterfactual.loc[counterfactual["id"].isin([1, 3]), "G"] = 1
-    counterfactual.loc[counterfactual["id"] == 1, "W"] = 1
+    counterfactual = factual.copy()  # ids 2 and 4 already have X=3: identities
+    counterfactual.loc[counterfactual["id"].isin([1, 3]), "X"] = 3
+    counterfactual.loc[counterfactual["id"] == 1, "D"] = 1
     factual.to_csv(sim_dir / "sim_data_factual.csv", index=False)
     counterfactual.to_csv(sim_dir / "sim_data_counterfactual.csv", index=False)
     pd.DataFrame({"id": [1, 2, 3, 4], "eps": [0.0] * 4}).to_csv(
@@ -219,11 +228,14 @@ def test_configured_counterfactual_generation_and_identity_copy(
     for row_id in generated_ids:
         assert counterfactual.at[row_id, "generation_mode"] == "generated"
         assert counterfactual.at[row_id, "model"] == "mock-model"
-        assert "Gender: Male" in counterfactual.at[row_id, "text"]
+        text = counterfactual.at[row_id, "text"]
+        assert any(f"Country of origin: {country}" in text for country in WESTERN_EUROPE)
+        assert "Talent" not in text  # T is hidden
     assert counterfactual.at[1, "response_id"] == "response-5"
     assert counterfactual.at[1, "template_id"] == factual.at[1, "template_id"]
     assert counterfactual.at[1, "persona_id"] == factual.at[1, "persona_id"]
-    assert counterfactual.at[1, "age"] == factual.at[1, "age"]
+    for header in ("completed_projects_with_tangible_outcomes", "country_of_origin"):
+        assert counterfactual.at[1, header] == factual.at[1, header]
     attempts = _saved_attempts(Path(config["paths"]["texts_counterfactual"]))
     assert attempts == {row_id: 1 for row_id in generated_ids}
     run.stage_validate_pairs(config)
@@ -460,3 +472,25 @@ def test_coverage_is_recorded_when_a_row_exhausts_its_attempts(
     assert info["n_completed"] == len(pd.read_csv(output))
     assert info["n_completed"] > 0
     assert info["complete"] is False
+
+
+def test_token_budget_rejects_long_cvs_within_the_attempt_budget(
+    tmp_path: Path, monkeypatch
+) -> None:
+    config = _paired_config(tmp_path)
+    budget = (lambda text: len(text.split()), 3)
+    monkeypatch.setattr(stage_cv, "load_token_counter", lambda config: budget)
+    calls = []
+
+    def verbose_then_short(sample, *args, **kwargs):
+        calls.append(sample)
+        text = "a long winded CV" if len(calls) % 2 else "short CV"
+        return GenerationResult(text=text, model="m", finish_reason="stop")
+
+    monkeypatch.setattr(stage_cv, "generate_text_result", verbose_then_short)
+    run.stage_generate_texts(config)
+
+    output = Path(config["paths"]["texts"])
+    assert len(calls) == 8
+    assert (pd.read_csv(output)["text"] == "short CV").all()
+    assert _saved_attempts(output) == {1: 2, 2: 2, 3: 2, 4: 2}

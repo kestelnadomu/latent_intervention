@@ -20,11 +20,12 @@ encoder:
   max_len: 512
   batch_size: 16
   device: cpu
+  deterministic: true
 
 semantic_decoder:
   # variant: which g parameterisation (docs/architecture/semantic_decoder.md)
-  #   independent    -> SemanticDecoder (Plan A: one head per column, p(s|z) = prod_i p(s_i|z))
-  #   autoregressive -> SemanticAutoRegDecoder (Plan B: p(s|z) = prod_i p(s_i|s_<i,z), exact joint)
+  #   independent    -> SemanticDecoder (one head per column, g(s|z) = prod_i g(s_i|z))
+  #   autoregressive -> SemanticAutoRegDecoder (g(s|z) = prod_i g(s_i|s_<i,z), exact joint)
   variant: independent
   hidden_dim: 256
   n_hidden: 2
@@ -32,7 +33,8 @@ semantic_decoder:
   epochs: 50
   batch_size: 64
   lr: 1.0e-3
-  val_split: 0.2
+  calibration_split: 0.2  # held out from official training IDs; official test stays untouched
+  calibration_bins: 10
   autoregressive:
     embed_dim: 16          # decoded-prefix embedding size
 
@@ -90,5 +92,6 @@ paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/
   sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
   latents: data/latents/talent/z_pairs.pt
   decoder_model: models/talent/semantic_decoder.pt
+  decoder_report: reports/talent/semantic_decoder.json
   manipulator_model: models/talent/latent_intervention.pt
   eval_report: reports/talent/eval.json
