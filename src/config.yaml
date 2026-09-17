@@ -9,7 +9,7 @@ seed: 42
 sim_config: exp/sim/config.yaml
 
 encoder:
-  variant: langvae       # toggle to: nomic
+  variant: langvae       # langvae | nomic (docs/architecture/text_encoder.md); changing it needs re-encode + retrain
   model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
   model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
   local_checkpoint: null   # path to a fine-tuned LangVAE folder (overrides model_name)

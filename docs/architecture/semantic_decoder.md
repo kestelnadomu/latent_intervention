@@ -10,7 +10,7 @@ Code: `src/semantic_decoder.py`; select a variant with `semantic_decoder.variant
 
 | symbol | meaning |
 |---|---|
-| $z \in \mathcal Z = \mathbb R^{128}$ | latent (LangVAE posterior mean) |
+| $z \in \mathcal Z = \mathbb R^{128}$ | latent $f(x)$ (see `text_encoder.md`) |
 | $\mathbf s = (s_X, s_T, s_D, s_U) \in \mathcal S$ | structured state in schema order, $\lvert\mathcal S\rvert = 4\cdot3\cdot3\cdot3 = 108$ |
 | $s_{<i}$ | the columns before $i$ in schema order (= topological order of the SCM) |
 | $\Delta(\mathcal S)$ | probability simplex: $q\in\mathbb R^{108}_{\ge0}$, $\sum_{\mathbf s} q_{\mathbf s}=1$ |

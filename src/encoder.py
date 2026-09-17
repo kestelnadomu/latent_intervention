@@ -1,4 +1,9 @@
-"""128-dimensional text encoders used by the latent intervention pipeline."""
+"""Frozen text encoder f: X -> Z = R^128 (docs/architecture/text_encoder.md).
+
+Variants (``encoder.variant`` in src/config.yaml):
+    langvae  TextEncoder       LangVAE posterior mean mu(x) (default)
+    nomic    NomicTextEncoder  Nomic Embed v1.5, 128-D Matryoshka output on the unit sphere
+"""
 
 from pathlib import Path
 from typing import Any
@@ -16,7 +21,7 @@ DEFAULT_NOMIC_MODEL = "nomic-ai/nomic-embed-text-v1.5"
 
 
 class TextEncoder:
-    """Pre-trained text encoder producing latent representations via LangVAE."""
+    """`langvae` variant: f(x) = mu(x), the LangVAE posterior mean (optionally a fine-tuned checkpoint)."""
 
     def __init__(
         self,
@@ -76,7 +81,7 @@ class TextEncoder:
 
 
 class NomicTextEncoder:
-    """Nomic Embed v1.5 reduced to its trained 128-D Matryoshka output."""
+    """`nomic` variant: f(x) = L2(first 128 dims of LN(mean-pooled Nomic Embed v1.5)); no decoder."""
 
     latent_dim = 128
 
