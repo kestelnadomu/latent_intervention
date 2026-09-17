@@ -1,12 +1,14 @@
 # Experiments
 
-Study design only. **Notation, model definitions and the training objective live in
-`architecture.md`** — $f$ (frozen encoder), $g$ (semantic kernel), $h_S$ (symbolic
+Study design only. **Notation lives in `problem_formulation.md`; model definitions and the
+training objective live in `architecture/`** — $f$ (frozen encoder), $g$ (semantic kernel), $h_S$ (symbolic
 counterfactual kernel), $h_Z$ (latent editor, the method), and the consistency objective
 $D_{\mathrm{KL}}(h_S \circ g \,\|\, g \circ h_Z)$. Symbols are used here as defined there.
 
 The one commitment that drives every study design below: **$Z'$ never enters a loss.** It is the
-evaluation target only.
+evaluation target only. $g$ exists precisely because $Z'$ is unavailable outside the simulator;
+supervising on $Z'$ would make the method untransferable and $g$ redundant
+(see `notes/leo/idea.md`).
 
 ---
 
@@ -44,7 +46,7 @@ $Z'=f(X')$ and counterfactual recovery evaluation remain restricted to held-out 
 
 ### Function Derivation
 
-See `architecture.md`. For this study: $h_S$ is **closed form** (abduction gives a factorised
+See `architecture/`. For this study: $h_S$ is **closed form** (abduction gives a factorised
 truncated-normal noise posterior, pushed forward by exact enumeration into a sparse
 $3456\times3456$ transition matrix per $\delta$), $g$ is the **autoregressive** kernel trained
 on factual pairs $(f(X), \mathbf S)$ only, and $h_Z$ is the **discrete mixture** — with
