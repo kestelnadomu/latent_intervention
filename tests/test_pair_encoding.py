@@ -16,9 +16,11 @@ class StubEncoder:
     latent_dim = 128
     instances = 0
     calls: list[list[str]] = []
+    configs: list[dict] = []
 
-    def __init__(self, **kwargs) -> None:
+    def __init__(self, config: dict | None = None) -> None:
         type(self).instances += 1
+        type(self).configs.append(config)
 
     def encode(self, texts, deterministic, batch_size):
         type(self).calls.append(list(texts))
@@ -160,3 +162,15 @@ def test_encode_pairs_records_active_nomic_encoder(
     assert info["model_revision"] == "model-revision"
     assert info["code_revision"] == "code-revision"
     assert info["task_prefix"] == "classification: "
+
+
+def test_encode_pairs_passes_variant_config_to_factory(tmp_path: Path) -> None:
+    StubEncoder.configs = []
+    config = _config(tmp_path)
+    config["encoder"]["variant"] = "nomic"
+
+    encode_pairs(config, encoder_factory=StubEncoder)
+    info = json.loads((tmp_path / "z_pairs.info.json").read_text(encoding="utf-8"))
+
+    assert StubEncoder.configs == [config["encoder"]]
+    assert info["encoder_variant"] == "nomic"

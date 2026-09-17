@@ -13,6 +13,7 @@ encoder:
   model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
   model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
   local_checkpoint: null   # path to a fine-tuned LangVAE folder (overrides model_name)
+  tag: null                # names {encoder} in paths; default: variant, or langvae_ft with local_checkpoint
   nomic_model_name: nomic-ai/nomic-embed-text-v1.5
   nomic_model_revision: e5cf08aadaa33385f5990def41f7a23405aec398
   nomic_code_revision: 7710840340a098cfb869c4f65e87cf2b1b70caca
@@ -73,12 +74,13 @@ finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.
   output_dir: models/langvae_cv
 
 paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/text, data/latents/z_pairs.pt
+  # {encoder} = encoder tag (src/config.py::encoder_tag): artifacts that depend on the latent space
   texts: data/text_talent/cv_factual.csv
   texts_counterfactual: data/text_talent/cv_counterfactual.csv
   pair_index: data/sim_talent/pair_index.csv
   sim_factual: data/sim_talent/sim_data_factual.csv
   sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
-  latents: data/latents/talent/z_pairs.pt
-  decoder_model: models/talent/semantic_decoder.pt
-  manipulator_model: models/talent/latent_intervention.pt
-  eval_report: reports/talent/eval.json
+  latents: data/latents/talent/{encoder}/z_pairs.pt
+  decoder_model: models/talent/{encoder}/semantic_decoder.pt
+  manipulator_model: models/talent/{encoder}/latent_intervention.pt
+  eval_report: reports/talent/{encoder}/eval.json

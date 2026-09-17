@@ -43,9 +43,12 @@ $$\mathcal D_Z = \{(\mathrm{id}, f(x))\} \cup \{(\mathrm{id}, f(x'))\ :\ \mathrm
 * **Pairs.** `encode_pairs` encodes all factual texts and the non-identity test counterfactuals in
   one pass. Identity pairs ($x' = x$) copy $z$ exactly. It checks that the latents are 128-D and
   finite.
-* **Provenance.** `paths.latents` is the same for both variants, so a new encode overwrites the old
-  one. The sibling `*.info.json` records the variant, model, revisions, prefix, normalisation and
-  input hashes. **Changing the encoder means re-encoding and retraining $g$ and $h_Z$.** The two
+* **Provenance.** Each latent space gets its own directory: `{encoder}` in `paths.latents`,
+  `decoder_model`, `manipulator_model` and `eval_report` is replaced by the encoder tag
+  (`src/config.py::encoder_tag`: `encoder.tag`, else the variant, or `langvae_ft` with
+  `local_checkpoint`). The sibling `*.info.json` records the tag, variant, model, revisions,
+  prefix, normalisation and input hashes, and the pipeline refuses latents whose tag differs from
+  the config. **Changing the encoder means re-encoding and retraining $g$ and $h_Z$.** The two
   latent spaces are not interchangeable.
 * **Length budget.** Any token beyond $L$ is cut silently. Generation therefore rejects CVs over
   $B$ GPT-2 tokens (`exp/sim/text_length.py`). On the current `cv_factual.csv`: at most 499 GPT-2
@@ -82,8 +85,9 @@ $$\bar e(x) = \mathrm{meanpool}\,\mathrm{BERT}(x_{1:L}),\qquad
   $z \sim \mathcal N(\mu, \sigma^2)$ (not used by the pipeline).
 * `decode(z)` generates text with the GPT-2 decoder, as a round-trip sanity check.
 * **Fine-tuned option.** `src/finetune_vae.py` continues VAE training on the generated CVs
-  (cyclical-β schedule, `finetune_vae` section). Set `encoder.local_checkpoint` to the resulting
-  folder. Because BERT stays frozen, this refits $W$ and the decoder, not BERT's features.
+  (cyclical-β schedule, `finetune_vae` section), starting from the pinned `model_revision`. Set
+  `encoder.local_checkpoint` to the resulting folder (tag `langvae_ft`; set `encoder.tag` to keep
+  several fine-tunes apart). Because BERT stays frozen, this refits $W$ and the decoder, not BERT's features.
 
 **Benefits**
 * A real generative latent space: a decoder $\mathcal Z \to \mathcal X$ and a Gaussian prior. This

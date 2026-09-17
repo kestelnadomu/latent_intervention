@@ -23,7 +23,7 @@ from typing import Any
 import pandas as pd
 import torch
 
-from src.config import load_config
+from src.config import encoder_tag, load_config
 from src.latent_intervention import (
     LatentIntervention,
     LatentInterventionPreAdditive,
@@ -54,8 +54,17 @@ INTERVENTION_VARIANTS = {
 }
 
 def _load_latents(config: dict[str, Any]) -> tuple[torch.Tensor, list[int]]:
-    """Load the encoded latents and their row ids."""
-    payload = torch.load(Path(config["paths"]["latents"]), weights_only=True)
+    """Load the encoded latents and their row ids; refuse latents from another encoder."""
+    path = Path(config["paths"]["latents"])
+    info_path = path.with_suffix(".info.json")
+    if info_path.exists():
+        recorded = json.loads(info_path.read_text(encoding="utf-8")).get("encoder_tag")
+        expected = encoder_tag(config["encoder"])
+        if recorded is not None and recorded != expected:
+            raise ValueError(
+                f"{path} was encoded with '{recorded}', but the config selects '{expected}'"
+            )
+    payload = torch.load(path, weights_only=True)
     return payload["z"], payload["ids"]
 
 

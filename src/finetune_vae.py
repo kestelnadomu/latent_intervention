@@ -14,6 +14,7 @@ fine-tuned checkpoint is written to `finetune_vae.output_dir`; point
 
 import torch
 import pandas as pd
+from huggingface_hub import snapshot_download
 
 from langvae import LangVAE
 from langvae.data_conversion.tokenization import TokenizedDataSet
@@ -33,7 +34,12 @@ def finetune(config: dict | None = None) -> None:
     if len(texts) < 10:
         raise ValueError(f"Only {len(texts)} texts available; generate more first (exp/sim/run.py).")
 
-    model = LangVAE.load_from_hf_hub(enc_cfg["model_name"])
+    # Start from the same pinned checkpoint that `pipeline encode` uses.
+    revision = enc_cfg.get("model_revision")
+    if revision is None:
+        model = LangVAE.load_from_hf_hub(enc_cfg["model_name"])
+    else:
+        model = LangVAE.load_from_folder(snapshot_download(repo_id=enc_cfg["model_name"], revision=revision))
 
     n_eval = max(1, int(len(texts) * ft_cfg["val_split"]))
     generator = torch.Generator().manual_seed(config["seed"])

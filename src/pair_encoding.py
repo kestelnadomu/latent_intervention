@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+from collections.abc import Callable
 import json
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -10,6 +11,8 @@ from typing import Any
 
 import pandas as pd
 import torch
+
+from src.config import encoder_tag
 
 
 def _load_csv(path: str | Path, label: str, columns: set[str]) -> pd.DataFrame:
@@ -55,8 +58,15 @@ def _package_version(name: str) -> str | None:
         return None
 
 
-def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]:
-    """Encode all X and test X', copying identity latents exactly."""
+def encode_pairs(
+    config: dict[str, Any],
+    encoder_factory: Callable[[dict[str, Any]], Any] | None = None,
+) -> dict[str, Any]:
+    """Encode all X and test X', copying identity latents exactly.
+
+    ``encoder_factory`` receives the ``encoder`` config section (default
+    ``src.encoder.make_encoder``), so it builds whichever variant is configured.
+    """
     paths = config["paths"]
     pairs = _load_csv(paths["pair_index"], "pair index", {"id", "split", "is_identity"})
     factual = _load_csv(paths["texts"], "factual texts", {"id", "text"})
@@ -102,15 +112,8 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
     if encoder_factory is None:
         from src.encoder import make_encoder
 
-        encoder = make_encoder(enc)
-    else:
-        encoder = encoder_factory(
-            model_name=enc["model_name"],
-            model_revision=enc.get("model_revision"),
-            device=enc["device"],
-            max_len=int(enc["max_len"]),
-            local_checkpoint=enc.get("local_checkpoint"),
-        )
+        encoder_factory = make_encoder
+    encoder = encoder_factory(enc)
     if int(encoder.latent_dim) != 128:
         raise ValueError(
             f"encoder latent dimension must be 128, got {encoder.latent_dim}"
@@ -148,6 +151,7 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
         json.dumps(
             {
                 "encoder_variant": variant,
+                "encoder_tag": encoder_tag(enc),
                 "encoder": (
                     enc.get("nomic_model_name") if is_nomic else enc["model_name"]
                 ),
