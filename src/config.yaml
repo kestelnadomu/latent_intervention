@@ -20,6 +20,7 @@ encoder:
   max_len: 512
   batch_size: 16
   device: cpu
+  deterministic: true
 
 semantic_decoder:
   # variant: which g parameterisation (docs/architecture/semantic_decoder.md)
@@ -32,7 +33,8 @@ semantic_decoder:
   epochs: 50
   batch_size: 64
   lr: 1.0e-3
-  val_split: 0.2
+  calibration_split: 0.2  # held out from official training IDs; official test stays untouched
+  calibration_bins: 10
   autoregressive:
     embed_dim: 16          # decoded-prefix embedding size
 
@@ -80,5 +82,6 @@ paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/
   sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
   latents: data/latents/talent/z_pairs.pt
   decoder_model: models/talent/semantic_decoder.pt
+  decoder_report: reports/talent/semantic_decoder.json
   manipulator_model: models/talent/latent_intervention.pt
   eval_report: reports/talent/eval.json
