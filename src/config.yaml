@@ -45,6 +45,9 @@ latent_intervention:
   #   noise_token -> LatentInterventionNoiseToken (Plan B: z' = z + Delta(z,eps,delta), eps its own token, MC forward-KL + entropy)
   #   dist    -> LatentInterventionDist (Plan C: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
   #   particles -> LatentInterventionParticles (Plan D: sum_j w_j(z,delta) dirac_{z+Delta_j(z,delta)}, exact KL + entropy)
+  #   state_flow -> p(Z|S) flow; abduct under factual S and render under target S'
+  #   distilled_flow -> standalone q(Z'|Z,delta) distilled from state_flow
+  #   direct_semantic_flow -> standalone q(Z'|Z,delta) trained through frozen g and h_S
   variant: baseline
   d_model: 128
   nhead: 4
@@ -73,6 +76,27 @@ latent_intervention:
     n_particles: 16       # d: particles per latent; >= support of (h_S . g)
     uniform_weights: false  # true = w_j = 1/d (ablation; resolution 1/d)
     entropy_weight: 0.1   # weight of sum_j w_j H(g(. | z_j))
+  flow:
+    n_blocks: 8
+    hidden_dim: 128
+    condition_dim: 64
+    state_embed_dim: 16
+    scale_floor: 1.0e-6
+    base_std: 0.05
+    epochs: 50
+    batch_size: 64
+    lr: 3.0e-4
+    weight_decay: 1.0e-5
+    grad_clip: 5.0
+    n_samples: 8
+    eval_samples: 1       # lightweight default; raise for distributional flow evaluation
+    no_op_fraction: 0.2
+    support_bank_size: 512
+    direct_semantic:
+      entropy_weight: 0.1
+      proximity_weight: 0.1
+      support_weight: 0.05
+      identity_weight: 1.0
 
 finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.py)
   epochs: 5
@@ -94,4 +118,8 @@ paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/
   decoder_model: models/talent/semantic_decoder.pt
   decoder_report: reports/talent/semantic_decoder.json
   manipulator_model: models/talent/latent_intervention.pt
+  # Flow variants use separate paths so legacy h_Z artifacts stay unchanged.
+  flow_manipulator_model: models/talent/latent_intervention_{variant}.pt
+  flow_teacher_model: models/talent/latent_intervention_state_flow.pt
   eval_report: reports/talent/eval.json
+  flow_eval_report: reports/talent/eval_{variant}.json
