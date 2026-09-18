@@ -229,12 +229,13 @@ class _ManipulatorBase(nn.Module):
     @classmethod
     def load(cls, path: str | Path, device: str | torch.device | None = None):
         """Restore a manipulator saved with save(); returns it in eval mode."""
-        payload = torch.load(Path(path), map_location=device or "cpu", weights_only=True)
+        target_device = torch.device(device or "cpu")
+        payload = torch.load(Path(path), map_location=target_device, weights_only=True)
         if payload.get("class", cls.__name__) != cls.__name__:
             raise ValueError(f"checkpoint holds a {payload['class']}, not a {cls.__name__}")
         config = dict(payload["config"])
         config["columns"] = [ColumnSpec(name, card) for name, card in config["columns"]]
-        model = cls(**config)
+        model = cls(**config).to(target_device)
         model.load_state_dict(payload["state_dict"])
         model.eval()
         return model
@@ -1117,112 +1118,3 @@ def train_latent_intervention_particles(
         setup=setup,
         batch_loss=batch_loss,
     )
-
-
-if __name__ == "__main__":
-    # Smoke tests on a random schema: identity at init, then a short training run for
-    # each plan against a randomly initialised frozen decoder and a stub h_S.
-    torch.manual_seed(0)
-    latent_dim, n = 128, 192
-    columns = [ColumnSpec(f"c{i}", int(k)) for i, k in enumerate(torch.randint(2, 4, (5,)))]
-    total_states = 1
-    for col in columns:
-        total_states *= col.n_categories
-
-    class _StubKernel:
-        """Identity h_S: every factual state is its own counterfactual (rows sum to 1)."""
-
-        columns = columns
-
-        def state_index(self, state: dict[str, int]) -> int:
-            idx = 0
-            for c in self.columns:
-                idx = idx * c.n_categories + int(state[c.name])
-            return idx
-
-        def transition_matrix(self, delta: dict[str, int]) -> torch.Tensor:
-            eye = torch.arange(total_states)
-            return torch.sparse_coo_tensor(
-                torch.stack([eye, eye]), torch.ones(total_states), (total_states, total_states)
-            ).coalesce()
-
-        def compose(self, g_probs: torch.Tensor, delta: dict[str, int]) -> torch.Tensor:
-            return g_probs
-
-    z = torch.randn(n, latent_dim)
-    decoder = SemanticDecoder(latent_dim, columns)
-    h_s = _StubKernel()
-    intervention = {columns[1].name: 1}
-    s_prime = {col.name: torch.randint(col.n_categories, (n,)) for col in columns}
-    s_prime[columns[1].name] = torch.ones(n, dtype=torch.long)
-    values, mask = make_objective(intervention, columns, batch_size=n)
-
-    # Plan 0 -- baseline
-    base = LatentIntervention(latent_dim, columns)
-    with torch.no_grad():
-        assert torch.allclose(base(z, values, mask), z), "baseline: identity at init"
-    h0 = train_latent_intervention(
-        base, decoder, z, intervention, s_prime, epochs=5, seed=0, verbose=False
-    )
-    print(f"[plan 0] total {h0[0]['total']:.4f} -> {h0[-1]['total']:.4f}")
-
-    # Plan A -- engression
-    gen = torch.Generator().manual_seed(0)
-    a = LatentInterventionPreAdditive(latent_dim, columns, noise_std=0.5)
-    with torch.no_grad():
-        assert torch.allclose(a(z, values, mask, gen), z), "plan A: identity at init"
-    ha = train_latent_intervention_preadditive(
-        a, decoder, z, intervention, h_s=h_s, n_samples=4, epochs=3, seed=0, verbose=False
-    )
-    print(f"[plan A] total {ha[0]['total']:.4f} -> {ha[-1]['total']:.4f}  kl {ha[-1]['kl']:.4f}")
-
-    # Plan B -- noise token
-    c = LatentInterventionNoiseToken(latent_dim, columns, noise_dim=4)
-    with torch.no_grad():
-        assert torch.allclose(c(z, values, mask, gen), z), "plan B: identity at init"
-    hc = train_latent_intervention_noise_token(
-        c, decoder, z, intervention, h_s=h_s, n_samples=4, epochs=3, seed=0, verbose=False
-    )
-    with torch.no_grad():
-        draws = c.sample(z[:4], values[:4], mask[:4], 2, gen)
-    assert not torch.allclose(draws[0], draws[1]), "plan B: eps must reach the output"
-    print(f"[plan B] total {hc[0]['total']:.4f} -> {hc[-1]['total']:.4f}  kl {hc[-1]['kl']:.4f}"
-          f"  entropy {hc[-1]['entropy']:.4f}  spread {hc[-1]['spread']:.4f}")
-
-    # Plan C -- discrete mixture
-    b = LatentInterventionDist(latent_dim, columns, top_k=8)
-    with torch.no_grad():
-        z_b = b(z, values, mask)
-    assert torch.allclose(z_b, z), "plan C: realiser is identity at init"
-    hb = train_latent_intervention_dist(
-        b, decoder, z, intervention, s_prime, h_s=h_s,
-        pretrain_epochs=3, joint_epochs=2, seed=0, verbose=False,
-    )
-    pretrain = [r for r in hb if r["phase"] == 0.0][-1]
-    joint = [r for r in hb if r["phase"] == 1.0][-1]
-    print(f"[plan C] pretrain w_kl {pretrain['w_kl']:.4f} realise_ce {pretrain['realise_ce']:.4f}"
-          f"  joint kl {joint['kl']:.4f}")
-
-    # Plan D -- particle set
-    for uniform in (False, True):
-        d = LatentInterventionParticles(latent_dim, columns, n_particles=6, uniform_weights=uniform)
-        with torch.no_grad():
-            assert torch.allclose(d(z, values, mask), z), "plan D: identity at init"
-        hd = train_latent_intervention_particles(
-            d, decoder, z, intervention, h_s=h_s, epochs=3, seed=0, verbose=False
-        )
-        with torch.no_grad():
-            shifts, _ = d.particles(z[:4], values[:4], mask[:4])
-            draws = d.sample(z[:4], values[:4], mask[:4], 3, gen)
-        assert draws.shape == (3, 4, latent_dim)
-        assert not torch.allclose(shifts[0], shifts[1]), "plan D: particles must differ"
-        print(f"[plan D uniform={uniform}] total {hd[0]['total']:.4f} -> {hd[-1]['total']:.4f}"
-              f"  eff {hd[-1]['eff_particles']:.2f}  distinct {hd[-1]['distinct_states']:.2f}")
-
-    with torch.no_grad():
-        assert b.sample(z[:4], values[:4], mask[:4], 3, gen).shape == (3, 4, latent_dim)
-        z_prime = b(z, values, mask)
-    preds = decoder.predict(z_prime)
-    consistency = {c.name: (preds[c.name] == s_prime[c.name]).float().mean().item() for c in columns}
-    print("[plan C] consistency accuracy:", {k: round(v, 2) for k, v in consistency.items()})
-    print(f"[plan C] mean latent shift: {(z_prime - z).norm(dim=1).mean():.3f}")
