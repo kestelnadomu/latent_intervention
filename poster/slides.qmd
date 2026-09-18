@@ -7,14 +7,229 @@ format:
 author:
   - name: Leonhard Kestel
   - name: Christoph Kern
-date: 2026-09-03
+date: 2026-09-21
+
+bibliography: ref.bib
 footer: |
   [leo.kestel@lmu.de](mailto:leo.kestel@lmu.de)
 ---
 
-## The Problem: Counterfactual Fairness with Text Data
+# Context: Algorithmic Fairness
 
-An example:
+## Data Bias in Automated Decision-Making
+
+::: {.columns}
+
+::: {.column .incremental width="45%"}
+### Quantitative Bias
+* i.e. selection bias or statistical bias
+* **Cause**: subgroups are underrepresented in the data
+* **Target**: Equality of Quality (*Equal Accuracy/Odds/Opportunity*)
+* **Requires**: data!
+:::
+
+
+::: {.column width="10%"}
+:::
+
+::: {.column .incremental}
+### Qualitative Bias
+* i.e. label bias or societal bias
+* **Cause**: labels are influenced by societal stereotypes and prejudices
+* **Target**: Equality of Quantity (*Demographic Parity*)
+* **Requires**: normative claims
+:::
+
+:::
+
+
+
+# The Problem: Counterfactual Fairness with Text Data
+
+## Counterfactual Fairness with Text Data: An Example
+
+::: {.fragment fragment-index=1}
+- Philipp and Filip apply for a PhD position in computer science.
+:::
+::: {.fragment fragment-index=2}
+- Both have a Master's degree in computer science and similar grades.
+:::
+::: {.fragment fragment-index=3}
+- Both have had similar work experience apart from their studies.
+:::
+::: {.fragment fragment-index=5}
+$\rightarrow$ Philipp is invited to an interview, while Filip is not.
+:::
+
+::: {.r-stack}
+::: {.fragment .fade-in-then-out fragment-index=4}
+```{mermaid}
+---
+config:
+  theme: base
+  look: handDrawn
+  themeVariables:
+    fontSize: 22px
+    primaryColor: "#ffffff"
+    primaryTextColor: "#000030"
+    primaryBorderColor: "#5b5b5c"
+    lineColor: "#5b5b5c"
+    edgeLabelBackground: "#ffffff"
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 70
+    padding: 18
+---
+
+graph LR
+  T([Talent]):::talent --> Y([Qualification]):::outcome
+
+  linkStyle default stroke-width:2px,color:#000030
+  classDef talent fill:#e5f3eb,stroke:#00883a,stroke-width:2px,color:#000030;
+  classDef sensitive fill:#fdeede,stroke:#ef7c00,stroke-width:2px,color:#000030;
+  classDef mediator fill:#e6edf2,stroke:#29485d,stroke-width:2px,color:#000030;
+  classDef outcome fill:#00883a,stroke:#005555,stroke-width:2px,color:#ffffff,font-weight:bold;
+```
+:::
+
+::: {.fragment fragment-index=5}
+```{mermaid}
+---
+config:
+  theme: base
+  look: handDrawn
+  themeVariables:
+    fontSize: 22px
+    primaryColor: "#ffffff"
+    primaryTextColor: "#000030"
+    primaryBorderColor: "#5b5b5c"
+    lineColor: "#5b5b5c"
+    edgeLabelBackground: "#ffffff"
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 70
+    padding: 18
+---
+
+graph LR
+  T([Talent]):::talent -->|"<b>?</b>"| Y([Qualification]):::outcome
+
+  linkStyle default stroke-width:2px,color:#000030
+  classDef talent fill:#e5f3eb,stroke:#00883a,stroke-width:2px,color:#000030;
+  classDef sensitive fill:#fdeede,stroke:#ef7c00,stroke-width:2px,color:#000030;
+  classDef mediator fill:#e6edf2,stroke:#29485d,stroke-width:2px,color:#000030;
+  classDef outcome fill:#00883a,stroke:#005555,stroke-width:2px,color:#ffffff,font-weight:bold;
+```
+:::
+:::
+
+## Counterfactual Fairness with Text Data: An Example
+
+Philipp is invited to an interview, while Filip is not.
+
+::: {.columns}
+::: {.column width="45%"}
+
+::: {.fragment fragment-index=1}
+- Philipp went to a top 100 ranked university
+:::
+::: {.fragment fragment-index=2}
+- Philipp grew up in the Netherlands
+:::
+
+:::
+
+::: {.column width="10%"}
+:::
+
+::: {.column width="45%"}
+
+::: {.fragment fragment-index=1}
+- Filip went to a regional university
+:::
+::: {.fragment fragment-index=2}
+- Filip grew up in a small town in Serbia
+:::
+
+:::
+:::
+
+
+::: {.r-stack}
+::: {.fragment .fade-in-then-out fragment-index=1}
+```{mermaid}
+---
+config:
+  theme: base
+  look: handDrawn
+  themeVariables:
+    fontSize: 22px
+    primaryColor: "#ffffff"
+    primaryTextColor: "#000030"
+    primaryBorderColor: "#5b5b5c"
+    lineColor: "#5b5b5c"
+    edgeLabelBackground: "#ffffff"
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 70
+    padding: 18
+---
+
+graph LR
+  T([Talent]):::talent --> W([Education]):::mediator
+  W --> Y([Qualification]):::outcome
+  T --> Y
+
+  linkStyle default stroke-width:2px,color:#000030
+  classDef talent fill:#e5f3eb,stroke:#00883a,stroke-width:2px,color:#000030;
+  classDef sensitive fill:#fdeede,stroke:#ef7c00,stroke-width:2px,color:#000030;
+  classDef mediator fill:#e6edf2,stroke:#29485d,stroke-width:2px,color:#000030;
+  classDef outcome fill:#00883a,stroke:#005555,stroke-width:2px,color:#ffffff,font-weight:bold;
+```
+:::
+
+::: {.fragment fragment-index=2}
+```{mermaid}
+---
+config:
+  theme: base
+  look: handDrawn
+  themeVariables:
+    fontSize: 22px
+    primaryColor: "#ffffff"
+    primaryTextColor: "#000030"
+    primaryBorderColor: "#5b5b5c"
+    lineColor: "#5b5b5c"
+    edgeLabelBackground: "#ffffff"
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 70
+    padding: 18
+---
+
+graph LR
+  X([Country of Origin]):::sensitive ==> W([Education]):::mediator
+  T([Talent]):::talent --> W
+  W --> Y([Qualification]):::outcome
+  X ==> Y
+  T --> Y
+
+  linkStyle default stroke-width:2px,color:#000030
+  linkStyle 0,3 stroke:#ef7c00,stroke-width:4px
+
+  classDef talent fill:#e5f3eb,stroke:#00883a,stroke-width:2px,color:#000030;
+  classDef sensitive fill:#fdeede,stroke:#ef7c00,stroke-width:2px,color:#000030;
+  classDef mediator fill:#e6edf2,stroke:#29485d,stroke-width:2px,color:#000030;
+  classDef outcome fill:#00883a,stroke:#005555,stroke-width:2px,color:#ffffff,font-weight:bold;
+```
+:::
+:::
+
+## Counterfactual Fairness with Text Data
 
 ::: {.incremental}
 - Sensitive attributes influence screening and hiring decisions.
@@ -23,26 +238,28 @@ An example:
 :::
 
 ::: {.fragment}
-,,**How would a person's CV look like if its sensitive attribute(s) were different?**''
+,,**How would Filip's CV look like if its he were from the Netherlands?**''
 :::
+
+# Mitigating Label Bias in Predictions on Text
 
 ## What We Need: Causal Knowledge
 
 ::: {.r-stack}
-
-::: {.fragment fragment-index=1}
+ 
+::: {.fragment .fade-in-then-out fragment-index=1}
 ![](img/worlds0.svg){width="500"}
 :::
-::: {.fragment fragment-index=2}
+::: {.fragment .fade-in-then-out fragment-index=2}
 ![](img/worlds1.svg){width="500"}
 :::
-::: {.fragment fragment-index=3}
+::: {.fragment .fade-in-then-out fragment-index=3}
 ![](img/worlds2.svg){width="500"}
 :::
-::: {.fragment fragment-index=4}
+::: {.fragment .fade-in-then-out fragment-index=4}
 ![](img/worlds3.svg){width="500"}
 :::
-::: {.fragment fragment-index=5}
+::: {.fragment .fade-in-then-out fragment-index=5}
 ![](img/worlds4.svg){width="500"}
 :::
 ::: {.fragment fragment-index=6}
@@ -90,14 +307,84 @@ $Z' = h_Z(Z)$ - counterfactual latent representation of $X$ <br>(e.g., a CV-repr
 - modular causally aware interventions in text classification
 :::
 
-## Visit my poster to discuss...
+## Ongoing Experiments
+
+::: {.incremental}
+- Simulated data experiments to validate the approach
+- Real-world data experiments to demonstrate the approach
+:::
+
+```{mermaid}
+---
+config:
+  theme: base
+  look: handDrawn
+  themeVariables:
+    fontSize: 22px
+    primaryColor: "#ffffff"
+    primaryTextColor: "#000030"
+    primaryBorderColor: "#5b5b5c"
+    lineColor: "#5b5b5c"
+    edgeLabelBackground: "#ffffff"
+  flowchart:
+    curve: basis
+    nodeSpacing: 40
+    rankSpacing: 70
+    padding: 18
+---
+
+graph LR
+  X([Country of Origin]):::sensitive -.-> W([Education]):::mediator
+  T([Talent]):::talent --> W
+  W --> Y([Qualification]):::outcome
+  X -.-> Y
+  T --> Y
+
+  linkStyle default stroke-width:2px,color:#000030
+  linkStyle 0,3 stroke:#ef7c00,stroke-width:4px
+
+  classDef talent fill:#e5f3eb,stroke:#00883a,stroke-width:2px,color:#000030;
+  classDef sensitive fill:#fdeede,stroke:#ef7c00,stroke-width:2px,color:#000030;
+  classDef mediator fill:#e6edf2,stroke:#29485d,stroke-width:2px,color:#000030;
+  classDef outcome fill:#00883a,stroke:#005555,stroke-width:2px,color:#ffffff,font-weight:bold;
+```
+
+
+::: {.columns}
+::: {.column}
+> Originally from Bangladesh, I hold a Bachelor’s degree from a university not listed in the major global rankings, ...
+:::
+::: {.column}
+> I am originally from the Netherlands, and I hold a Master’s degree from a university not listed in the major global rankings.
+:::
+:::
+
+## Inspirational Work
+
+::: {.incremental}
+* **(Path-specific) counterfactual fairness** [@chiappa_path-specific_2019; @kusner2017counterfactual]: fairness through interventions on specified causal paths in an SCM.
+* **Fair representation learning** [@zemel_learning_2013; @creager_flexibly_2019; @oh_learning_2022]: learning a latent representation that is invariant to sensitive attributes.
+<!-- * **Deep Structural Causal Models** [@pawlowski_dscm_2020]: SCMs with VAEs as functional connectors, trained end-to-end on observational data. -->
+* **Neurosymbolic latent reasoning** [@asai2022classical]: dividing a complex task into a neural ,,perception" encoder and a latent symbolic reasoning module.
+:::
+
+::: {.notes}
+$\rightarrow$ Our contribution sits at the **intersection** of these threads. a modular, neurosymbolic architecture that approximates counterfactual interventions in the latent space of a VAE.
+:::
+
+## Outlook: Composing Modular Building Blocks in Neural Networks
+
+![Composing modular building blocks](img/demo_discussion.svg)
+
+
+## Let's discuss...
 
 ::: {.columns}
 ::: {.column}
 * $h_Z$ as a single-layer transformer vs. normalizing flow
 * counterfactual point-estimates vs. distributions
-* practicability of causal assumptions
-* applications beyond counterfactual fairness
+* **practicability of causal assumptions**
+* **applications beyond counterfactual fairness**
 :::
 
 ::: {.column}
@@ -107,9 +394,10 @@ library(qrcode)
 plot(qr_code("https://leokestel.de/latent_intervention"))
 ```
 [leokestel.de/latent_intervention](https://leokestel.de/latent_intervention)
+:::
+:::
 
-:::
-:::
+# References
 
 <!-- You can add a polaroid effect to embedded images:
 
