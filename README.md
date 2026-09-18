@@ -84,13 +84,19 @@ Paired latent encoding and the existing training/evaluation stages use `src/conf
 ```bash
 uv run python -m src.pipeline encode             # configured frozen encoder: X plus test X' -> z_pairs.pt
 uv run python -m src.pipeline train-decoder      # semantic decoder g: Z -> S + calibration report
-uv run python -m src.pipeline train-manipulator  # manipulator h_Z against frozen g and counterfactual targets
-uv run python -m src.pipeline evaluate           # consistency accuracy + latent shift -> reports/talent/eval.json
+uv run python -m src.pipeline train-manipulator  # selected h_Z variant on official training units
+uv run python -m src.pipeline evaluate           # legacy report or flow recovery diagnostics
 ```
 
 `pair_index.csv` is the sole train/test authority. `train-decoder` deterministically reserves a calibration holdout only from the official training IDs and writes per-column accuracy, ECE, and reliability bins to `reports/talent/semantic_decoder.json`; these measurements do not apply temperature scaling. `train-manipulator` uses all official training IDs, while `evaluate` uses only official test IDs.
 
-Latent, decoder, and manipulator artifacts are bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
+Choose $h_Z$ with the single `latent_intervention.variant` value in `src/config.yaml`. The existing transformer variants remain available alongside `state_flow`, `distilled_flow`, and `direct_semantic_flow`. The state flow uses factual $S$ and $h_S$; the distilled and direct flows expose the standalone inference interface $(Z,\delta)\mapsto\Delta(\mathcal Z)$. Flow checkpoints and reports include the variant in their filename, and distilled training automatically creates or reuses a compatible state-flow teacher.
+
+The established transformer stages and report format remain in `src/pipeline.py`; that file delegates only the three flow variants to `src/flow_workflow.py`. Flow architectures and objectives are isolated in `src/flow_intervention.py`, while flow evaluation adds paired-$Z'$ recovery and support diagnostics.
+
+The active data currently supports only the configured `do(X=3)` query plus an explicitly trained no-op. Other schema-valid interventions are accepted for exploratory inference with a warning, but are outside training support. The configured `n: 10` is suitable only for an end-to-end smoke test of a 128-dimensional flow, not for a performance claim.
+
+The pipeline binds latent, decoder, and manipulator artifacts to the configured encoder, source hashes, schema, and upstream artifact hashes. Pipeline loading rejects incompatible or incomplete metadata with an instruction to re-encode or retrain instead of silently mixing latent spaces.
 
 When `encoder.variant: langvae` is selected, LangVAE may optionally be fine-tuned first (`uv run python -m src.finetune_vae`); point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder, then regenerate every downstream artifact.
 

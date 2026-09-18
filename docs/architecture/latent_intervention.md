@@ -2,9 +2,12 @@
 
 $$h_Z(\cdot \mid z, \delta): \mathcal Z \to \Delta(\mathcal Z)$$
 
-Freeze $f$, $g$ and $h_S$, then train $h_Z$ so that the two paths from $z$ to a distribution over
-counterfactual states agree: $h_S\circ g = g\circ h_Z$.
-Code: `src/latent_intervention.py`; select a plan with `latent_intervention.variant` in `src/config.yaml`.
+The original semantic variants freeze $f$, $g$, and $h_S$, then train $h_Z$ so that the two
+paths from $z$ to counterfactual states agree: $h_S\circ g = g\circ h_Z$. The flow variants
+below instead use factual likelihood, teacher distillation, or this semantic objective explicitly.
+Existing models live in `src/latent_intervention.py`, flow models in
+`src/flow_intervention.py`, and their pipeline adapter in `src/flow_workflow.py`.
+Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 
 **Notation.**
 
@@ -29,13 +32,57 @@ Code: `src/latent_intervention.py`; select a plan with `latent_intervention.vari
 | B | `noise_token` / `LatentInterventionNoiseToken` | pushforward of $\varepsilon\sim\mathcal N(0,I_r)$ through $z+\Delta_\theta(z,\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — |
 | C | `dist` / `LatentInterventionDist` | $\sum_{\mathbf s'} w_\theta(\mathbf s'\mid z,\delta)\,\mathbb 1_{z+\Delta_\phi(z,\mathbf s')}$ | exact, $k$ passes | learned $w_\theta$ (distilled from $h_S\circ g$) | state $\mathbf s'$ |
 | D | `particles` / `LatentInterventionParticles` | $\sum_{j=1}^d w_j(z,\delta)\,\mathbb 1_{z+\Delta_{\theta,j}(z,\delta)}$ | exact, $d$ passes | learned $w_j$ (or uniform) | none |
+| F1 | `state_flow` / `StateConditionalFlow` | shared-noise transport through $F_\theta(S,U)$ | exact inverse/forward | observed or inferred $S$, then $h_S$ | target state $S'$ |
+| F2 | `distilled_flow` / `DistilledFlowIntervention` | conditional flow $D_\phi(E;z,\delta)$ | sampled | distilled state-flow teacher | none |
+| F3 | `direct_semantic_flow` / `DirectSemanticFlowIntervention` | conditional flow $D_\psi(E;z,\delta)$ | Monte Carlo | $g$ and $h_S$ during training only | none |
 
 The plans run from least to most structure in $h_Z$. A and B use continuous noise. C and D are
 finite mixtures: C indexes its components by symbolic states, D by unlabelled slots. Taking the
 weights of C from $h_S\circ g$ instead of learning them gives the most symbolic end
 (C-sym, see Plan C).
 
-## Shared objective
+## Normalizing-flow variants
+
+The three flow variants share an eight-block affine-coupling core with fixed permutations,
+bounded log-scales, and train-set standardisation. The flow is invertible between its base noise
+and output for fixed context; the direct variants are not asserted to be invertible causal maps
+from factual $z$ to counterfactual $z'$.
+
+### F1: state-conditioned flow
+
+Fit $p_\theta(z\mid s)$ by conditional maximum likelihood on factual official-training pairs:
+
+$$u=F_\theta^{-1}(z;s),\qquad s'\sim h_S(\cdot\mid s,\delta),\qquad
+\widehat z'=F_\theta(u;s').$$
+
+The same abducted $u$ is reused across worlds. The core flow sees one state at a time: source $s$
+for inversion and target $s'$ for rendering. It does not see $\delta$. Using the same state twice
+is an exact numerical identity. Factual likelihood identifies the conditional densities but not
+their cross-state noise alignment; the first implementation adds no proximity or semantic loss,
+so shared-$u$ alignment remains an explicit modelling assumption.
+
+### F2: distilled direct flow
+
+The state flow generates several pseudo-targets for every factual unit by sampling $s'$ from
+$h_S$ and preserving $u$. A direct residual flow is trained to match those samples with the
+scale-normalised multivariate energy distance. Energy distance is used instead of conditional
+likelihood because the teacher law is a finite mixture of points and an unrestricted continuous
+likelihood can collapse its scale. Once trained, F2 needs only $(z,\delta)$ and contains no
+teacher, decoder, or symbolic kernel.
+
+### F3: direct semantic flow
+
+F3 has the same direct residual-flow architecture as F2 but no state-flow teacher. With frozen
+$g$ and $h_S$, it minimises forward KL between $(h_S\circ g)(\cdot\mid z,\delta)$ and
+$M^{-1}\sum_m g(\cdot\mid\widehat z'_m)$, plus small per-sample entropy, standardised proximity,
+identity, and factual-neighbour support terms. Probabilities are averaged before taking KL.
+There is no $z'$ likelihood term because no target latent density is observed. Consequently F3
+guarantees at most semantic agreement under $g$, not recovery of a unique causal latent.
+
+All three flows train only on the configured intervention plus the empty identity action. The API
+accepts other schema-valid interventions but warns that they are outside training support.
+
+## Shared objective for the semantic transformer plans
 
 $$\mathcal L = \mathbb E_z\Big[D_{\mathrm{KL}}\big((h_S\circ g)(\cdot\mid z,\delta)\,\big\|\,(g\circ h_Z)(\cdot\mid z,\delta)\big)\Big] + \lambda\,\mathbb E_{z'\sim h_Z}\big[H\big(g(\cdot\mid z')\big)\big] + \alpha\,\overline{\lvert z'-z\rvert} + \beta\,\overline{(z'-z)^2}$$
 
@@ -323,13 +370,23 @@ def particles(self, z, values, mask):
 
 ## Evaluation
 
-`src/pipeline.py evaluate` currently scores **one** $z'$ per text by argmax accuracy against
-$\mathbf s'$ (for A/B, one draw seeded with the global seed; for C/D, the top component). That is fair to Plan 0 but undersells A–D. Report per plan:
+The five existing transformer variants retain their established one-output pipeline evaluation:
+A and B use one seeded draw, while 0, C, and D use their deterministic `forward` result. Their
+report continues to contain semantic consistency and latent-shift metrics.
 
-* the KL of $g\circ h_Z$ against $h_S\circ g$ (exact for C/D, $M$ samples for A/B);
-* the log-likelihood of the true $\mathbf s'$ under $g\circ h_Z$ (the unit-level view);
-* both split by strata of $g$'s confidence, since that is where the plans differ;
-* the mean per-sample entropy, plus `spread` (A/B) or `eff_particles` / `distinct_states` (D).
+For the three flow variants, `src/flow_workflow.py` uses only official-test IDs and draws a
+seeded sample set. Held-out encoded $Z'$ is never exposed during training. The flow report
+includes:
+
+* standardised energy score against paired $Z'$ as the primary distributional recovery metric;
+* sample-mean L2 and cosine recovery, sample spread, and nearest-neighbour support distance;
+* semantic KL and realised-$S'$ accuracy under the configured decoder $g$;
+* latent shift on recorded identity rows.
+
+For F1 the report separates observed-$S$/sampled-$S'$, explicit oracle-target $S'$, and
+decoder-inferred-$S$ regimes. Semantic evaluation deliberately reuses the configured $g$; it is
+therefore not an independent probe. Paired-$Z'$ recovery and support diagnostics are the primary
+checks against decoder-specific solutions.
 
 ## Shared risk: adversarial edits against a frozen probe
 
