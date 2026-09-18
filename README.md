@@ -2,7 +2,7 @@
 
 Research code and publication materials for the *latent intervention* project.
 
-The pipeline builds counterfactual latent representations of text: an SCM simulates paired factual and counterfactual candidate attributes, an LLM verbalizes the approved worlds into CV personal statements, a frozen LangVAE encodes them into latents, a semantic decoder grounds the latents in the SCM variables, and a latent manipulator learns to transform latents analogously to the SCM's counterfactual operation.
+The pipeline builds counterfactual latent representations of text: an SCM simulates paired factual and counterfactual candidate attributes, an LLM verbalizes the approved worlds into CV personal statements, the configured frozen LangVAE or Nomic encoder maps them into 128-dimensional latents, a semantic decoder grounds those latents in the SCM variables, and a latent manipulator learns to transform them analogously to the SCM's counterfactual operation.
 
 The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 2601.10700](https://arxiv.org/abs/2601.10700)). Text generation is a protocol-faithful adaptation of its Appendix D.3: seed personal statements are abstracted into narrative templates, personas are generated for sampled job titles, and each rendered world combines a fixed template, persona, and the unit's attribute values. This is not a literal replication of the released benchmark.
 
@@ -42,17 +42,17 @@ For another OpenAI-compatible provider, change `llm.base_url`, `llm.api_key_env`
 
 ## Pipeline
 
-The experiment uses one fixed query, `do(G=1)`. Factual `G=0` units receive the nontrivial intervention; factual `G=1` units are identity pairs. It does not generate `do(G=0)`, an opposite-value query, or an orbit of interventions.
+The active talent experiment uses one fixed query, `do(X=3)`. Units already in region `X=3` are identity pairs; the other units receive the nontrivial intervention. It does not generate the opposite-value queries or an orbit of interventions.
 
 The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test split, and whether the structured intervention is an identity. Artifact coverage is:
 
 | Object | Coverage | Artifact |
 | --- | --- | --- |
-| `S`, `S'` | All units | `data/sim/sim_data_{factual,counterfactual}.csv` |
-| `X` | All units | `data/text/cv_factual.csv` |
-| `X'` | All units by default; test only when configured | `data/text/cv_counterfactual.csv` |
-| `Z=f(X)` | All units | `z` in `data/latents/z_pairs.pt` |
-| `Z'=f(X')` | Test units only | `z_prime` in `data/latents/z_pairs.pt` |
+| `S`, `S'` | All units | `data/sim_talent/sim_data_{factual,counterfactual}.csv` |
+| `X` | All units | `data/text_talent/cv_factual.csv` |
+| `X'` | All units by default; test only when configured | `data/text_talent/cv_counterfactual.csv` |
+| `Z=f(X)` | All units | `z` in `data/latents/talent/z_pairs.pt` |
+| `Z'=f(X')` | Test units only | `z_prime` in `data/latents/talent/z_pairs.pt` |
 
 By default (`generation.include_train_counterfactual_texts: true` or omitted), `X'` is created for every unit; setting the option to `false` creates `X'` for test units only. Selected identity units copy `X'=X` without another LLM call, and identity test units use `Z'=Z` without another encoding. Nonidentity worlds reuse the same template, persona, and bin quantiles. Training `X'` is available for future work but does not enter the current training losses; `Z'` and counterfactual recovery evaluation remain test-only.
 
@@ -82,15 +82,23 @@ Stop here for the data-generation handoff. Encoding and model training below are
 Paired latent encoding and the existing training/evaluation stages use `src/config.yaml`:
 
 ```bash
-uv run python -m src.pipeline encode             # X plus test X' -> one deterministic z_pairs.pt
-uv run python -m src.pipeline train-decoder      # semantic decoder g: Z -> S
-uv run python -m src.pipeline train-manipulator  # manipulator h_Z against frozen g and counterfactual targets
-uv run python -m src.pipeline evaluate           # consistency accuracy + latent shift -> reports/eval.json
+uv run python -m src.pipeline encode             # configured frozen encoder: X plus test X' -> z_pairs.pt
+uv run python -m src.pipeline train-decoder      # semantic decoder g: Z -> S + calibration report
+uv run python -m src.pipeline train-manipulator  # selected h_Z variant on official training units
+uv run python -m src.pipeline evaluate           # legacy report or flow recovery diagnostics
 ```
 
-The model-training stages still use their pre-existing internal train/validation split; they do not yet consume `pair_index.csv`. Wiring the held-out pairing split into RQ1 training and evaluation remains separate model work, while the required `test_ids` and `z_prime` are already present in `z_pairs.pt`.
+`pair_index.csv` is the sole train/test authority. `train-decoder` deterministically reserves a calibration holdout only from the official training IDs and writes per-column accuracy, ECE, and reliability bins to `reports/talent/semantic_decoder.json`; these measurements do not apply temperature scaling. `train-manipulator` uses all official training IDs, while `evaluate` uses only official test IDs.
 
-Optionally fine-tune the LangVAE on the generated CVs first (`uv run python -m src.finetune_vae`), then point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder.
+Choose $h_Z$ with the single `latent_intervention.variant` value in `src/config.yaml`. The existing transformer variants remain available alongside `state_flow`, `distilled_flow`, and `direct_semantic_flow`. The state flow uses factual $S$ and $h_S$; the distilled and direct flows expose the standalone inference interface $(Z,\delta)\mapsto\Delta(\mathcal Z)$. Flow checkpoints and reports include the variant in their filename, and distilled training automatically creates or reuses a compatible state-flow teacher.
+
+The established transformer stages and report format remain in `src/pipeline.py`; that file delegates only the three flow variants to `src/flow_workflow.py`. Flow architectures and objectives are isolated in `src/flow_intervention.py`, while flow evaluation adds paired-$Z'$ recovery and support diagnostics.
+
+The active data currently supports only the configured `do(X=3)` query plus an explicitly trained no-op. Other schema-valid interventions are accepted for exploratory inference with a warning, but are outside training support. The configured `n: 10` is suitable only for an end-to-end smoke test of a 128-dimensional flow, not for a performance claim.
+
+The pipeline binds latent, decoder, and manipulator artifacts to the configured encoder, source hashes, schema, and upstream artifact hashes. Pipeline loading rejects incompatible or incomplete metadata with an instruction to re-encode or retrain instead of silently mixing latent spaces.
+
+When `encoder.variant: langvae` is selected, LangVAE may optionally be fine-tuned first (`uv run python -m src.finetune_vae`); point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder, then regenerate every downstream artifact.
 
 ## Publish
 

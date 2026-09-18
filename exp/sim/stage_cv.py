@@ -29,6 +29,7 @@ from exp.sim.render import (
     render_context,
     validate_grounding,
 )
+from exp.sim.text_length import length_rejection, load_token_counter
 
 
 def _cv_prompt(config: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, str]]:
@@ -118,6 +119,8 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
     try:
         if selected:
             base_url, api_key = resolve_llm(config)
+            budget = load_token_counter(config)
+            reject = length_rejection(*budget) if budget is not None else None
             world = "counterfactual" if counterfactual else "factual"
             print(f"generating {len(selected)} {world} CVs")
             for position, row_id in enumerate(selected, 1):
@@ -133,6 +136,7 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
                         api_key=api_key,
                         base_url=base_url,
                     ),
+                    reject,
                 )
                 _append_cv_row(
                     output,

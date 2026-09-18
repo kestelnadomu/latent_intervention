@@ -20,6 +20,7 @@ encoder:
   max_len: 512
   batch_size: 16
   device: cpu
+  deterministic: true
 
 semantic_decoder:
   # variant: which g parameterisation (docs/architecture/semantic_decoder.md)
@@ -32,7 +33,8 @@ semantic_decoder:
   epochs: 50
   batch_size: 64
   lr: 1.0e-3
-  val_split: 0.2
+  calibration_split: 0.2  # held out from official training IDs; official test stays untouched
+  calibration_bins: 10
   autoregressive:
     embed_dim: 16          # decoded-prefix embedding size
 
@@ -40,13 +42,18 @@ latent_intervention:
   # variant: which h_Z parameterisation (docs/architecture/latent_intervention.md)
   #   baseline   -> LatentIntervention  (Plan 0: deterministic z' = z + T(z,delta), per-column CE)
   #   pre_additive -> LatentInterventionPreAdditive (Plan A: z' = z + Delta(z+eps,delta), MC forward-KL)
-  #   dist    -> LatentInterventionDist (Plan B: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
+  #   noise_token -> LatentInterventionNoiseToken (Plan B: z' = z + Delta(z,eps,delta), eps its own token, MC forward-KL + entropy)
+  #   dist    -> LatentInterventionDist (Plan C: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
+  #   particles -> LatentInterventionParticles (Plan D: sum_j w_j(z,delta) dirac_{z+Delta_j(z,delta)}, exact KL + entropy)
+  #   state_flow -> p(Z|S) flow; abduct under factual S and render under target S'
+  #   distilled_flow -> standalone q(Z'|Z,delta) distilled from state_flow
+  #   direct_semantic_flow -> standalone q(Z'|Z,delta) trained through frozen g and h_S
   variant: baseline
   d_model: 128
   nhead: 4
   dim_feedforward: 256
   dropout: 0.1
-  epochs: 50             # baseline / pre_additive
+  epochs: 50             # baseline / pre_additive / noise_token / particles
   batch_size: 64
   lr: 1.0e-4
   sparsity_weight: 1.0    # alpha: L1 penalty on z' - z
@@ -54,6 +61,10 @@ latent_intervention:
   pre_additive:
     noise_std: 1.0        # sigma of the pre-additive noise eps ~ N(0, sigma^2 I)
     n_samples: 8          # M: Monte-Carlo samples for the g . h_Z composition
+  noise_token:
+    noise_dim: 4          # k: size of the outsourced noise eps ~ N(0, I_k)
+    n_samples: 8          # M: Monte-Carlo samples for the g . h_Z composition
+    entropy_weight: 0.1   # weight of E_eps[H(g(. | z'_eps))]; forces the mixture to come from eps
   dist:
     embed_dim: 16         # w_theta decoded-prefix embedding size
     top_k: 16             # retained counterfactual states s' in the exact composition
@@ -61,6 +72,31 @@ latent_intervention:
     joint_epochs: 20      # end-to-end forward-KL fine-tune
     realiser_l1: 1.0      # L1 on Delta_phi during pretraining
     realiser_l2: 1.0      # L2 on Delta_phi during pretraining
+  particles:
+    n_particles: 16       # d: particles per latent; >= support of (h_S . g)
+    uniform_weights: false  # true = w_j = 1/d (ablation; resolution 1/d)
+    entropy_weight: 0.1   # weight of sum_j w_j H(g(. | z_j))
+  flow:
+    n_blocks: 8
+    hidden_dim: 128
+    condition_dim: 64
+    state_embed_dim: 16
+    scale_floor: 1.0e-6
+    base_std: 0.05
+    epochs: 50
+    batch_size: 64
+    lr: 3.0e-4
+    weight_decay: 1.0e-5
+    grad_clip: 5.0
+    n_samples: 8
+    eval_samples: 1       # lightweight default; raise for distributional flow evaluation
+    no_op_fraction: 0.2
+    support_bank_size: 512
+    direct_semantic:
+      entropy_weight: 0.1
+      proximity_weight: 0.1
+      support_weight: 0.05
+      identity_weight: 1.0
 
 finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.py)
   epochs: 5
@@ -80,5 +116,10 @@ paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/
   sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
   latents: data/latents/talent/z_pairs.pt
   decoder_model: models/talent/semantic_decoder.pt
+  decoder_report: reports/talent/semantic_decoder.json
   manipulator_model: models/talent/latent_intervention.pt
+  # Flow variants use separate paths so legacy h_Z artifacts stay unchanged.
+  flow_manipulator_model: models/talent/latent_intervention_{variant}.pt
+  flow_teacher_model: models/talent/latent_intervention_state_flow.pt
   eval_report: reports/talent/eval.json
+  flow_eval_report: reports/talent/eval_{variant}.json

@@ -1,13 +1,20 @@
 # Text encoder
 
-Set `encoder.variant` to `langvae` (the default) or `nomic`. LangVAE stores the
-128-dimensional deterministic posterior mean, but its checkpoint was trained
-on short EntailmentBank explanations rather than CVs.
+`encoder.variant` selects the frozen 128-dimensional text representation used by every
+downstream model:
 
-Nomic Embed Text v1.5 is the preferred comparison: it was trained as a general
-text embedder and provides a trained 128-dimensional Matryoshka representation.
-It uses the required `classification:` prefix and normalized embeddings. The
-shared 512-token limit remains unchanged pending separate long-input work.
+- `langvae` (default) stores the deterministic posterior mean. Its checkpoint was trained on
+  short EntailmentBank explanations rather than CVs.
+- `nomic` stores Nomic Embed Text v1.5's normalized, 128-dimensional Matryoshka representation
+  with the required `classification:` task prefix. It is the preferred general-text comparison.
 
-Changing encoder requires regenerating latents and retraining all downstream
-models; artifacts from the two latent spaces are not interchangeable.
+The input limit remains 512 tokens. The active text-generation pipeline separately rejects CVs
+above 500 GPT-2 tokens, leaving a small margin below LangVAE's input limit; validation also reports
+the observed length distribution. Longer-input or chunked representations are separate research
+choices and are not introduced here.
+
+The latent sidecar records the chosen encoder, pinned revisions (or the content hash of a local
+LangVAE checkpoint), input hashes, shape, and the hash of the serialized latent tensor. Loading
+verifies this information against the active configuration and inputs. Changing encoder, revision,
+local checkpoint contents, or source data therefore requires re-encoding and retraining the
+semantic decoder and latent manipulator: LangVAE and Nomic latent spaces are not interchangeable.

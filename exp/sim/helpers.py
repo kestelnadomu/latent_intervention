@@ -229,8 +229,13 @@ def generate_with_attempts(
     row_id: int,
     maximum: int,
     call: Callable[[], GenerationResult],
+    reject: Callable[[str], str | None] | None = None,
 ) -> GenerationResult:
-    """Return one accepted response, making at most ``maximum`` calls per ID."""
+    """Return one accepted response, making at most ``maximum`` calls per ID.
+
+    ``reject`` optionally checks the text and returns a reason to discard it
+    (e.g. a token budget); a rejected response spends an attempt like a failure.
+    """
     info_path = generation_info_path(output)
     info = json.loads(info_path.read_text(encoding="utf-8"))
     attempts = info.setdefault("attempts", {})
@@ -248,6 +253,9 @@ def generate_with_attempts(
                 raise RuntimeError(f"finish_reason={result.finish_reason!r}")
             if not result.model or not result.model.strip():
                 raise RuntimeError("response model is missing")
+            reason = reject(result.text) if reject is not None else None
+            if reason:
+                raise RuntimeError(f"rejected: {reason}")
             return result
         except RuntimeError as exc:
             print(f"id={row_id} attempt {attempt}/{maximum} failed: {exc}")
