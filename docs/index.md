@@ -11,6 +11,8 @@ Answering this question requires causal reasoning to generate this person's data
 <!-- Contribution -->
 In this work, we propose a methodology to generate a counterfactual latent representation of a text input. We use a pre-trained variational autoencoder (VAE) to map text to a latent representation, and train a neural manipulator model to transform these representations analogously to a causal intervention (abduction-action-prediction) on observable data w.r.t. a sensitive attribute. This manipulator is supervised by a semantic decoder that maps a fraction of the latent space to a structured representation, thus providing a consistency signal during training. We sketch the architecture, propose a training objective for the manipulator, and discuss its limitations (see Figure~\ref{fig:demo}).
 
+For the sharpened contribution statement, its generalisation to arbitrary symbolic operators, and positioning against causal abstraction / DAS / ReFT, see [contribution.md](contribution.md).
+
 Our work adds to the emerging research at the intersection of neurosymbolic AI and algorithmic fairness \cite[e.g.,][]{wagner_neural_2021, adriaensen_problog4fairness_2026, heilmann2026neurosymbolic} and illustrates the potential of neurosymbolic approaches for flexible bias mitigation.
 <!-- 
 \begin{figure}
