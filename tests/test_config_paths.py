@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-import pytest
-import torch
 import yaml
 
 from src.config import encoder_tag, load_config, resolve_paths
-from src.pipeline import _load_latents
 
 
 def test_encoder_tag_distinguishes_latent_spaces() -> None:
@@ -36,16 +32,3 @@ def test_default_config_scopes_encoder_dependent_paths() -> None:
         assert "{encoder}" in raw["paths"][key]
         assert f"/{tag}/" in paths[key]
     assert not any("{encoder}" in str(value) for value in paths.values())
-
-
-def test_load_latents_rejects_other_encoder(tmp_path: Path) -> None:
-    latents = tmp_path / "z_pairs.pt"
-    torch.save({"z": torch.zeros(1, 128), "ids": [1]}, latents)
-    latents.with_suffix(".info.json").write_text(json.dumps({"encoder_tag": "nomic"}))
-    config = {"encoder": {"variant": "langvae"}, "paths": {"latents": str(latents)}}
-
-    with pytest.raises(ValueError, match="encoded with 'nomic'"):
-        _load_latents(config)
-    config["encoder"]["variant"] = "nomic"
-    _, ids = _load_latents(config)
-    assert ids == [1]

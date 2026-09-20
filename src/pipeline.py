@@ -26,7 +26,7 @@ from typing import Any
 import pandas as pd
 import torch
 
-from src.config import encoder_tag, load_config
+from src.config import load_config
 from src.latent_intervention import (
     LatentIntervention,
     LatentInterventionDist,

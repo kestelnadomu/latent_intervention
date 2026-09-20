@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Callable
 import json
 from dataclasses import dataclass
 from importlib.metadata import PackageNotFoundError, version
@@ -370,15 +369,8 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
     if encoder_factory is None:
         from src.encoder import make_encoder
 
-        encoder = make_encoder(enc)
-    else:
-        encoder = encoder_factory(
-            model_name=enc["model_name"],
-            model_revision=enc.get("model_revision"),
-            device=enc["device"],
-            max_len=int(enc["max_len"]),
-            local_checkpoint=enc.get("local_checkpoint"),
-        )
+        encoder_factory = make_encoder
+    encoder = encoder_factory(enc)
     if int(encoder.latent_dim) != _LATENT_DIMENSION:
         raise ValueError(
             f"encoder latent dimension must be 128, got {encoder.latent_dim}"
