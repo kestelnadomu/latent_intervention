@@ -21,6 +21,7 @@ encoder:
   max_len: 512
   batch_size: 16
   device: cpu
+  deterministic: true
 
 semantic_decoder:
   # variant: which g parameterisation (docs/architecture/semantic_decoder.md)
@@ -33,7 +34,8 @@ semantic_decoder:
   epochs: 50
   batch_size: 64
   lr: 1.0e-3
-  val_split: 0.2
+  calibration_split: 0.2  # held out from official training IDs; official test stays untouched
+  calibration_bins: 10
   autoregressive:
     embed_dim: 16          # decoded-prefix embedding size
 

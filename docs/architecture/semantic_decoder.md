@@ -24,9 +24,15 @@ Code: `src/semantic_decoder.py`; select a variant with `semantic_decoder.variant
 | `autoregressive` | `SemanticAutoRegDecoder` | $\prod_i g(s_i\mid s_{<i}, z)$ | 13 (heads widen with the prefix) | exact | implemented |
 | flat softmax | — | $\mathrm{softmax}(W h)_{\mathbf s}$ | $\lvert\mathcal S\rvert = 108$ | exact | rejected |
 
-Both variants share the MLP trunk and training loop and expose the same interface: `forward`
-(per-column logits), `nll`, `predict`, `log_joint` (dense $(batch, 108)$ vector in
-column-major order, the view that $h_S$ and $h_Z$ consume), `save`/`load`.
+The implementation is schema-generic. Both variants expose `nll`, `predict`, `log_joint`,
+`marginal_probabilities`, and `save`/`load`. Their `forward` methods are intentionally different:
+`SemanticDecoder.forward(z)` returns independent logits, whereas
+`SemanticAutoRegDecoder.forward(z, targets)` (also named `conditional_logits`) returns
+teacher-forced conditional logits and therefore requires the true prefix targets.
+
+`log_joint` returns one dense value per joint state. It uses mixed-radix schema order: the first
+column is most significant and the last column varies fastest. This is the same order consumed by
+$h_S$ and $h_Z$.
 
 ## Training
 
@@ -36,19 +42,30 @@ $$\mathcal L_g = \mathbb E_{(z,\mathbf s)}\big[-\log g(\mathbf s\mid z)\big]$$
   $p(\mathbf s\mid z)$. No noise model is needed.
 * `train_semantic_decoder(decoder, latents, targets)` works for both variants via `decoder.nll`.
   `targets_from_dataframe` turns a sim CSV into per-column targets.
+* `pair_index.csv` is the sole train/test authority. Decoder fitting and the deterministic
+  calibration holdout both use official training IDs; official test IDs are reserved for final
+  evaluation. The manipulator is trained on all official training IDs.
 * **Calibration matters more than accuracy.** The consistency target $h_S\circ g$ uses $g$'s
-  probabilities directly, so a miscalibrated $g$ corrupts every $h_Z$ plan. Measure it (per-column
-  ECE, reliability curves) and apply temperature scaling on a held-out split if needed.
+  probabilities directly, so a miscalibrated $g$ corrupts every $h_Z$ plan. The decoder report
+  records per-column accuracy, ECE, and nonempty reliability bins on the train-only calibration
+  holdout. These measurements are descriptive; no temperature scaling is applied at present.
 * **Loss scales differ.**
-  * `independent`: `nll` is the *mean* cross-entropy per column (the joint NLL divided by 4).
+  * `independent`: `nll` is the *mean* cross-entropy per column (the joint NLL divided by the number of schema columns).
   * `autoregressive`: `nll` is the *full* joint NLL.
 
   The effective learning rate differs between the variants, and so does any downstream loss that
-  calls `decoder.nll` (the Plan 0 consistency term, Plan C's realiser pretraining) relative to its
+  calls `decoder.nll` (the Plan 0 consistency term, Plan B's realiser pretraining) relative to its
   penalties.
 * **$T$ has a ceiling.** $T$ is never verbalised and reaches the text only through the proxies
   $P, L, H, A$. The $T$ head cannot beat the Bayes-optimal recovery
   `exp.sim.talent_sfm.talent_posterior_accuracy()`. Compare against it, not against 100 %.
+
+The latent artifact records the frozen encoder identity and a content hash. Decoder checkpoints
+record that identity, latent hash, schema signature, and hashes of their structured training
+inputs. The manipulator sidecar binds its exact checkpoint to the decoder, latent artifact, and
+counterfactual targets. Downstream loading rejects missing or incompatible metadata with an
+instruction to re-encode or retrain. The existing `encode`, `train-decoder`,
+`train-manipulator`, and `evaluate` stages are the only public pipeline stages.
 
 ---
 
@@ -87,7 +104,7 @@ class SemanticDecoder(nn.Module):
         h = self.trunk(z)
         return {name: head(h) for name, head in self.heads.items()}
 
-    def log_joint(self, z):                 # (batch, |S|), column-major
+    def log_joint(self, z):                 # (batch, |S|), last column varies fastest
         logps = [F.log_softmax(l, dim=-1) for l in self.forward(z).values()]
         acc = logps[0]
         for lp in logps[1:]:
@@ -117,6 +134,9 @@ $$g(\mathbf s\mid z) = \prod_{i} \mathrm{softmax}\big(W_i\,[\,h(z),\ e(s_{<i})\,
 * Each head conditions on the full prefix, not only on the SCM parents $\mathbf{pa}(i)$. That is
   harmless and more flexible.
 * **Training:** teacher forcing on the true prefix (`log_prob`).
+* **`forward(z, targets)` / `conditional_logits(z, targets)`:** returns the teacher-forced
+  per-column conditional logits. Omitting `targets` is an error because later heads require their
+  prefixes.
 * **`predict`:** greedy sequential argmax.
 * **`log_joint`:** enumerates all prefixes, i.e. one head evaluation per partial state, which is
   cheap at $\lvert\mathcal S\rvert = 108$.

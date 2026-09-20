@@ -22,14 +22,14 @@ class SymbolicKernel(Protocol):
     """
     Minimal interface for a symbolic counterfactual kernel h_S(s' | s, delta).
 
-    ``columns`` is the structured-state schema in column-major flat-index order
-    (matching ``SemanticDecoder.log_joint``).
+    ``columns`` is the structured-state schema in mixed-radix flat-index order,
+    with the last schema column varying fastest (matching decoder ``log_joint``).
     """
 
     columns: list[ColumnSpec]
 
     def state_index(self, state: dict[str, int]) -> int:
-        """Flat column-major index of a structured state."""
+        """Flat mixed-radix index of a structured state."""
         ...
 
     def transition_matrix(self, delta: dict[str, int]) -> torch.Tensor:
