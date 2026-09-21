@@ -3,7 +3,8 @@
 ``render_context`` and ``validate_grounding`` already re-derive the split and
 check each file against the render plan; this stage adds coverage and the
 cross-world checks that only make sense with X and X' side by side, and reports
-texts that use a codebook ``forbidden_terms`` entry.
+texts that use a codebook ``forbidden_terms`` entry, plus texts over the
+``text_length`` token budget.
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ import pandas as pd
 
 from exp.sim.helpers import prepare_generated_csv
 from exp.sim.render import generation_digest, render_context, validate_grounding
+from exp.sim.text_length import load_token_counter, report_text_lengths
 
 
 def report_forbidden_terms(frame: pd.DataFrame, terms: list[str], world: str) -> None:
@@ -87,6 +89,12 @@ def stage_validate_pairs(config: dict[str, Any]) -> None:
                 raise ValueError(f"unchanged bin was rendered differently for id={row_id}")
     for world, frame in (("factual", factual_text), ("counterfactual", counterfactual_text)):
         report_forbidden_terms(frame, ctx.spec["forbidden_terms"], world)
+    budget = load_token_counter(config)
+    if budget is not None:
+        report_text_lengths(factual_text, *budget, "factual", ctx.factual_by_id)
+        report_text_lengths(
+            counterfactual_text, *budget, "counterfactual", ctx.counterfactual_by_id
+        )
     print(
         f"validated {len(all_ids)} factual units and "
         f"{len(counterfactual_ids)} counterfactual pairs"

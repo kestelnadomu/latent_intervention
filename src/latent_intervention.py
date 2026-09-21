@@ -2,26 +2,33 @@
 Latent editor h_Z(z' | z, delta): Z -> Delta(Z).
 
 Freeze f, g, h_S; train h_Z so the two paths from z to a distribution over counterfactual
-states agree (h_S . g == g . h_Z). See docs/architecture/latent_intervention.md.
+states agree (h_S . g == g . h_Z). See docs/architecture/latent_intervention.md, which holds
+the overview table, benefits and caveats of every plan.
 
-Three parameterisations:
+Five parameterisations (config `latent_intervention.variant`):
 
-- LatentIntervention  -- Plan 0 (baseline): deterministic residual transformer
-  z' = z + T_theta(z, delta). Cannot represent the multimodality of (h_S . g) in the
-  ambiguous strata; kept as a baseline, trained by per-column CE against S'.
-- LatentInterventionPreAdditive -- Plan A (engression): z' = z + Delta_theta(z + eps, delta),
-  eps ~ N(0, sigma^2 I). h_Z is the pushforward of eps; a nonlinear Delta_theta folds a
-  unimodal eps onto separated modes. Composition g . h_Z needs Monte Carlo.
-- LatentInterventionDist -- Plan B (discrete mixture):
-  h_Z(. | z, delta) = sum_s' w_theta(s' | z, delta) * dirac_{z + Delta_phi(z, s')}.
-  w_theta is an autoregressive head over S (the SCM internalised, no h_S at inference);
-  Delta_phi is a deterministic realiser. Composition is an exact finite sum over the
-  retained top-k s'. Trained pretrain-then-joint.
+- LatentIntervention (`baseline`) -- Plan 0: deterministic z' = z + Delta_theta(z, delta).
+  Trained by per-column CE against the simulated S'; learns the per-column marginals of the
+  counterfactual and cannot represent its multimodality.
+- LatentInterventionPreAdditive (`pre_additive`) -- Plan A (engression):
+  z' = z + Delta_theta(z + eps, delta), eps ~ N(0, sigma^2 I). Monte-Carlo composition.
+- LatentInterventionNoiseToken (`noise_token`) -- Plan B (outsourced noise):
+  z' = z + Delta_theta(z, eps, delta), eps ~ N(0, I_r) as its own token, so z reaches
+  Delta intact. Monte-Carlo composition + per-sample entropy term.
+- LatentInterventionDist (`dist`) -- Plan C (discrete mixture over states):
+  h_Z = sum_{s' in top-k} w_theta(s' | z, delta) * dirac_{z + Delta_phi(z, s')}.
+  w_theta is an autoregressive head distilled from h_S . g; Delta_phi is a do()-agnostic
+  realiser. Exact composition; trained pretrain-then-joint.
+- LatentInterventionParticles (`particles`) -- Plan D (particle set):
+  h_Z = sum_j w_j(z, delta) * dirac_{z + Delta_j(z, delta)}, j = 1..d, from d learned
+  query tokens. Exact composition + weighted per-particle entropy term.
 
-The consistency objective (Plan A/B) is
+The consistency objective (Plans A-D) is
     L = E_z[ D_KL( (h_S . g)(. | z, delta) || (g . h_Z)(. | z, delta) ) ]
-        + alpha ||z' - z||_1 + beta ||z' - z||_2^2
-with forward (mass-covering) KL over the dense |S| = prod(cardinalities) vector.
+        + lambda * E_{z' ~ h_Z}[ H(g(. | z')) ]                  (Plans B, D)
+        + alpha * mean|z' - z| + beta * mean (z' - z)^2
+with forward (mass-covering) KL over the dense |S| = prod(cardinalities) vector. The
+penalties average over latent dimensions and over samples / components / particles.
 
 Common scaffolding (config + persistence, the training loop, the latent-space penalties)
 lives in `_ManipulatorBase` and `_train`; each plan supplies only its model body and its
@@ -37,7 +44,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from src.schema import ColumnSpec, flat_state_index, unflatten_state_index
-from src.semantic_decoder import SemanticDecoder
+from src.semantic_decoder import SemanticDecoder, SemanticDecoderModel
 from src.symbolic_intervention import SymbolicKernel
 
 __all__ = [
@@ -45,12 +52,16 @@ __all__ = [
     "unflatten_state_index",
     "LatentIntervention",
     "LatentInterventionPreAdditive",
+    "LatentInterventionNoiseToken",
     "LatentInterventionDist",
+    "LatentInterventionParticles",
     "make_objective",
     "consistency_target",
     "train_latent_intervention",
     "train_latent_intervention_preadditive",
+    "train_latent_intervention_noise_token",
     "train_latent_intervention_dist",
+    "train_latent_intervention_particles",
 ]
 
 
@@ -76,7 +87,11 @@ class _DoSpecTokens(nn.Module):
 
 
 class _DeltaNet(nn.Module):
-    """[vec token, condition tokens] -> single-layer transformer -> zero-init residual."""
+    """[vec token, (noise token,) condition tokens] -> single-layer transformer -> zero-init residual.
+
+    With `noise_dim > 0` an extra token carries an outsourced noise vector, kept separate
+    from the latent so the conditioning information reaches the network intact.
+    """
 
     def __init__(
         self,
@@ -86,9 +101,11 @@ class _DeltaNet(nn.Module):
         nhead: int,
         dim_feedforward: int,
         dropout: float,
+        noise_dim: int = 0,
     ) -> None:
         super().__init__()
         self.vec_proj = nn.Linear(latent_dim, d_model)
+        self.noise_proj = nn.Linear(noise_dim, d_model) if noise_dim > 0 else None
         self.cond = _DoSpecTokens(columns, d_model)
         self.layer = nn.TransformerEncoderLayer(
             d_model, nhead, dim_feedforward, dropout, batch_first=True
@@ -97,9 +114,20 @@ class _DeltaNet(nn.Module):
         nn.init.zeros_(self.out.weight)
         nn.init.zeros_(self.out.bias)  # identity mapping at init
 
-    def forward(self, vec: torch.Tensor, values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-        tokens = torch.cat([self.vec_proj(vec).unsqueeze(1), self.cond(values, mask)], dim=1)
-        return self.out(self.layer(tokens)[:, 0])
+    def forward(
+        self,
+        vec: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        noise: torch.Tensor | None = None,
+    ) -> torch.Tensor:
+        if (noise is None) != (self.noise_proj is None):
+            raise ValueError("pass `noise` exactly when the net was built with noise_dim > 0")
+        tokens = [self.vec_proj(vec).unsqueeze(1)]
+        if noise is not None:
+            tokens.append(self.noise_proj(noise).unsqueeze(1))
+        tokens.append(self.cond(values, mask))
+        return self.out(self.layer(torch.cat(tokens, dim=1))[:, 0])
 
 
 def _autoreg_log_joint(
@@ -111,7 +139,7 @@ def _autoreg_log_joint(
     """Dense (batch, |S|) log-probabilities of an autoregressive product over `columns`.
 
     Each head sees `context` plus embeddings of the already-decoded prefix; states are
-    enumerated in column-major order (matches SemanticDecoder.log_joint).
+    enumerated in mixed-radix schema order, with the last column varying fastest.
     """
     batch = context.shape[0]
     acc = context.new_zeros(batch, 1)
@@ -131,6 +159,19 @@ def _autoreg_log_joint(
             dim=-1,
         ).reshape(batch, n_states * col.n_categories, -1)
     return acc
+
+
+def _mc_mixture(
+    zs: torch.Tensor, decoder: SemanticDecoder
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """
+    Monte-Carlo composition over latent samples zs (M, batch, latent_dim).
+
+    Returns log (g . h_Z) as the log-mean-exp of g's dense joints, (batch, |S|), and the
+    per-sample joints themselves, (M, batch, |S|).
+    """
+    log_joints = torch.stack([decoder.log_joint(z_m) for z_m in zs])
+    return torch.logsumexp(log_joints, dim=0) - math.log(zs.shape[0]), log_joints
 
 
 def _forward_kl(pred_log: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
@@ -188,12 +229,13 @@ class _ManipulatorBase(nn.Module):
     @classmethod
     def load(cls, path: str | Path, device: str | torch.device | None = None):
         """Restore a manipulator saved with save(); returns it in eval mode."""
-        payload = torch.load(Path(path), map_location=device or "cpu", weights_only=True)
+        target_device = torch.device(device or "cpu")
+        payload = torch.load(Path(path), map_location=target_device, weights_only=True)
         if payload.get("class", cls.__name__) != cls.__name__:
             raise ValueError(f"checkpoint holds a {payload['class']}, not a {cls.__name__}")
         config = dict(payload["config"])
         config["columns"] = [ColumnSpec(name, card) for name, card in config["columns"]]
-        model = cls(**config)
+        model = cls(**config).to(target_device)
         model.load_state_dict(payload["state_dict"])
         model.eval()
         return model
@@ -226,7 +268,7 @@ def make_objective(
 
 @torch.no_grad()
 def consistency_target(
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     h_s: SymbolicKernel,
     latents: torch.Tensor,
     intervention: dict[str, int],
@@ -257,7 +299,7 @@ _BatchLoss = Callable[
 
 def _train(
     model: _ManipulatorBase,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     *,
@@ -360,7 +402,7 @@ class LatentIntervention(_ManipulatorBase):
 
 def train_latent_intervention(
     model: LatentIntervention,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     s_prime: dict[str, torch.Tensor] | None = None,
@@ -476,7 +518,7 @@ class LatentInterventionPreAdditive(_ManipulatorBase):
         z: torch.Tensor,
         values: torch.Tensor,
         mask: torch.Tensor,
-        decoder: SemanticDecoder,
+        decoder: SemanticDecoderModel,
         n_samples: int,
         generator: torch.Generator | None = None,
     ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -485,14 +527,13 @@ class LatentInterventionPreAdditive(_ManipulatorBase):
         plus the sampled latent shifts (n_samples, batch, latent_dim) for penalties.
         """
         zs = self.sample(z, values, mask, n_samples, generator)
-        log_joints = torch.stack([decoder.log_joint(z_m) for z_m in zs])  # (M, batch, |S|)
-        composed = torch.logsumexp(log_joints, dim=0) - math.log(n_samples)
+        composed, _ = _mc_mixture(zs, decoder)
         return composed, zs - z
 
 
 def train_latent_intervention_preadditive(
     model: LatentInterventionPreAdditive,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     s_prime: dict[str, torch.Tensor] | None = None,  # unused; uniform call site
@@ -543,7 +584,149 @@ def train_latent_intervention_preadditive(
     )
 
 
-# --- Plan B: discrete mixture over counterfactual states -----------------------------
+# --- Plan B: outsourced noise token ------------------------------------------------
+
+
+class LatentInterventionNoiseToken(_ManipulatorBase):
+    """z' = z + Delta_theta(z, eps, delta), eps ~ N(0, I_k) fed as its own token."""
+
+    def __init__(
+        self,
+        latent_dim: int,
+        columns: list[ColumnSpec],
+        noise_dim: int = 4,
+        d_model: int = 128,
+        nhead: int = 4,
+        dim_feedforward: int = 256,
+        dropout: float = 0.1,
+    ) -> None:
+        if noise_dim < 1:
+            raise ValueError(f"noise_dim must be >= 1, got {noise_dim}")
+        super().__init__(
+            latent_dim,
+            columns,
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            noise_dim=noise_dim,
+        )
+        self.noise_dim = noise_dim
+        self.delta = _DeltaNet(
+            latent_dim, self.columns, d_model, nhead, dim_feedforward, dropout, noise_dim
+        )
+
+    def forward(
+        self,
+        z: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """One sample z' ~ h_Z(. | z, delta)."""
+        eps = torch.randn(z.shape[0], self.noise_dim, device=z.device, generator=generator)
+        return z + self.delta(z, values, mask, eps)
+
+    def sample(
+        self,
+        z: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        n_samples: int,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """(n_samples, batch, latent_dim) draws from h_Z."""
+        return torch.stack(
+            [self.forward(z, values, mask, generator) for _ in range(n_samples)]
+        )
+
+    def composed_log_joint(
+        self,
+        z: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        decoder: SemanticDecoder,
+        n_samples: int,
+        generator: torch.Generator | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """
+        Monte-Carlo log (g . h_Z)(. | z, delta), shape (batch, |S|), the sampled latent
+        shifts (n_samples, batch, latent_dim), and the mean per-sample decoder entropy
+        E_eps[H(g(. | z'_eps))] (scalar).
+        """
+        zs = self.sample(z, values, mask, n_samples, generator)
+        composed, log_joints = _mc_mixture(zs, decoder)
+        entropy = -(log_joints.exp() * log_joints).sum(dim=-1).mean()
+        return composed, zs - z, entropy
+
+
+def train_latent_intervention_noise_token(
+    model: LatentInterventionNoiseToken,
+    decoder: SemanticDecoder,
+    latents: torch.Tensor,
+    intervention: dict[str, int],
+    s_prime: dict[str, torch.Tensor] | None = None,  # unused; uniform call site
+    *,
+    h_s: SymbolicKernel | None = None,
+    n_samples: int = 8,
+    entropy_weight: float = 0.1,
+    epochs: int = 50,
+    batch_size: int = 64,
+    lr: float = 1e-4,
+    proximity_weight: float = 1.0,
+    sparsity_weight: float = 1.0,
+    seed: int | None = None,
+    device: str | torch.device | None = None,
+    verbose: bool = True,
+) -> list[dict[str, float]]:
+    """
+    Train Plan B on forward KL + a per-sample entropy penalty (decoder + h_S frozen).
+
+    The KL alone cannot tell "ignore eps, park z' where g is ambiguous" (Plan 0's
+    solution) from "use eps to scatter z' over points where g is confident": both give
+    the same g . h_Z. `entropy_weight` * E_eps[H(g(. | z'_eps))] prefers the latter, so
+    the mixture has to come from eps. The logged `spread` (mean norm of the per-dimension
+    std of z' across eps) is the diagnostic for eps being ignored (spread ~ 0).
+    """
+    if h_s is None:
+        raise ValueError("noise-token training needs the symbolic kernel `h_s`")
+
+    def setup(device: torch.device, _gen: torch.Generator, z: torch.Tensor) -> dict:
+        return {"target": consistency_target(decoder, h_s, z, intervention).to(device)}
+
+    def batch_loss(_phase, ctx, generator, z, v, m, idx):
+        composed, shifts, entropy = model.composed_log_joint(
+            z, v, m, decoder, n_samples, generator
+        )
+        kl = _forward_kl(composed, ctx["target"][idx])
+        sparsity, proximity, penalty = _penalties(shifts, sparsity_weight, proximity_weight)
+        total = kl + entropy_weight * entropy + penalty
+        return total, {
+            "total": total.item(),
+            "kl": kl.item(),
+            "entropy": entropy.item(),
+            "spread": shifts.detach().std(dim=0).norm(dim=-1).mean().item(),
+            "sparsity": sparsity.item(),
+            "proximity": proximity.item(),
+        }
+
+    return _train(
+        model,
+        decoder,
+        latents,
+        intervention,
+        phases=[("train", epochs)],
+        batch_size=batch_size,
+        lr=lr,
+        seed=seed,
+        device=device,
+        verbose=verbose,
+        setup=setup,
+        batch_loss=batch_loss,
+    )
+
+
+# --- Plan C: discrete mixture over counterfactual states -----------------------------
 
 
 class _AutoregWeights(nn.Module):
@@ -638,12 +821,28 @@ class LatentInterventionDist(_ManipulatorBase):
         idx, _ = self.w_theta.top_k(z, values, mask, 1)
         return self.realise(z, unflatten_state_index(idx[:, 0], self.columns))
 
+    def sample(
+        self,
+        z: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        n_samples: int,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """(n_samples, batch, latent_dim) draws: s' ~ renormalised top-k w_theta, then realise."""
+        idx, logw = self.w_theta.top_k(z, values, mask, self.top_k)  # (batch, k)
+        pick = torch.multinomial(logw.exp(), n_samples, replacement=True, generator=generator)
+        states = idx.gather(1, pick)  # (batch, n_samples)
+        return torch.stack(
+            [self.realise(z, unflatten_state_index(states[:, m], self.columns)) for m in range(n_samples)]
+        )
+
     def composed_log_joint(
         self,
         z: torch.Tensor,
         values: torch.Tensor,
         mask: torch.Tensor,
-        decoder: SemanticDecoder,
+        decoder: SemanticDecoderModel,
     ) -> tuple[torch.Tensor, torch.Tensor]:
         """
         Exact log (g . h_Z)(. | z, delta) over the retained top-k s', shape (batch, |S|),
@@ -661,7 +860,7 @@ class LatentInterventionDist(_ManipulatorBase):
 
 def train_latent_intervention_dist(
     model: LatentInterventionDist,
-    decoder: SemanticDecoder,
+    decoder: SemanticDecoderModel,
     latents: torch.Tensor,
     intervention: dict[str, int],
     s_prime: dict[str, torch.Tensor] | None = None,
@@ -680,7 +879,7 @@ def train_latent_intervention_dist(
     verbose: bool = True,
 ) -> list[dict[str, float]]:
     """
-    Plan B, pretrain-then-joint (decoder + h_S frozen):
+    Plan C, pretrain-then-joint (decoder + h_S frozen):
 
     - **Pretrain** splits the bilevel problem into two supervised ones:
       w_theta distils the dense target (h_S . g)(. | z, delta); the realiser Delta_phi
@@ -741,80 +940,181 @@ def train_latent_intervention_dist(
     )
 
 
-if __name__ == "__main__":
-    # Smoke tests on a random schema: identity at init, then a short training run for
-    # each plan against a randomly initialised frozen decoder and a stub h_S.
-    torch.manual_seed(0)
-    latent_dim, n = 128, 192
-    columns = [ColumnSpec(f"c{i}", int(k)) for i, k in enumerate(torch.randint(2, 4, (5,)))]
-    total_states = 1
-    for col in columns:
-        total_states *= col.n_categories
+# --- Plan D: deterministic particle set ----------------------------------------------
 
-    class _StubKernel:
-        """Identity h_S: every factual state is its own counterfactual (rows sum to 1)."""
 
-        columns = columns
+class LatentInterventionParticles(_ManipulatorBase):
+    """h_Z(. | z, delta) = sum_j w_j(z, delta) dirac_{z + Delta_j(z, delta)}, j = 1..d.
 
-        def state_index(self, state: dict[str, int]) -> int:
-            idx = 0
-            for c in self.columns:
-                idx = idx * c.n_categories + int(state[c.name])
-            return idx
+    d learned query tokens attend to [latent token, do() tokens]; each query's output is
+    one particle's shift (zero-init -> every particle starts at z) and, unless
+    `uniform_weights`, one mixture logit (zero-init -> uniform weights at start). The
+    particles carry no S labels; the random query embeddings break their symmetry.
+    """
 
-        def transition_matrix(self, delta: dict[str, int]) -> torch.Tensor:
-            eye = torch.arange(total_states)
-            return torch.sparse_coo_tensor(
-                torch.stack([eye, eye]), torch.ones(total_states), (total_states, total_states)
-            ).coalesce()
+    def __init__(
+        self,
+        latent_dim: int,
+        columns: list[ColumnSpec],
+        n_particles: int = 16,
+        uniform_weights: bool = False,
+        d_model: int = 128,
+        nhead: int = 4,
+        dim_feedforward: int = 256,
+        dropout: float = 0.1,
+    ) -> None:
+        if n_particles < 1:
+            raise ValueError(f"n_particles must be >= 1, got {n_particles}")
+        super().__init__(
+            latent_dim,
+            columns,
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=dim_feedforward,
+            dropout=dropout,
+            n_particles=n_particles,
+            uniform_weights=uniform_weights,
+        )
+        self.n_particles = n_particles
+        self.uniform_weights = uniform_weights
+        self.vec_proj = nn.Linear(latent_dim, d_model)
+        self.cond = _DoSpecTokens(self.columns, d_model)
+        self.queries = nn.Parameter(0.02 * torch.randn(n_particles, d_model))
+        self.layer = nn.TransformerEncoderLayer(
+            d_model, nhead, dim_feedforward, dropout, batch_first=True
+        )
+        self.out = nn.Linear(d_model, latent_dim)
+        nn.init.zeros_(self.out.weight)
+        nn.init.zeros_(self.out.bias)  # every particle at z at init
+        self.weight_head = None if uniform_weights else nn.Linear(d_model, 1)
+        if self.weight_head is not None:
+            nn.init.zeros_(self.weight_head.weight)
+            nn.init.zeros_(self.weight_head.bias)  # uniform weights at init
 
-        def compose(self, g_probs: torch.Tensor, delta: dict[str, int]) -> torch.Tensor:
-            return g_probs
+    def particles(
+        self, z: torch.Tensor, values: torch.Tensor, mask: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """(n_particles, batch, latent_dim) shifts and (batch, n_particles) log-weights."""
+        batch = z.shape[0]
+        tokens = torch.cat(
+            [
+                self.vec_proj(z).unsqueeze(1),
+                self.cond(values, mask),
+                self.queries.unsqueeze(0).expand(batch, -1, -1),
+            ],
+            dim=1,
+        )
+        h = self.layer(tokens)[:, -self.n_particles :]  # (batch, d, d_model)
+        shifts = self.out(h).transpose(0, 1)
+        if self.weight_head is None:
+            log_w = z.new_full((batch, self.n_particles), -math.log(self.n_particles))
+        else:
+            log_w = F.log_softmax(self.weight_head(h).squeeze(-1), dim=-1)
+        return shifts, log_w
 
-    z = torch.randn(n, latent_dim)
-    decoder = SemanticDecoder(latent_dim, columns)
-    h_s = _StubKernel()
-    intervention = {columns[1].name: 1}
-    s_prime = {col.name: torch.randint(col.n_categories, (n,)) for col in columns}
-    s_prime[columns[1].name] = torch.ones(n, dtype=torch.long)
-    values, mask = make_objective(intervention, columns, batch_size=n)
+    def forward(self, z: torch.Tensor, values: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
+        """Inference: the highest-weight particle (deterministic)."""
+        shifts, log_w = self.particles(z, values, mask)
+        best = log_w.argmax(dim=-1)
+        return z + shifts[best, torch.arange(z.shape[0], device=z.device)]
 
-    # Plan 0 -- baseline
-    base = LatentIntervention(latent_dim, columns)
-    with torch.no_grad():
-        assert torch.allclose(base(z, values, mask), z), "baseline: identity at init"
-    h0 = train_latent_intervention(
-        base, decoder, z, intervention, s_prime, epochs=5, seed=0, verbose=False
+    def sample(
+        self,
+        z: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        n_samples: int,
+        generator: torch.Generator | None = None,
+    ) -> torch.Tensor:
+        """(n_samples, batch, latent_dim) draws: pick particles by weight."""
+        shifts, log_w = self.particles(z, values, mask)
+        j = torch.multinomial(log_w.exp(), n_samples, replacement=True, generator=generator)
+        rows = torch.arange(z.shape[0], device=z.device)
+        return z + shifts[j.t(), rows]
+
+    def composed_log_joint(
+        self,
+        z: torch.Tensor,
+        values: torch.Tensor,
+        mask: torch.Tensor,
+        decoder: SemanticDecoder,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, dict[str, float]]:
+        """
+        Exact log (g . h_Z)(. | z, delta), shape (batch, |S|); the (n_particles, batch,
+        latent_dim) shifts; the weight-averaged per-particle decoder entropy (scalar); and
+        collapse diagnostics (effective and distinct-state particle counts).
+        """
+        shifts, log_w = self.particles(z, values, mask)
+        log_joints = torch.stack([decoder.log_joint(z + s) for s in shifts])  # (d, batch, |S|)
+        composed = torch.logsumexp(log_w.t()[..., None] + log_joints, dim=0)
+        w = log_w.exp()
+        entropy = (w.t() * -(log_joints.exp() * log_joints).sum(dim=-1)).sum(dim=0).mean()
+        with torch.no_grad():
+            states = log_joints.argmax(dim=-1).sort(dim=0).values  # (d, batch)
+            distinct = 1 + (states[1:] != states[:-1]).sum(dim=0)
+            diag = {
+                "eff_particles": (1.0 / w.pow(2).sum(dim=-1)).mean().item(),
+                "distinct_states": distinct.float().mean().item(),
+            }
+        return composed, shifts, entropy, diag
+
+
+def train_latent_intervention_particles(
+    model: LatentInterventionParticles,
+    decoder: SemanticDecoder,
+    latents: torch.Tensor,
+    intervention: dict[str, int],
+    s_prime: dict[str, torch.Tensor] | None = None,  # unused; uniform call site
+    *,
+    h_s: SymbolicKernel | None = None,
+    entropy_weight: float = 0.1,
+    epochs: int = 50,
+    batch_size: int = 64,
+    lr: float = 1e-4,
+    proximity_weight: float = 1.0,
+    sparsity_weight: float = 1.0,
+    seed: int | None = None,
+    device: str | torch.device | None = None,
+    verbose: bool = True,
+) -> list[dict[str, float]]:
+    """
+    Train Plan D on the exact forward KL + weighted per-particle entropy (decoder + h_S frozen).
+
+    Penalties apply to every particle, unweighted, so low-weight particles stay near z.
+    Logged `eff_particles` (1 / sum_j w_j^2) and `distinct_states` (distinct argmax g over
+    particles) flag collapse and dead particles.
+    """
+    if h_s is None:
+        raise ValueError("particle training needs the symbolic kernel `h_s`")
+
+    def setup(device: torch.device, _gen: torch.Generator, z: torch.Tensor) -> dict:
+        return {"target": consistency_target(decoder, h_s, z, intervention).to(device)}
+
+    def batch_loss(_phase, ctx, _gen, z, v, m, idx):
+        composed, shifts, entropy, diag = model.composed_log_joint(z, v, m, decoder)
+        kl = _forward_kl(composed, ctx["target"][idx])
+        sparsity, proximity, penalty = _penalties(shifts, sparsity_weight, proximity_weight)
+        total = kl + entropy_weight * entropy + penalty
+        return total, {
+            "total": total.item(),
+            "kl": kl.item(),
+            "entropy": entropy.item(),
+            **diag,
+            "sparsity": sparsity.item(),
+            "proximity": proximity.item(),
+        }
+
+    return _train(
+        model,
+        decoder,
+        latents,
+        intervention,
+        phases=[("train", epochs)],
+        batch_size=batch_size,
+        lr=lr,
+        seed=seed,
+        device=device,
+        verbose=verbose,
+        setup=setup,
+        batch_loss=batch_loss,
     )
-    print(f"[plan 0] total {h0[0]['total']:.4f} -> {h0[-1]['total']:.4f}")
-
-    # Plan A -- engression
-    gen = torch.Generator().manual_seed(0)
-    a = LatentInterventionPreAdditive(latent_dim, columns, noise_std=0.5)
-    with torch.no_grad():
-        assert torch.allclose(a(z, values, mask, gen), z), "plan A: identity at init"
-    ha = train_latent_intervention_preadditive(
-        a, decoder, z, intervention, h_s=h_s, n_samples=4, epochs=3, seed=0, verbose=False
-    )
-    print(f"[plan A] total {ha[0]['total']:.4f} -> {ha[-1]['total']:.4f}  kl {ha[-1]['kl']:.4f}")
-
-    # Plan B -- discrete mixture
-    b = LatentInterventionDist(latent_dim, columns, top_k=8)
-    with torch.no_grad():
-        z_b = b(z, values, mask)
-    assert torch.allclose(z_b, z), "plan B: realiser is identity at init"
-    hb = train_latent_intervention_dist(
-        b, decoder, z, intervention, s_prime, h_s=h_s,
-        pretrain_epochs=3, joint_epochs=2, seed=0, verbose=False,
-    )
-    pretrain = [r for r in hb if r["phase"] == 0.0][-1]
-    joint = [r for r in hb if r["phase"] == 1.0][-1]
-    print(f"[plan B] pretrain w_kl {pretrain['w_kl']:.4f} realise_ce {pretrain['realise_ce']:.4f}"
-          f"  joint kl {joint['kl']:.4f}")
-
-    with torch.no_grad():
-        z_prime = b(z, values, mask)
-    preds = decoder.predict(z_prime)
-    consistency = {c.name: (preds[c.name] == s_prime[c.name]).float().mean().item() for c in columns}
-    print("[plan B] consistency accuracy:", {k: round(v, 2) for k, v in consistency.items()})
-    print(f"[plan B] mean latent shift: {(z_prime - z).norm(dim=1).mean():.3f}")
