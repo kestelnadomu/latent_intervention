@@ -5,7 +5,7 @@ $$f: \mathcal X \to \mathcal Z = \mathbb R^{128}$$
 $f$ maps a CV text to a fixed latent. It is **frozen** and deterministic, so $g$ and $h_Z$ are
 trained on a fixed set of latents and $h_Z(f(x))$ is well defined.
 Code: `src/encoder.py`, called by `src/pair_encoding.py` (`pipeline encode`); select a variant
-with `encoder.variant` in `src/config.yaml`.
+with `--encoder-variant langvae|nomic` (or `encoder.variant` in `src/config.yaml`).
 
 **Notation.**
 
@@ -50,6 +50,10 @@ $$\mathcal D_Z = \{(\mathrm{id}, f(x))\} \cup \{(\mathrm{id}, f(x'))\ :\ \mathrm
   prefix, normalisation and input hashes, and the pipeline refuses latents whose tag differs from
   the config. **Changing the encoder means re-encoding and retraining $g$ and $h_Z$.** The two
   latent spaces are not interchangeable.
+* **Pinned loading.** Nomic is first materialised as the configured model revision before its
+  remote loader runs. LangVAE's top-level checkpoint and the BERT/GPT-2 base snapshots it
+  reconstructs are pinned separately. This prevents a moving Hub `main` branch from silently
+  changing an artifact whose metadata claims a fixed revision.
 * **Length budget.** Any token beyond $L$ is cut silently. Generation therefore rejects CVs over
   $B$ GPT-2 tokens (`exp/sim/text_length.py`). On the current `cv_factual.csv`: at most 499 GPT-2
   tokens, 501 BERT-cased tokens, and 498 Nomic tokens including the prefix. Nothing is truncated

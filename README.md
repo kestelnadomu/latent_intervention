@@ -13,7 +13,7 @@ The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 26
 | `exp/sim/` | Data generation pipeline: Python SCM, codebook, generation prompts (`prompts/`), seed statements + job titles, LLM plumbing, stage runner, `config.yaml` (own README) |
 | `exp/sim/R/` | Original SCM simulation in R, kept as the reference implementation (own README, renv) |
 | `src/` | Encoder, semantic decoder, latent manipulator, training/eval pipeline, `config.yaml` (per-module hyperparameters) |
-| `data/` | Generated artifacts (`sim/`, `text/`, `latents/` — only `text/` is tracked) and the older sampling pools |
+| `data/` | Generated simulation/text handoffs (tracked), latent artifacts (local by default), and older sampling pools |
 | `poster/` | Quarto poster and slides |
 
 ## Setup
@@ -21,7 +21,7 @@ The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 26
 Requires Python ≥ 3.12 and [uv](https://docs.astral.sh/uv/). Run all commands from the repository root:
 
 ```bash
-uv sync
+uv sync --extra dev --frozen
 ```
 
 All billed stages—templates, personas, and CVs—use the single endpoint in `exp/sim/config.yaml`. The default configuration targets Azure OpenAI and reads `AZURE_OPENAI_API_KEY`. The key must grant access to that endpoint and to the deployment named `gpt-5.4` in `exp/sim/prompts/*.yaml`.
@@ -51,8 +51,8 @@ The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test 
 | `S`, `S'` | All units | `data/sim_talent/sim_data_{factual,counterfactual}.csv` |
 | `X` | All units | `data/text_talent/cv_factual.csv` |
 | `X'` | All units by default; test only when configured | `data/text_talent/cv_counterfactual.csv` |
-| `Z=f(X)` | All units | `z` in `data/latents/talent/z_pairs.pt` |
-| `Z'=f(X')` | Test units only | `z_prime` in `data/latents/talent/z_pairs.pt` |
+| `Z=f(X)` | All units | `z` in `data/latents/talent/{encoder}/z_pairs.pt` |
+| `Z'=f(X')` | Test units only | `z_prime` in `data/latents/talent/{encoder}/z_pairs.pt` |
 
 By default (`generation.include_train_counterfactual_texts: true` or omitted), `X'` is created for every unit; setting the option to `false` creates `X'` for test units only. Selected identity units copy `X'=X` without another LLM call, and identity test units use `Z'=Z` without another encoding. Nonidentity worlds reuse the same template, persona, and bin quantiles. Training `X'` is available for future work but does not enter the current training losses; `Z'` and counterfactual recovery evaluation remain test-only.
 
@@ -82,15 +82,20 @@ Stop here for the data-generation handoff. Encoding and model training below are
 Paired latent encoding and the existing training/evaluation stages use `src/config.yaml`:
 
 ```bash
-uv run python -m src.pipeline encode             # configured frozen encoder: X plus test X' -> z_pairs.pt
-uv run python -m src.pipeline train-decoder      # semantic decoder g: Z -> S + calibration report
-uv run python -m src.pipeline train-manipulator  # manipulator h_Z against frozen g and counterfactual targets
-uv run python -m src.pipeline evaluate           # consistency accuracy + latent shift -> reports/talent/eval.json
+uv run python -m src.pipeline encode --encoder-variant langvae
+uv run python -m src.pipeline encode --encoder-variant nomic
+
+# Select one encoder/decoder combination per run; artifacts never overwrite another variant.
+uv run python -m src.pipeline train-decoder --encoder-variant langvae --decoder-variant independent
+uv run python -m src.pipeline train-decoder --encoder-variant langvae --decoder-variant autoregressive
+
+uv run python -m src.pipeline train-manipulator --encoder-variant langvae --decoder-variant independent --manipulator-variant baseline
+uv run python -m src.pipeline evaluate --encoder-variant langvae --decoder-variant independent --manipulator-variant baseline
 ```
 
-`pair_index.csv` is the sole train/test authority. `train-decoder` deterministically reserves a calibration holdout only from the official training IDs and writes per-column accuracy, ECE, and reliability bins to `reports/talent/semantic_decoder.json`; these measurements do not apply temperature scaling. `train-manipulator` uses all official training IDs, while `evaluate` uses only official test IDs.
+The same decoder commands work with `--encoder-variant nomic`. `pair_index.csv` is the sole train/test authority. `train-decoder` deterministically reserves a calibration holdout only from the official training IDs and writes per-column accuracy, ECE, and reliability bins below `reports/talent/{encoder}/g-{decoder}/`; these measurements do not apply temperature scaling. `train-manipulator` uses all official training IDs, while `evaluate` uses only official test IDs.
 
-Latent, decoder, and manipulator artifacts are bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
+Latent, decoder, and manipulator artifacts are separated by encoder, decoder, and manipulator variant and bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
 
 When `encoder.variant: langvae` is selected, LangVAE may optionally be fine-tuned first (`uv run python -m src.finetune_vae`); point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder, then regenerate every downstream artifact.
 
