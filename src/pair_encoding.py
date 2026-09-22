@@ -16,6 +16,10 @@ import torch
 _ARTIFACT_VERSION = 1
 _LATENT_DIMENSION = 128
 _NOMIC_MODEL = "nomic-ai/nomic-embed-text-v1.5"
+_LANGVAE_ENCODER_MODEL = "bert-base-cased"
+_LANGVAE_ENCODER_REVISION = "cd5ef92a9fb2f889e972770a36d4ed042daf221e"
+_LANGVAE_DECODER_MODEL = "gpt2"
+_LANGVAE_DECODER_REVISION = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
 _ENCODER_INFO_KEYS = (
     "encoder_variant",
     "encoder",
@@ -27,6 +31,10 @@ _ENCODER_INFO_KEYS = (
     "max_length",
     "deterministic",
     "latent_dimension",
+    "langvae_encoder_model",
+    "langvae_encoder_revision",
+    "langvae_decoder_model",
+    "langvae_decoder_revision",
 )
 
 
@@ -134,12 +142,28 @@ def _active_encoder_info(config: dict[str, Any]) -> dict[str, Any]:
         local_checkpoint = None
         code_revision = config.get("nomic_code_revision")
         task = config.get("nomic_task", "classification")
+        langvae_encoder_model = None
+        langvae_encoder_revision = None
+        langvae_decoder_model = None
+        langvae_decoder_revision = None
     else:
         model = config["model_name"]
         local_checkpoint = config.get("local_checkpoint")
         model_revision = None if local_checkpoint else config.get("model_revision")
         code_revision = None
         task = None
+        langvae_encoder_model = config.get(
+            "langvae_encoder_model_name", _LANGVAE_ENCODER_MODEL
+        )
+        langvae_encoder_revision = config.get(
+            "langvae_encoder_model_revision", _LANGVAE_ENCODER_REVISION
+        )
+        langvae_decoder_model = config.get(
+            "langvae_decoder_model_name", _LANGVAE_DECODER_MODEL
+        )
+        langvae_decoder_revision = config.get(
+            "langvae_decoder_model_revision", _LANGVAE_DECODER_REVISION
+        )
 
     local_path = Path(local_checkpoint).resolve() if local_checkpoint else None
     if local_path is not None:
@@ -160,6 +184,10 @@ def _active_encoder_info(config: dict[str, Any]) -> dict[str, Any]:
         "max_length": int(config["max_len"]),
         "deterministic": True,
         "latent_dimension": _LATENT_DIMENSION,
+        "langvae_encoder_model": langvae_encoder_model,
+        "langvae_encoder_revision": langvae_encoder_revision,
+        "langvae_decoder_model": langvae_decoder_model,
+        "langvae_decoder_revision": langvae_decoder_revision,
     }
 
 

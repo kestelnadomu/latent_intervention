@@ -9,10 +9,10 @@ Stages (hyperparameters from src/config.yaml; data + schema from exp/sim/):
     evaluate           manipulator faithfulness on the official test split
 
 Run from the repository root:
-    uv run python -m src.pipeline encode
-    uv run python -m src.pipeline train-decoder
-    uv run python -m src.pipeline train-manipulator
-    uv run python -m src.pipeline evaluate
+    uv run python -m src.pipeline encode --encoder-variant langvae
+    uv run python -m src.pipeline train-decoder --encoder-variant langvae --decoder-variant independent
+    uv run python -m src.pipeline train-manipulator --encoder-variant langvae --decoder-variant independent
+    uv run python -m src.pipeline evaluate --encoder-variant langvae --decoder-variant independent
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from typing import Any
 import pandas as pd
 import torch
 
-from src.config import load_config
+from src.config import CONFIG_PATH, load_config
 from src.latent_intervention import (
     LatentIntervention,
     LatentInterventionDist,
@@ -47,7 +47,6 @@ from src.semantic_decoder import (
     train_semantic_decoder,
 )
 from src.symbolic_intervention import load_symbolic_kernel
-
 
 INTERVENTION_VARIANTS = {
     "baseline": LatentIntervention,
@@ -454,8 +453,31 @@ def main() -> None:
     parser.add_argument(
         "--config", default=None, help="path to an alternative config YAML"
     )
+    parser.add_argument(
+        "--encoder-variant",
+        choices=("langvae", "nomic"),
+        default=None,
+        help="override encoder.variant before artifact paths are resolved",
+    )
+    parser.add_argument(
+        "--decoder-variant",
+        choices=("independent", "autoregressive"),
+        default=None,
+        help="override semantic_decoder.variant before artifact paths are resolved",
+    )
+    parser.add_argument(
+        "--manipulator-variant",
+        choices=tuple(INTERVENTION_VARIANTS),
+        default=None,
+        help="override latent_intervention.variant before artifact paths are resolved",
+    )
     args = parser.parse_args()
-    config = load_config(path=args.config) if args.config else load_config()
+    config = load_config(
+        path=args.config or CONFIG_PATH,
+        encoder_variant=args.encoder_variant,
+        decoder_variant=args.decoder_variant,
+        manipulator_variant=args.manipulator_variant,
+    )
     STAGES[args.stage](config)
 
 

@@ -7,6 +7,8 @@ import yaml
 
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 ENCODER_PLACEHOLDER = "{encoder}"
+DECODER_PLACEHOLDER = "{decoder}"
+MANIPULATOR_PLACEHOLDER = "{manipulator}"
 
 
 def encoder_tag(encoder: dict[str, Any]) -> str:
@@ -24,18 +26,40 @@ def encoder_tag(encoder: dict[str, Any]) -> str:
     return variant
 
 
+def component_tag(component: dict[str, Any], default: str) -> str:
+    """Return an explicit artifact tag, or the selected component variant."""
+    return str(component.get("tag") or component.get("variant", default))
+
+
 def resolve_paths(config: dict[str, Any]) -> dict[str, Any]:
-    """Replace ``{encoder}`` in ``paths`` with the encoder tag (in place; returns config)."""
+    """Resolve component tags in artifact paths in place and return ``config``."""
     paths = config.get("paths") or {}
-    if any(ENCODER_PLACEHOLDER in str(v) for v in paths.values()):
-        tag = encoder_tag(config.get("encoder") or {})
-        for key, value in paths.items():
-            if isinstance(value, str):
-                paths[key] = value.replace(ENCODER_PLACEHOLDER, tag)
+    replacements = {
+        ENCODER_PLACEHOLDER: encoder_tag(config.get("encoder") or {}),
+        DECODER_PLACEHOLDER: component_tag(
+            config.get("semantic_decoder") or {}, "independent"
+        ),
+        MANIPULATOR_PLACEHOLDER: component_tag(
+            config.get("latent_intervention") or {}, "baseline"
+        ),
+    }
+    for key, value in paths.items():
+        if not isinstance(value, str):
+            continue
+        for placeholder, tag in replacements.items():
+            value = value.replace(placeholder, tag)
+        paths[key] = value
     return config
 
 
-def load_config(section: str | None = None, path: str | Path = CONFIG_PATH) -> dict[str, Any]:
+def load_config(
+    section: str | None = None,
+    path: str | Path = CONFIG_PATH,
+    *,
+    encoder_variant: str | None = None,
+    decoder_variant: str | None = None,
+    manipulator_variant: str | None = None,
+) -> dict[str, Any]:
     """
     Load src/config.yaml (or `path`); return one section if requested.
 
@@ -45,7 +69,16 @@ def load_config(section: str | None = None, path: str | Path = CONFIG_PATH) -> d
     (latents, models, reports) never mix latent spaces.
     """
     with open(Path(path), "r", encoding="utf-8") as f:
-        config = resolve_paths(yaml.safe_load(f))
+        config = yaml.safe_load(f)
+    overrides = {
+        "encoder": encoder_variant,
+        "semantic_decoder": decoder_variant,
+        "latent_intervention": manipulator_variant,
+    }
+    for component, variant in overrides.items():
+        if variant is not None:
+            config[component]["variant"] = variant
+    resolve_paths(config)
     if section is None:
         return config
     if section not in config:

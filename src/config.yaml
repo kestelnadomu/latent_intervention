@@ -12,6 +12,10 @@ encoder:
   variant: langvae       # langvae | nomic (docs/architecture/text_encoder.md); changing it needs re-encode + retrain
   model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
   model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
+  langvae_encoder_model_name: bert-base-cased
+  langvae_encoder_model_revision: cd5ef92a9fb2f889e972770a36d4ed042daf221e
+  langvae_decoder_model_name: gpt2
+  langvae_decoder_model_revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
   local_checkpoint: null   # path to a fine-tuned LangVAE folder (overrides model_name)
   tag: null                # names {encoder} in paths; default: variant, or langvae_ft with local_checkpoint
   nomic_model_name: nomic-ai/nomic-embed-text-v1.5
@@ -28,6 +32,7 @@ semantic_decoder:
   #   independent    -> SemanticDecoder (one head per column, g(s|z) = prod_i g(s_i|z))
   #   autoregressive -> SemanticAutoRegDecoder (g(s|z) = prod_i g(s_i|s_<i,z), exact joint)
   variant: independent
+  tag: null                # optional artifact name; defaults to variant
   hidden_dim: 256
   n_hidden: 2
   dropout: 0.1
@@ -45,6 +50,7 @@ latent_intervention:
   #   pre_additive -> LatentInterventionPreAdditive (Plan A: z' = z + Delta(z+eps,delta), MC forward-KL)
   #   dist    -> LatentInterventionDist (Plan B: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
   variant: baseline
+  tag: null                # optional artifact name; defaults to variant
   d_model: 128
   nhead: 4
   dim_feedforward: 256
@@ -83,6 +89,7 @@ paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/
   sim_factual: data/sim_talent/sim_data_factual.csv
   sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
   latents: data/latents/talent/{encoder}/z_pairs.pt
-  decoder_model: models/talent/{encoder}/semantic_decoder.pt
-  manipulator_model: models/talent/{encoder}/latent_intervention.pt
-  eval_report: reports/talent/{encoder}/eval.json
+  decoder_model: models/talent/{encoder}/g-{decoder}/semantic_decoder.pt
+  decoder_report: reports/talent/{encoder}/g-{decoder}/semantic_decoder.json
+  manipulator_model: models/talent/{encoder}/g-{decoder}/h-{manipulator}/latent_intervention.pt
+  eval_report: reports/talent/{encoder}/g-{decoder}/h-{manipulator}/eval.json

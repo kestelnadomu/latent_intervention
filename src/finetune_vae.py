@@ -14,14 +14,13 @@ fine-tuned checkpoint is written to `finetune_vae.output_dir`; point
 
 import torch
 import pandas as pd
-from huggingface_hub import snapshot_download
 
-from langvae import LangVAE
 from langvae.data_conversion.tokenization import TokenizedDataSet
 from langvae.pipelines import LanguageTrainingPipeline
 from langvae.trainers import CyclicalScheduleKLThresholdTrainerConfig
 
 from src.config import load_config
+from src.encoder import make_encoder
 
 
 def finetune(config: dict | None = None) -> None:
@@ -32,14 +31,13 @@ def finetune(config: dict | None = None) -> None:
 
     texts = pd.read_csv(config["paths"]["texts"])["text"].tolist()
     if len(texts) < 10:
-        raise ValueError(f"Only {len(texts)} texts available; generate more first (exp/sim/run.py).")
+        raise ValueError(
+            f"Only {len(texts)} texts available; generate more first (exp/sim/run.py)."
+        )
 
     # Start from the same pinned checkpoint that `pipeline encode` uses.
-    revision = enc_cfg.get("model_revision")
-    if revision is None:
-        model = LangVAE.load_from_hf_hub(enc_cfg["model_name"])
-    else:
-        model = LangVAE.load_from_folder(snapshot_download(repo_id=enc_cfg["model_name"], revision=revision))
+    base_encoder_config = {**enc_cfg, "local_checkpoint": None}
+    model = make_encoder(base_encoder_config, variant="langvae").model
 
     n_eval = max(1, int(len(texts) * ft_cfg["val_split"]))
     generator = torch.Generator().manual_seed(config["seed"])
@@ -47,10 +45,16 @@ def finetune(config: dict | None = None) -> None:
     # Tokenize with the decoder tokenizer, matching LangVAE's training examples
     # (the same batch feeds the encoder and the reconstruction loss).
     train_data = TokenizedDataSet(
-        [texts[i] for i in perm[n_eval:]], model.decoder.tokenizer, enc_cfg["max_len"], caching=True
+        [texts[i] for i in perm[n_eval:]],
+        model.decoder.tokenizer,
+        enc_cfg["max_len"],
+        caching=True,
     )
     eval_data = TokenizedDataSet(
-        [texts[i] for i in perm[:n_eval]], model.decoder.tokenizer, enc_cfg["max_len"], caching=True
+        [texts[i] for i in perm[:n_eval]],
+        model.decoder.tokenizer,
+        enc_cfg["max_len"],
+        caching=True,
     )
 
     training_config = CyclicalScheduleKLThresholdTrainerConfig(

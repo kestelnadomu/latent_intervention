@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -5,6 +7,79 @@ import torch
 import torch.nn.functional as F
 
 import src.encoder as encoder_module
+
+
+def test_langvae_constructor_pins_base_model_snapshots(tmp_path, monkeypatch) -> None:
+    checkpoint = tmp_path / "langvae"
+    bert = tmp_path / "bert"
+    gpt2 = tmp_path / "gpt2"
+    checkpoint.mkdir()
+    bert.mkdir()
+    gpt2.mkdir()
+    for filename in (
+        "environment.json",
+        "model_config.json",
+        "encoder.pt",
+        "decoder.pt",
+    ):
+        (checkpoint / filename).write_text("{}", encoding="utf-8")
+    (checkpoint / "encoder_cfg.json").write_text(
+        json.dumps({"model_path": "bert-model"}), encoding="utf-8"
+    )
+    (checkpoint / "decoder_cfg.json").write_text(
+        json.dumps({"model_path": "gpt2-model"}), encoding="utf-8"
+    )
+    snapshots = {
+        ("langvae-model", "langvae-revision"): checkpoint,
+        ("bert-model", "bert-revision"): bert,
+        ("gpt2-model", "gpt2-revision"): gpt2,
+    }
+    snapshot_calls = []
+
+    def fake_snapshot(repo_id, revision, **kwargs):
+        snapshot_calls.append((repo_id, revision, kwargs))
+        return str(snapshots[(repo_id, revision)])
+
+    observed = {}
+
+    class FakeModel:
+        model_config = SimpleNamespace(latent_dim=128)
+        encoder = SimpleNamespace(model_path=None)
+        decoder = SimpleNamespace(model_path=None)
+
+        def eval(self):
+            return self
+
+        def to(self, device):
+            return self
+
+    def fake_load(path):
+        overlay = Path(path)
+        observed["encoder"] = json.loads(
+            (overlay / "encoder_cfg.json").read_text(encoding="utf-8")
+        )
+        observed["decoder"] = json.loads(
+            (overlay / "decoder_cfg.json").read_text(encoding="utf-8")
+        )
+        return FakeModel()
+
+    monkeypatch.setattr(encoder_module, "snapshot_download", fake_snapshot)
+    monkeypatch.setattr(encoder_module.LangVAE, "load_from_folder", fake_load)
+
+    encoder_module.TextEncoder(
+        model_name="langvae-model",
+        model_revision="langvae-revision",
+        encoder_model_name="bert-model",
+        encoder_model_revision="bert-revision",
+        decoder_model_name="gpt2-model",
+        decoder_model_revision="gpt2-revision",
+    )
+
+    assert observed["encoder"]["model_path"] == str(bert)
+    assert observed["decoder"]["model_path"] == str(gpt2)
+    assert snapshot_calls[0] == ("langvae-model", "langvae-revision", {})
+    assert snapshot_calls[1][0:2] == ("bert-model", "bert-revision")
+    assert snapshot_calls[2][0:2] == ("gpt2-model", "gpt2-revision")
 
 
 def test_encode_uses_decoder_tokenizer(monkeypatch) -> None:
@@ -107,6 +182,13 @@ def test_nomic_encoder_applies_documented_128d_processing(monkeypatch) -> None:
         load_calls["model"] = (model_name, kwargs)
         return FakeModel()
 
+    snapshot_calls = []
+
+    def fake_snapshot(repo_id, revision, **kwargs):
+        snapshot_calls.append((repo_id, revision))
+        return "/cache/pinned-nomic"
+
+    monkeypatch.setattr(encoder_module, "snapshot_download", fake_snapshot)
     monkeypatch.setattr(encoder_module.AutoTokenizer, "from_pretrained", load_tokenizer)
     monkeypatch.setattr(encoder_module.AutoModel, "from_pretrained", load_model)
     encoder = encoder_module.NomicTextEncoder(
@@ -132,7 +214,9 @@ def test_nomic_encoder_applies_documented_128d_processing(monkeypatch) -> None:
         f"classification: {text}" for text in texts
     ]
     assert all(kwargs["max_length"] == 512 for _, kwargs in tokenizer_calls)
-    assert load_calls["tokenizer"][1]["revision"] == "model-revision"
+    assert snapshot_calls == [("nomic-model", "model-revision")]
+    assert load_calls["tokenizer"][0] == "/cache/pinned-nomic"
+    assert load_calls["model"][0] == "/cache/pinned-nomic"
     assert load_calls["model"][1]["code_revision"] == "code-revision"
     with pytest.raises(ValueError, match="only supports deterministic"):
         encoder.encode(texts, deterministic=False)
