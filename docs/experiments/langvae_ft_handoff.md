@@ -164,6 +164,32 @@ limit 512). There is no `--encoder-variant langvae_ft` CLI choice: select this
 baseline through `--config`. Encoding writes
 `data/latents/talent/langvae_ft/z_pairs.pt`, not the stock/Nomic folders.
 
+### Detached CPU encoding on this destination
+
+After downloading the checkpoint and generating `models/langvae_ft/encoding.yaml`,
+the foreground encoding command above can instead run in detached tmux:
+
+```sh
+bash scripts/run_langvae_ft_encoding.sh
+```
+
+This uses the existing `.venv` without changing dependencies. The worker repeats
+the strict pinned-checkpoint integrity and offline CPU reload checks before
+encoding; it must pass, even when the CPU Torch build differs from the training
+host. It preserves the original full-CV tokenization and batching and only adds
+batch validation/progress logging. The two validated output files are published
+together; existing baselines are checksummed and never overwritten. Closing the
+terminal does not stop the `langvae-ft-encoding` tmux session.
+
+Logs, progress/ETA, configuration, package/source hashes and reload verification
+live in `reports/talent/langvae_ft/encoding/langvae-ft-epoch24-v1/` (`run.log`,
+`status.json`, `protocol.json`, `checkpoint_verification.json`). A failed run
+records its error and keeps any pending files for inspection. There is no
+batch-level resume: an interrupted encoding pass restarts with a fresh run ID
+(first launcher argument), after inspecting the previous failure. No fine-tuning
+or downstream training is launched. Canonical `langvae_ft/z_pairs.{pt,info.json}`
+files are Git-trackable; the checkpoint, credentials and reports remain untracked.
+
 Then train fresh downstream models using that same configuration, for example:
 
 ```sh
