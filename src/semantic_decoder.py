@@ -15,6 +15,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
+from src.artifact_io import save_torch
+from src.decoder_training import train_semantic_decoder as train_semantic_decoder
 from src.schema import ColumnSpec
 
 SEMANTIC_DECODER_FORMAT_VERSION = 1
@@ -232,7 +234,8 @@ class _SemanticDecoderBase(nn.Module):
         self.checkpoint_metadata = saved_metadata
         output = Path(path)
         output.parent.mkdir(parents=True, exist_ok=True)
-        torch.save(
+        save_torch(
+            output,
             {
                 "format_version": SEMANTIC_DECODER_FORMAT_VERSION,
                 "variant": self.variant,
@@ -240,7 +243,6 @@ class _SemanticDecoderBase(nn.Module):
                 "metadata": saved_metadata,
                 "state_dict": self.state_dict(),
             },
-            output,
         )
 
     @classmethod
@@ -642,83 +644,6 @@ def _model_dtype(decoder: _SemanticDecoderBase) -> torch.dtype:
     return next(decoder.parameters()).dtype
 
 
-def _reset_trainable_modules(module: nn.Module) -> None:
-    reset_parameters = getattr(module, "reset_parameters", None)
-    if callable(reset_parameters):
-        reset_parameters()
-
-
-def train_semantic_decoder(
-    decoder: SemanticDecoderModel,
-    latents: torch.Tensor,
-    targets: Mapping[str, torch.Tensor],
-    epochs: int = 50,
-    batch_size: int = 64,
-    lr: float = 1e-3,
-    device: str | torch.device | None = None,
-    verbose: bool = True,
-    seed: int = 0,
-) -> list[float]:
-    """Train from a deterministic reset and return sample-weighted epoch losses."""
-    if not isinstance(decoder, _SemanticDecoderBase):
-        raise TypeError("decoder must be a semantic decoder")
-    _positive_int("epochs", epochs)
-    _positive_int("batch_size", batch_size)
-    _nonnegative_int("seed", seed)
-    if isinstance(lr, bool) or not isinstance(lr, (int, float)):
-        raise ValueError("lr must be a positive finite number")
-    learning_rate = float(lr)
-    if not math.isfinite(learning_rate) or learning_rate <= 0:
-        raise ValueError("lr must be a positive finite number")
-    decoder._validate_latents(latents, nonempty=True)
-    decoder._validate_targets(targets, latents.shape[0])
-
-    training_device = (
-        torch.device(device) if device is not None else _model_device(decoder)
-    )
-    decoder.to(training_device)
-    latents = latents.to(device=training_device, dtype=_model_dtype(decoder))
-    targets = {
-        name: values.to(device=training_device, dtype=torch.long)
-        for name, values in targets.items()
-    }
-    n_observations = latents.shape[0]
-    cuda_devices: list[int] = []
-    if training_device.type == "cuda":
-        cuda_devices = [
-            training_device.index
-            if training_device.index is not None
-            else torch.cuda.current_device()
-        ]
-
-    history: list[float] = []
-    with torch.random.fork_rng(devices=cuda_devices):
-        torch.manual_seed(seed)
-        decoder.apply(_reset_trainable_modules)
-        optimizer = torch.optim.Adam(decoder.parameters(), lr=learning_rate)
-        decoder.train()
-
-        for epoch in range(epochs):
-            permutation = torch.randperm(n_observations, device=training_device)
-            weighted_loss = 0.0
-            for start in range(0, n_observations, batch_size):
-                index = permutation[start : start + batch_size]
-                batch_targets = {
-                    name: values[index] for name, values in targets.items()
-                }
-                loss = decoder.nll(latents[index], batch_targets)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                weighted_loss += loss.item() * index.numel()
-            history.append(weighted_loss / n_observations)
-            if verbose and (epoch + 1) % max(1, epochs // 10) == 0:
-                print(f"epoch {epoch + 1}/{epochs}  loss {history[-1]:.4f}")
-
-    decoder.eval()
-    return history
-
-
 @contextmanager
 def _evaluation_mode(decoder: _SemanticDecoderBase) -> Iterator[None]:
     was_training = decoder.training
@@ -744,6 +669,31 @@ def _evaluation_data(
         for name, values in targets.items()
     }
     return moved_latents, moved_targets
+
+
+def joint_nll(
+    decoder: SemanticDecoderModel,
+    latents: torch.Tensor,
+    targets: Mapping[str, torch.Tensor],
+    batch_size: int = 1024,
+) -> float:
+    """Mean full-state NLL (nats/example), comparable across both g variants."""
+    _positive_int("batch_size", batch_size)
+    moved_latents, moved_targets = _evaluation_data(decoder, latents, targets)
+    multiplier = len(decoder.columns) if decoder.variant == "independent" else 1
+    total = 0.0
+    with _evaluation_mode(decoder):
+        for start in range(0, len(moved_latents), batch_size):
+            stop = min(start + batch_size, len(moved_latents))
+            batch_targets = {
+                name: values[start:stop] for name, values in moved_targets.items()
+            }
+            total += (
+                float(decoder.nll(moved_latents[start:stop], batch_targets))
+                * multiplier
+                * (stop - start)
+            )
+    return total / len(moved_latents)
 
 
 def accuracy(

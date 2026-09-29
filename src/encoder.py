@@ -1,14 +1,17 @@
-"""Frozen text encoder f: X -> Z = R^128 (docs/architecture/text_encoder.md).
+"""Frozen text encoder f: X -> Z = R^d (docs/architecture/text_encoder.md).
 
 Variants (``encoder.variant`` in src/config.yaml):
     langvae  TextEncoder       LangVAE posterior mean mu(x) (default)
-    nomic    NomicTextEncoder  Nomic Embed v1.5, 128-D Matryoshka output on the unit sphere
+    nomic    NomicTextEncoder  Nomic Embed v1.5, configurable Matryoshka output
+    qwen3    Qwen3TextEncoder  Qwen3-Embedding-0.6B (isolated environment)
+    embeddinggemma  EmbeddingGemmaTextEncoder  EmbeddingGemma-300m (isolated)
 """
 
 import json
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import perf_counter
 from typing import Any
 
 import torch
@@ -18,6 +21,9 @@ from huggingface_hub import snapshot_download
 from langvae import LangVAE
 from langvae.data_conversion.tokenization import TokenizedDataSet
 from transformers import AutoModel, AutoTokenizer
+
+from src.config import nomic_dimension
+from src.encoding_progress import log_encoding_progress
 
 DEFAULT_MODEL = "neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128"
 DEFAULT_NOMIC_MODEL = "nomic-ai/nomic-embed-text-v1.5"
@@ -168,9 +174,7 @@ class TextEncoder:
 
 
 class NomicTextEncoder:
-    """`nomic` variant: f(x) = L2(first 128 dims of LN(mean-pooled Nomic Embed v1.5)); no decoder."""
-
-    latent_dim = 128
+    """f(x) = L2(first d dims of LN(mean-pooled Nomic Embed v1.5)); no decoder."""
 
     def __init__(
         self,
@@ -180,7 +184,11 @@ class NomicTextEncoder:
         device: str | torch.device | None = None,
         max_len: int = 512,
         task: str = "classification",
+        latent_dim: int = 128,
+        progress: bool = False,
     ) -> None:
+        self.latent_dim = nomic_dimension(latent_dim)
+        self.progress = progress
         self.device = (
             torch.device(device) if device is not None else torch.device("cpu")
         )
@@ -208,11 +216,16 @@ class NomicTextEncoder:
         deterministic: bool = True,
         batch_size: int = 32,
     ) -> torch.Tensor:
-        """Encode texts using Nomic's documented 128-D pooling procedure."""
+        """Apply layer norm at full width, then truncate and L2-normalize."""
         if not deterministic:
             raise ValueError("NomicTextEncoder only supports deterministic encoding")
+        if batch_size < 1:
+            raise ValueError("batch_size must be positive")
+        if not texts:
+            return torch.empty((0, self.latent_dim), device=self.device)
         chunks = []
         prefixed = [self.task_prefix + text for text in texts]
+        started = perf_counter()
         for start in range(0, len(prefixed), batch_size):
             inputs = self.tokenizer(
                 prefixed[start : start + batch_size],
@@ -225,14 +238,32 @@ class NomicTextEncoder:
             token_embeddings = self.model(**inputs)[0]
             mask = inputs["attention_mask"].unsqueeze(-1).to(token_embeddings.dtype)
             embeddings = (token_embeddings * mask).sum(1) / mask.sum(1).clamp(min=1e-9)
+            if embeddings.shape[1] != 768:
+                raise ValueError("Nomic Embed v1.5 must produce 768 pooled coordinates")
             embeddings = F.layer_norm(embeddings, (embeddings.shape[1],))
             chunks.append(F.normalize(embeddings[:, : self.latent_dim], p=2, dim=1))
+            log_encoding_progress(
+                "Nomic",
+                start,
+                batch_size,
+                len(prefixed),
+                started,
+                enabled=self.progress,
+            )
         return torch.cat(chunks, dim=0)
 
 
 def make_encoder(config: dict[str, Any], variant: str | None = None):
     """Construct the configured encoder; ``variant`` optionally overrides config."""
     variant = variant or config.get("variant", "langvae")
+    if variant == "qwen3":
+        from src.qwen3_encoder import make_qwen3_encoder
+
+        return make_qwen3_encoder(config)
+    if variant == "embeddinggemma":
+        from src.embeddinggemma_encoder import make_embeddinggemma_encoder
+
+        return make_embeddinggemma_encoder(config)
     common = {
         "device": config["device"],
         "max_len": int(config["max_len"]),
@@ -262,6 +293,8 @@ def make_encoder(config: dict[str, Any], variant: str | None = None):
             model_revision=config.get("nomic_model_revision"),
             code_revision=config.get("nomic_code_revision"),
             task=config.get("nomic_task", "classification"),
+            latent_dim=config.get("nomic_latent_dim", 128),
+            progress=bool(config.get("progress", False)),
             **common,
         )
     raise ValueError(f"unknown encoder variant: {variant}")
