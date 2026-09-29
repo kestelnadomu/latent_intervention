@@ -20,13 +20,17 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import torch
 
+from src.artifact_io import write_json
 from src.config import CONFIG_PATH, load_config
+from src.decoder_reporting import DecoderTrainingRun
+from src.encoder_protocols import add_encoder_arguments
 from src.latent_intervention import (
     LatentIntervention,
     LatentInterventionDist,
@@ -41,6 +45,7 @@ from src.schema import ColumnSpec, load_intervention, load_schema
 from src.semantic_decoder import (
     accuracy,
     calibration_metrics,
+    joint_nll,
     load_semantic_decoder,
     make_semantic_decoder,
     targets_from_dataframe,
@@ -149,12 +154,7 @@ def _decoder_metadata(
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(payload, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
+    write_json(path, payload)
 
 
 def _manipulator_info_path(model_path: str | Path) -> Path:
@@ -219,8 +219,9 @@ def stage_encode(config: dict[str, Any]) -> None:
     encode_pairs(config)
 
 
-def stage_train_decoder(config: dict[str, Any]) -> None:
-    """Fit the decoder on official-train units and assess a train-only holdout."""
+def stage_train_decoder(config: dict[str, Any]) -> dict[str, Any]:
+    """Select g by validation NLL within official train; never inspect test metrics."""
+    started_at = datetime.now(timezone.utc).isoformat()
     artifact = load_latent_artifact(config)
     columns, _ = load_schema(config.get("sim_config"))
     targets = _aligned_targets(config["paths"]["sim_factual"], artifact.ids, columns)
@@ -229,7 +230,7 @@ def stage_train_decoder(config: dict[str, Any]) -> None:
     fit_idx, calibration_idx = _fit_calibration_split(
         official_train_idx,
         float(cfg["calibration_split"]),
-        int(config["seed"]),
+        int(cfg.get("split_seed", config["seed"])),
     )
 
     torch.manual_seed(int(config["seed"]))
@@ -242,49 +243,39 @@ def stage_train_decoder(config: dict[str, Any]) -> None:
         dropout=float(cfg["dropout"]),
         embed_dim=int(cfg["autoregressive"]["embed_dim"]),
     )
+    fit_targets = _subset(targets, fit_idx)
+    validation_targets = _subset(targets, calibration_idx)
+    run = DecoderTrainingRun(
+        config,
+        artifact,
+        fit_idx,
+        calibration_idx,
+        _decoder_metadata(config, artifact),
+        started_at,
+    )
     history = train_semantic_decoder(
         decoder,
         artifact.z[fit_idx],
-        _subset(targets, fit_idx),
+        fit_targets,
         epochs=int(cfg["epochs"]),
         batch_size=int(cfg["batch_size"]),
         lr=float(cfg["lr"]),
         seed=int(config["seed"]),
         device=config["encoder"]["device"],
+        validation_latents=artifact.z[calibration_idx],
+        validation_targets=validation_targets,
+        **run.trainer_options(),
     )
     metrics = calibration_metrics(
         decoder,
         artifact.z[calibration_idx],
-        _subset(targets, calibration_idx),
+        validation_targets,
         n_bins=int(cfg["calibration_bins"]),
     )
-    decoder.save(
-        config["paths"]["decoder_model"],
-        metadata=_decoder_metadata(config, artifact),
+    validation_loss = joint_nll(
+        decoder, artifact.z[calibration_idx], validation_targets
     )
-
-    report = {
-        "decoder_variant": cfg["variant"],
-        "seed": int(config["seed"]),
-        "latent_artifact_sha256": artifact.artifact_sha256,
-        "encoder": artifact.encoder_info,
-        "split": {
-            "official_train": len(official_train_idx),
-            "fit": len(fit_idx),
-            "calibration": len(calibration_idx),
-            "official_test": len(official_test_idx),
-        },
-        "training": {
-            "epochs": int(cfg["epochs"]),
-            "final_loss": history[-1],
-        },
-        "calibration": metrics,
-    }
-    _write_json(config["paths"]["decoder_report"], report)
-    ece = {name: round(values["ece"], 3) for name, values in metrics.items()}
-    print("calibration ECE:", ece)
-    print(f"wrote {config['paths']['decoder_model']}")
-    print(f"wrote {config['paths']['decoder_report']}")
+    return run.finish(decoder, history, metrics, validation_loss)
 
 
 def stage_train_manipulator(config: dict[str, Any]) -> None:
@@ -453,12 +444,7 @@ def main() -> None:
     parser.add_argument(
         "--config", default=None, help="path to an alternative config YAML"
     )
-    parser.add_argument(
-        "--encoder-variant",
-        choices=("langvae", "nomic"),
-        default=None,
-        help="override encoder.variant before artifact paths are resolved",
-    )
+    add_encoder_arguments(parser)
     parser.add_argument(
         "--decoder-variant",
         choices=("independent", "autoregressive"),
@@ -477,6 +463,9 @@ def main() -> None:
         encoder_variant=args.encoder_variant,
         decoder_variant=args.decoder_variant,
         manipulator_variant=args.manipulator_variant,
+        nomic_dim=args.nomic_dim,
+        qwen3_dim=args.qwen3_dim,
+        embeddinggemma_dim=args.embeddinggemma_dim,
     )
     STAGES[args.stage](config)
 

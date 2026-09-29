@@ -5,6 +5,25 @@ from typing import Any
 
 import yaml
 
+# Compatibility exports; variant-specific policy lives in encoder_protocols.py.
+from src.encoder_protocols import (
+    NOMIC_DIMENSIONS as NOMIC_DIMENSIONS,
+    QWEN3_DIMENSIONS as QWEN3_DIMENSIONS,
+    QWEN3_MODEL as QWEN3_MODEL,
+    QWEN3_REVISION as QWEN3_REVISION,
+    EMBEDDINGGEMMA_DIMENSIONS as EMBEDDINGGEMMA_DIMENSIONS,
+    EMBEDDINGGEMMA_MODEL as EMBEDDINGGEMMA_MODEL,
+    EMBEDDINGGEMMA_REVISION as EMBEDDINGGEMMA_REVISION,
+    EMBEDDINGGEMMA_PROMPT as EMBEDDINGGEMMA_PROMPT,
+    embeddinggemma_dimension as embeddinggemma_dimension,
+    embeddinggemma_protocol as embeddinggemma_protocol,
+    qwen3_dimension as qwen3_dimension,
+    qwen3_protocol as qwen3_protocol,
+    nomic_dimension as nomic_dimension,
+    encoder_dimension as encoder_dimension,
+    configure_encoder,
+)
+
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 ENCODER_PLACEHOLDER = "{encoder}"
 DECODER_PLACEHOLDER = "{decoder}"
@@ -15,12 +34,14 @@ def encoder_tag(encoder: dict[str, Any]) -> str:
     """
     Name of the latent space an encoder config produces.
 
-    ``encoder.tag`` if set; otherwise the variant, with ``_ft`` appended for a
-    LangVAE loaded from ``local_checkpoint`` (a fine-tuned checkpoint).
+    ``encoder.tag`` if set; otherwise dimension-stamped embedding variants, ``langvae``, or
+    ``langvae_ft`` for a LangVAE loaded from a local checkpoint.
     """
     if encoder.get("tag"):
         return str(encoder["tag"])
     variant = encoder.get("variant", "langvae")
+    if variant in {"nomic", "qwen3", "embeddinggemma"}:
+        return f"{variant}_{encoder_dimension(encoder)}"
     if variant == "langvae" and encoder.get("local_checkpoint"):
         return "langvae_ft"
     return variant
@@ -59,6 +80,9 @@ def load_config(
     encoder_variant: str | None = None,
     decoder_variant: str | None = None,
     manipulator_variant: str | None = None,
+    nomic_dim: int | None = None,
+    qwen3_dim: int | None = None,
+    embeddinggemma_dim: int | None = None,
 ) -> dict[str, Any]:
     """
     Load src/config.yaml (or `path`); return one section if requested.
@@ -78,6 +102,12 @@ def load_config(
     for component, variant in overrides.items():
         if variant is not None:
             config[component]["variant"] = variant
+    configure_encoder(
+        config,
+        nomic_dim=nomic_dim,
+        qwen3_dim=qwen3_dim,
+        embeddinggemma_dim=embeddinggemma_dim,
+    )
     resolve_paths(config)
     if section is None:
         return config

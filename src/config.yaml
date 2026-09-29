@@ -9,7 +9,7 @@ seed: 42
 sim_config: exp/sim/config.yaml
 
 encoder:
-  variant: langvae       # langvae | nomic (docs/architecture/text_encoder.md); changing it needs re-encode + retrain
+  variant: langvae       # langvae | nomic | qwen3 | embeddinggemma; re-encode + retrain after changes
   model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
   model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
   langvae_encoder_model_name: bert-base-cased
@@ -17,11 +17,26 @@ encoder:
   langvae_decoder_model_name: gpt2
   langvae_decoder_model_revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
   local_checkpoint: null   # path to a fine-tuned LangVAE folder (overrides model_name)
-  tag: null                # names {encoder} in paths; default: variant, or langvae_ft with local_checkpoint
+  tag: null                # default: langvae[_ft], or <embedding variant>_<dimension>
   nomic_model_name: nomic-ai/nomic-embed-text-v1.5
   nomic_model_revision: e5cf08aadaa33385f5990def41f7a23405aec398
   nomic_code_revision: 7710840340a098cfb869c4f65e87cf2b1b70caca
   nomic_task: classification
+  nomic_latent_dim: 128     # 64 | 128 | 256 | 512 | 768; does not change LangVAE
+  qwen3_model_name: Qwen/Qwen3-Embedding-0.6B  # the only Qwen model in this experiment
+  qwen3_model_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  qwen3_latent_dim: 128     # 32 | 64 | 128 | 256 | 512 | 768 | 1024
+  qwen3_instruction: ""    # plain CV/document baseline; no retrieval prompt or chat template
+  qwen3_max_len: 1024      # fail on longer input, never silently truncate
+  qwen3_batch_size: 8
+  qwen3_cache_dir: .cache/huggingface/hub
+  embeddinggemma_model_name: google/embeddinggemma-300m
+  embeddinggemma_model_revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
+  embeddinggemma_latent_dim: 128  # 128 | 256 | 512 | 768
+  embeddinggemma_prompt: "task: classification | query: "
+  embeddinggemma_max_len: 2048    # fail on longer input, never silently truncate
+  embeddinggemma_batch_size: 8
+  embeddinggemma_cache_dir: .cache/huggingface/hub
   max_len: 512
   batch_size: 16
   device: cpu
@@ -36,11 +51,30 @@ semantic_decoder:
   hidden_dim: 256
   n_hidden: 2
   dropout: 0.1
-  epochs: 50
+  epochs: 500            # ceiling; restore the best validation checkpoint
   batch_size: 64
   lr: 1.0e-3
-  calibration_split: 0.2  # held out from official training IDs; official test stays untouched
+  weight_decay: 0.0
+  split_seed: 42         # fixed independently of model initialization seeds
+  calibration_split: 0.2  # validation within official train; also reports descriptive ECE
   calibration_bins: 10
+  early_stopping:
+    patience: 30
+    min_delta: 1.0e-4    # absolute full joint NLL improvement, nats/example
+  scheduler:
+    patience: 10        # ReduceLROnPlateau; reduce after >10 bad epochs
+    factor: 0.5
+    min_lr: 1.0e-6
+  search:
+    trials: 20          # same candidates and search seed for each encoder/decoder
+    seed: 20260922
+    initialization_seed: 42
+    final_seeds: [42, 43, 44, 45, 46]
+    deployment_seed: 42 # predeclared; do not select the luckiest seed
+    lr: [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3]
+    weight_decay: [0.0, 1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]
+    dropout: [0.0, 0.1, 0.2, 0.3]
+    hidden_dim: [128, 256, 512]
   autoregressive:
     embed_dim: 16          # decoded-prefix embedding size
 
