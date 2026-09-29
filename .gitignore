@@ -15,7 +15,19 @@
 data/sim/
 # data/sim_talent/
 data/text/
-data/latents/
+data/latents/**
+# Canonical dimension-stamped Nomic/Qwen artifacts are intentionally portable/tracked.
+# Temporary queue/staging files stay ignored.
+!data/latents/talent/
+!data/latents/talent/nomic_*/
+!data/latents/talent/nomic_*/z_pairs.pt
+!data/latents/talent/nomic_*/z_pairs.info.json
+!data/latents/talent/qwen3_*/
+!data/latents/talent/qwen3_*/z_pairs.pt
+!data/latents/talent/qwen3_*/z_pairs.info.json
+!data/latents/talent/embeddinggemma_*/
+!data/latents/talent/embeddinggemma_*/z_pairs.pt
+!data/latents/talent/embeddinggemma_*/z_pairs.info.json
 models/
 reports/
 
@@ -27,6 +39,9 @@ _notes/
 
 # Python
 .venv/
+.venv-qwen3/
+.venv-embeddinggemma/
+.cache/
 __pycache__/
 *.py[cod]
 *$py.class
