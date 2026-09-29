@@ -147,7 +147,8 @@ def test_make_encoder_selects_variant_and_keeps_legacy_default(monkeypatch) -> N
         encoder_module.make_encoder(config, variant="unknown")
 
 
-def test_nomic_encoder_applies_documented_128d_processing(monkeypatch) -> None:
+@pytest.mark.parametrize("dimension", [64, 128, 256, 512, 768])
+def test_nomic_encoder_applies_documented_processing(monkeypatch, dimension) -> None:
     tokenizer_calls = []
     load_calls = {}
 
@@ -196,19 +197,20 @@ def test_nomic_encoder_applies_documented_128d_processing(monkeypatch) -> None:
         model_revision="model-revision",
         code_revision="code-revision",
         max_len=512,
+        latent_dim=dimension,
     )
 
     texts = ["first CV", "second CV", "third CV"]
     encoded = encoder.encode(texts, batch_size=2)
     repeated = encoder.encode(texts, batch_size=1)
 
-    assert encoded.shape == (3, 128)
+    assert encoded.shape == (3, dimension)
     assert torch.isfinite(encoded).all()
     assert torch.allclose(encoded.norm(dim=1), torch.ones(3))
     assert torch.allclose(encoded, repeated)
     coordinates = torch.arange(768, dtype=torch.float32)
     pooled = (coordinates + coordinates.square() / 768) / 2
-    expected = F.normalize(F.layer_norm(pooled, (768,))[:128], dim=0)
+    expected = F.normalize(F.layer_norm(pooled, (768,))[:dimension], dim=0)
     assert torch.allclose(encoded, expected.expand_as(encoded))
     assert [text for call, _ in tokenizer_calls[:2] for text in call] == [
         f"classification: {text}" for text in texts
@@ -220,3 +222,6 @@ def test_nomic_encoder_applies_documented_128d_processing(monkeypatch) -> None:
     assert load_calls["model"][1]["code_revision"] == "code-revision"
     with pytest.raises(ValueError, match="only supports deterministic"):
         encoder.encode(texts, deterministic=False)
+    assert encoder.encode([]).shape == (0, dimension)
+    with pytest.raises(ValueError, match="batch_size"):
+        encoder.encode(texts, batch_size=0)

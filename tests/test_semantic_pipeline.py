@@ -126,6 +126,7 @@ def test_decoder_fit_and_calibration_never_use_official_test(
 
     def train(_decoder, latents, _targets, **kwargs):
         observed["fit"] = latents[:, 0].tolist()
+        observed["validation"] = kwargs["validation_latents"][:, 0].tolist()
         return [1.0, 0.5]
 
     def metrics(_decoder, latents, _targets, **kwargs):
@@ -134,12 +135,14 @@ def test_decoder_fit_and_calibration_never_use_official_test(
 
     monkeypatch.setattr(pipeline, "train_semantic_decoder", train)
     monkeypatch.setattr(pipeline, "calibration_metrics", metrics)
+    monkeypatch.setattr(pipeline, "joint_nll", lambda *args: 0.5)
 
     pipeline.stage_train_decoder(config)
 
     used = observed["fit"] + observed["calibration"]
     assert sorted(used) == [10.0, 30.0]
     assert not {20.0, 40.0}.intersection(used)
+    assert observed["validation"] == observed["calibration"]
     assert decoder.saved_metadata["latent_artifact_sha256"] == "latent-hash"
     assert set(decoder.saved_metadata["training_inputs"]) == {
         "sim_factual_sha256",

@@ -4,7 +4,16 @@ from pathlib import Path
 
 import yaml
 
-from src.config import component_tag, encoder_tag, load_config, resolve_paths
+import pytest
+
+from src.config import (
+    NOMIC_DIMENSIONS,
+    QWEN3_DIMENSIONS,
+    component_tag,
+    encoder_tag,
+    load_config,
+    resolve_paths,
+)
 
 
 def test_encoder_tag_distinguishes_latent_spaces() -> None:
@@ -14,7 +23,9 @@ def test_encoder_tag_distinguishes_latent_spaces() -> None:
         encoder_tag({"variant": "langvae", "local_checkpoint": "models/x"})
         == "langvae_ft"
     )
-    assert encoder_tag({"variant": "nomic", "local_checkpoint": "models/x"}) == "nomic"
+    assert (
+        encoder_tag({"variant": "nomic", "local_checkpoint": "models/x"}) == "nomic_128"
+    )
     assert encoder_tag({"variant": "langvae", "tag": "langvae_cv5"}) == "langvae_cv5"
 
 
@@ -41,9 +52,9 @@ def test_resolve_paths_substitutes_encoder_placeholder() -> None:
     }
     resolve_paths(config)
     assert config["paths"] == {
-        "latents": "data/latents/nomic/z.pt",
-        "decoder": "models/nomic/autoregressive/g.pt",
-        "manipulator": "models/nomic/autoregressive/dist/h.pt",
+        "latents": "data/latents/nomic_128/z.pt",
+        "decoder": "models/nomic_128/autoregressive/g.pt",
+        "manipulator": "models/nomic_128/autoregressive/dist/h.pt",
         "texts": "data/t.csv",
     }
 
@@ -80,7 +91,64 @@ def test_variant_overrides_create_distinct_artifact_matrix() -> None:
     for (encoder, decoder), config in configs.items():
         assert config["encoder"]["variant"] == encoder
         assert config["semantic_decoder"]["variant"] == decoder
-        assert f"/{encoder}/g-{decoder}/" in config["paths"]["decoder_model"]
+        assert (
+            f"/{encoder_tag(config['encoder'])}/g-{decoder}/"
+            in config["paths"]["decoder_model"]
+        )
+
+
+@pytest.mark.parametrize("dim", NOMIC_DIMENSIONS)
+def test_nomic_dimension_scopes_all_downstream_paths(dim: int) -> None:
+    config = load_config(encoder_variant="nomic", nomic_dim=dim)
+    for key in (
+        "latents",
+        "decoder_model",
+        "decoder_report",
+        "manipulator_model",
+        "eval_report",
+    ):
+        assert f"/nomic_{dim}/" in config["paths"][key]
+    assert config["encoder"]["nomic_latent_dim"] == dim
+
+
+@pytest.mark.parametrize("dim", [0, 127, 1024, True, 128.0, "128"])
+def test_invalid_nomic_dimensions_rejected(dim) -> None:
+    with pytest.raises(ValueError, match="Nomic dimension"):
+        load_config(encoder_variant="nomic", nomic_dim=dim)
+
+
+def test_nomic_dimension_cannot_silently_change_langvae() -> None:
+    with pytest.raises(ValueError, match="requires the nomic"):
+        load_config(encoder_variant="langvae", nomic_dim=64)
+
+
+@pytest.mark.parametrize("dim", QWEN3_DIMENSIONS)
+def test_qwen3_paths_only_include_dimension(dim) -> None:
+    config = load_config(encoder_variant="qwen3", qwen3_dim=dim)
+    for key in (
+        "latents",
+        "decoder_model",
+        "decoder_report",
+        "manipulator_model",
+        "eval_report",
+    ):
+        assert f"/qwen3_{dim}/" in config["paths"][key]
+        assert "0p6b" not in config["paths"][key]
+    assert config["encoder"]["max_len"] == 1024
+    assert config["encoder"]["batch_size"] == 8
+
+
+@pytest.mark.parametrize("dim", [0, 31, 127, 2048, True, 128.0, "128"])
+def test_qwen3_invalid_dimensions(dim) -> None:
+    with pytest.raises(ValueError, match="Qwen3 dimension"):
+        load_config(encoder_variant="qwen3", qwen3_dim=dim)
+
+
+def test_qwen3_size_and_variant_are_guarded() -> None:
+    with pytest.raises(ValueError, match="requires the qwen3"):
+        load_config(encoder_variant="nomic", qwen3_dim=64)
+    with pytest.raises(ValueError, match="reserved"):
+        encoder_tag({"variant": "qwen3", "qwen3_model_name": "Qwen/Qwen3-Embedding-4B"})
 
 
 def test_manipulator_override_has_separate_downstream_paths() -> None:
