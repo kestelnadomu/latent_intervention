@@ -97,7 +97,10 @@ The same decoder commands work with `--encoder-variant nomic`. `pair_index.csv` 
 
 Latent, decoder, and manipulator artifacts are separated by encoder, decoder, and manipulator variant and bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
 
-When `encoder.variant: langvae` is selected, LangVAE may optionally be fine-tuned first (`uv run python -m src.finetune_vae`); point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder, then regenerate every downstream artifact.
+The separate `langvae_ft` baseline uses native LangVAE fine-tuned on CV passages,
+with unchanged architecture. See the [checkpoint and downstream handoff](docs/experiments/langvae_ft_handoff.md)
+for model transfer and opt-in encoding/training commands. Its checkpoints stay
+outside Git; stock LangVAE, Nomic and the shared pipeline defaults are unchanged.
 
 ## Publish
 
