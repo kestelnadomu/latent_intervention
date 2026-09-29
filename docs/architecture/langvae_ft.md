@@ -131,8 +131,12 @@ through the configuration command.
 
 See [the selected checkpoint and downstream handoff](../experiments/langvae_ft_handoff.md).
 Weights, prepared features, optimizer states and outputs stay outside Git in
-the already-ignored `models/` and `data/latents/` trees. Transfer the selected
-checkpoint separately through the project's private artifact-transfer channel.
+the already-ignored `models/` and `data/latents/` trees. The selected checkpoint
+archive and checksum are hosted in the private Hugging Face model repository
+`latent-intervention/latent_intervention`. Follow the
+[access and pinned-download instructions](../experiments/langvae_ft_handoff.md#access-and-download-from-hugging-face)
+for organization membership, repository-scoped read access, checksum verification
+and extraction on the destination cluster.
 The checkpoint saves native trainable weights and references pinned backbone
 models; it does not bundle BERT/GPT-2 weights. Its reload probe contains CV token
 IDs and should be treated as project data, not a public source artifact.

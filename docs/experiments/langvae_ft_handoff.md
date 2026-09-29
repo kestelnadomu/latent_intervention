@@ -33,8 +33,9 @@ and Nomic baselines, shared defaults, and downstream implementation are unchange
 2. **Private artifact transfer:** `langvae_ft-epoch24-20260929.tar.gz` (about
    279 MiB compressed; 301 MiB extracted). It contains **only** the selected
    immutable checkpoint, including native weights, provenance and reload probe.
-   The archive was prepared locally at
-   `models/langvae_ft/langvae_ft-epoch24-20260929.tar.gz`; it is not in Git.
+   The archive and its `.sha256` sidecar are hosted in the private Hugging Face
+   model repository linked below; neither is in Git. The local archive is at
+   `models/langvae_ft/langvae_ft-epoch24-20260929.tar.gz`.
 
 The archive and checkpoint-manifest SHA-256 digests are pinned in
 `configs/langvae_ft_scope.json`. Do not send other epoch checkpoints, smoke
@@ -44,25 +45,109 @@ BERT/GPT-2 models in its own cache; the native checkpoint references them rather
 than bundling their weights. The probe contains two CV passages as token IDs:
 treat this archive as project data, not a public source artifact.
 
-## On the destination cluster only
+## Access and download from Hugging Face
 
-Pull the code commit and copy the archive to the repository root using the
-project's private transfer channel. From that root:
+- Private model repository:
+  [latent-intervention/latent_intervention](https://huggingface.co/latent-intervention/latent_intervention).
+- Selected artifact revision: `bdf5c3f169f705ab94015a8bfb46a1caa8185d60`.
+- Files: `langvae_ft-epoch24-20260929.tar.gz` and
+  `langvae_ft-epoch24-20260929.tar.gz.sha256`.
+
+Both files were uploaded on 2026-09-29. A fresh download at that revision matched
+the archive digest pinned in `configs/langvae_ft_scope.json`. Download this exact
+revision, not an unpinned `main`. This repository distributes a checkpoint archive;
+extract it before use rather than passing the Hub repository ID to the encoder.
+
+### Account access and authentication
+
+1. Use your own Hugging Face account. An administrator of the
+   `latent-intervention` organization must invite you and grant at least the
+   **Read** role; accept the invitation before downloading.
+2. In [Access Tokens](https://huggingface.co/settings/tokens), create a
+   **fine-grained** token restricted to `latent-intervention/latent_intervention`.
+   Explicitly enable **read access to the contents of this selected repository**.
+   Selecting the repository without enabling its read permission is insufficient;
+   permissions for personal repositories do not grant access to this organization
+   repository. Downloading does not require write permissions.
+3. Authenticate on the destination cluster, not just in your browser. Never put
+   the token in source files, command-line arguments, logs or chat. Enter it only
+   at the interactive login prompt. Answer `n` if asked to add Git credentials.
+
+See Hugging Face's [token documentation](https://huggingface.co/docs/hub/security-tokens)
+for the distinction between account membership and token permissions.
+
+Pull the project code first. From its repository root, create the pinned
+environment if necessary and use its existing Linux CLI; no separate installer
+or dependency upgrade is needed. Run the following steps in the same shell:
 
 ```sh
-# Compare this digest with artifact_archive_sha256 in the committed scope file.
-sha256sum langvae_ft-epoch24-20260929.tar.gz
-# Refuse to overwrite any existing checkpoint files.
-tar --keep-old-files -xzf langvae_ft-epoch24-20260929.tar.gz
-
 uv sync --project environments/langvae-cu124 --frozen
+FT_HF=environments/langvae-cu124/.venv/bin/hf
+FT_PYTHON=environments/langvae-cu124/.venv/bin/python
+# Downloads require network access, even if an earlier training session was offline.
+unset HF_HUB_OFFLINE TRANSFORMERS_OFFLINE
+"$FT_HF" auth login
+"$FT_HF" auth whoami
+```
+
+Do not change `HF_HOME` or `HF_TOKEN_PATH` between login and download, since that
+can change where the CLI looks for the saved token. A pre-existing `HF_TOKEN`
+environment variable overrides the saved token; check its source if the wrong
+credentials are used, without printing its value. A successful `whoami` confirms
+login, not access to this repository. A `404` for this known private repository
+can mean missing organization membership or missing repository read permission.
+
+### Download, verify and extract
+
+From the project root, download only the two selected files into the already
+ignored `models/langvae_ft/` directory. The revision flag makes the download
+reproducible; see Hugging Face's
+[download documentation](https://huggingface.co/docs/huggingface_hub/guides/download).
+
+```sh
+"$FT_HF" download latent-intervention/latent_intervention \
+  langvae_ft-epoch24-20260929.tar.gz \
+  langvae_ft-epoch24-20260929.tar.gz.sha256 \
+  --revision bdf5c3f169f705ab94015a8bfb46a1caa8185d60 \
+  --local-dir models/langvae_ft
+```
+
+Verify against both the downloaded sidecar and the archive digest recorded in
+the Git-tracked `configs/langvae_ft_scope.json`. The subshell below stops before
+extraction if either check fails; extraction refuses to overwrite existing files.
+
+```sh
+(
+  set -eu
+  cd models/langvae_ft
+  sha256sum -c langvae_ft-epoch24-20260929.tar.gz.sha256
+  printf '%s  %s\n' \
+    fd933a6ff3af98c7d0ae619b58c3a2a143f7bbae45e5192bb2dcdd2e7eb9f9e8 \
+    langvae_ft-epoch24-20260929.tar.gz | sha256sum -c -
+  cd ../..
+  tar --keep-old-files -xzf models/langvae_ft/langvae_ft-epoch24-20260929.tar.gz
+)
+```
+
+The extracted checkpoint is at
+`models/langvae_ft/20260928T075426Z-train-c8d72b43/checkpoint-024-974eea2e/`.
+Keep the Hub repository private: the reload probe contains CV-derived text.
+Do not upload the project directory, source datasets or other runs to this repo.
+
+## On the destination cluster only
+
+After the download, checksum checks and extraction above succeed, run these
+commands from the project root. The public backbone cache can now use its own
+location; the private checkpoint is already local.
+
+```sh
 FT_PYTHON=environments/langvae-cu124/.venv/bin/python
 FT_CHECKPOINT=models/langvae_ft/20260928T075426Z-train-c8d72b43/checkpoint-024-974eea2e
 FT_CONFIG=models/langvae_ft/encoding.yaml
 export HF_HOME="$PWD/models/hf_cache"
 
-"$FT_PYTHON" -m src.langvae_ft verify --checkpoint "$FT_CHECKPOINT" --device cpu
-"$FT_PYTHON" -m src.langvae_ft configure --checkpoint "$FT_CHECKPOINT" --output "$FT_CONFIG"
+"$FT_PYTHON" -m src.langvae_ft verify --checkpoint "$FT_CHECKPOINT" --device cpu &&
+"$FT_PYTHON" -m src.langvae_ft configure --checkpoint "$FT_CHECKPOINT" --output "$FT_CONFIG" &&
 "$FT_PYTHON" -m src.pipeline encode --config "$FT_CONFIG"
 ```
 
