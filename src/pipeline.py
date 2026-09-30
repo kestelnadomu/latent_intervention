@@ -4,8 +4,7 @@ Training and evaluation pipeline: text latents -> semantic decoder -> manipulato
 Stages (hyperparameters from src/config.yaml; data + schema from exp/sim/):
     encode             encode generated input texts into latents (data/latents/)
     train-decoder      train the semantic decoder g: Z -> S on factual pairs
-    train-manipulator  train the latent manipulator h_Z against frozen g and
-                       counterfactual targets S' from the SCM simulation
+    train-manipulator  train the configured latent manipulator h_Z
     evaluate           manipulator faithfulness on the official test split
 
 Run from the repository root:
@@ -31,13 +30,22 @@ from src.artifact_io import write_json
 from src.config import CONFIG_PATH, load_config
 from src.decoder_reporting import DecoderTrainingRun
 from src.encoder_protocols import add_encoder_arguments
+from src.flow_workflow import (
+    FLOW_VARIANTS,
+    evaluate_flow_manipulator,
+    train_flow_manipulator,
+)
 from src.latent_intervention import (
     LatentIntervention,
+    LatentInterventionNoiseToken,
     LatentInterventionDist,
+    LatentInterventionParticles,
     LatentInterventionPreAdditive,
     make_objective,
     train_latent_intervention,
     train_latent_intervention_dist,
+    train_latent_intervention_noise_token,
+    train_latent_intervention_particles,
     train_latent_intervention_preadditive,
 )
 from src.pair_encoding import LatentArtifact, load_latent_artifact, sha256_file
@@ -56,7 +64,9 @@ from src.symbolic_intervention import load_symbolic_kernel
 INTERVENTION_VARIANTS = {
     "baseline": LatentIntervention,
     "pre_additive": LatentInterventionPreAdditive,
+    "noise_token": LatentInterventionNoiseToken,
     "dist": LatentInterventionDist,
+    "particles": LatentInterventionParticles,
 }
 
 
@@ -279,7 +289,11 @@ def stage_train_decoder(config: dict[str, Any]) -> dict[str, Any]:
 
 
 def stage_train_manipulator(config: dict[str, Any]) -> None:
-    """Train the manipulator on official training units against the frozen decoder."""
+    """Train the configured manipulator on official training units."""
+    if config["latent_intervention"]["variant"] in FLOW_VARIANTS:
+        train_flow_manipulator(config)
+        return
+
     artifact = load_latent_artifact(config)
     train_idx, _ = _official_indices(artifact)
     columns, _ = load_schema(config.get("sim_config"))
@@ -321,6 +335,7 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
         device=config["encoder"]["device"],
     )
 
+    torch.manual_seed(int(config["seed"]))
     if cfg["variant"] == "baseline":
         model = LatentIntervention(**model_kwargs)
         train_latent_intervention(model=model, epochs=cfg["epochs"], **train_kwargs)
@@ -331,6 +346,16 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
             model=model,
             epochs=cfg["epochs"],
             n_samples=pa["n_samples"],
+            **train_kwargs,
+        )
+    elif cfg["variant"] == "noise_token":
+        nt = cfg["noise_token"]
+        model = LatentInterventionNoiseToken(**model_kwargs, noise_dim=nt["noise_dim"])
+        train_latent_intervention_noise_token(
+            model=model,
+            epochs=cfg["epochs"],
+            n_samples=nt["n_samples"],
+            entropy_weight=nt["entropy_weight"],
             **train_kwargs,
         )
     elif cfg["variant"] == "dist":
@@ -348,9 +373,21 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
             realiser_l2=dist["realiser_l2"],
             **train_kwargs,
         )
+    elif cfg["variant"] == "particles":
+        pt = cfg["particles"]
+        model = LatentInterventionParticles(
+            **model_kwargs,
+            n_particles=pt["n_particles"],
+            uniform_weights=pt["uniform_weights"],
+        )
+        train_latent_intervention_particles(
+            model=model,
+            epochs=cfg["epochs"],
+            entropy_weight=pt["entropy_weight"],
+            **train_kwargs,
+        )
     else:
         raise ValueError(f"unknown latent intervention variant: {cfg['variant']}")
-
     model.save(config["paths"]["manipulator_model"])
     _write_manipulator_info(config, artifact)
     print(f"wrote {config['paths']['manipulator_model']} (intervention {intervention})")
@@ -358,13 +395,19 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
 
 def stage_evaluate(config: dict[str, Any]) -> None:
     """Evaluate decoder and manipulator behavior on official test units only."""
+    if config["latent_intervention"]["variant"] in FLOW_VARIANTS:
+        evaluate_flow_manipulator(config)
+        return
+
     artifact = load_latent_artifact(config)
     _, test_idx = _official_indices(artifact)
     columns, _ = load_schema(config.get("sim_config"))
     intervention = load_intervention(config.get("sim_config"))
+    device = config["encoder"]["device"]
 
     decoder = load_semantic_decoder(
         config["paths"]["decoder_model"],
+        device=device,
         expected_variant=config["semantic_decoder"]["variant"],
         expected_columns=columns,
         expected_metadata=_decoder_metadata(config, artifact),
@@ -378,19 +421,28 @@ def stage_evaluate(config: dict[str, Any]) -> None:
             "unknown latent intervention variant: "
             f"{config['latent_intervention']['variant']}"
         )
-    model = manipulator_type.load(config["paths"]["manipulator_model"])
+    model = manipulator_type.load(
+        config["paths"]["manipulator_model"], device=device
+    )
     s_factual = _aligned_targets(
         config["paths"]["sim_factual"], artifact.ids, decoder.columns
     )
     s_prime = _aligned_targets(
         config["paths"]["sim_counterfactual"], artifact.ids, decoder.columns
     )
-    z_test = artifact.z[test_idx]
+    z_test = artifact.z[test_idx].to(device)
     values, mask = make_objective(
-        intervention, decoder.columns, batch_size=len(test_idx)
+        intervention, decoder.columns, batch_size=len(test_idx), device=device
     )
     with torch.no_grad():
-        z_prime = model(z_test, values, mask)
+        if isinstance(model, (LatentInterventionPreAdditive, LatentInterventionNoiseToken)):
+            # stochastic plans: one seeded draw per text, reproducible across runs
+            generator = torch.Generator(device=torch.device(device)).manual_seed(
+                config["seed"]
+            )
+            z_prime = model(z_test, values, mask, generator)
+        else:
+            z_prime = model(z_test, values, mask)
     preds = decoder.predict(z_prime)
 
     consistency = {
@@ -453,7 +505,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--manipulator-variant",
-        choices=tuple(INTERVENTION_VARIANTS),
+        choices=(*INTERVENTION_VARIANTS, *FLOW_VARIANTS),
         default=None,
         help="override latent_intervention.variant before artifact paths are resolved",
     )

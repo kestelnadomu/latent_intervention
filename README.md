@@ -257,6 +257,24 @@ This runs 20 common hyperparameter candidates per combination, selects each by v
 
 Latent, decoder, and manipulator artifacts are separated by encoder, decoder, and manipulator variant and bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
 
+Choose $h_Z$ with `--manipulator-variant` or `latent_intervention.variant` in
+`src/config.yaml`: `baseline`, `pre_additive`, `noise_token`, `dist`, `particles`,
+`state_flow`, `distilled_flow`, or `direct_semantic_flow`. All use separate
+`models/talent/{encoder}/g-{decoder}/h-{variant}/` and matching report directories.
+Distilled training creates or reuses a compatible `h-state_flow` teacher within
+the same encoder/decoder combination; different embedding dimensions never share
+that checkpoint. The state flow uses factual $S$ and $h_S$; distilled and direct
+flows expose the standalone inference interface $(Z,\delta)\mapsto\Delta(\mathcal Z)$.
+
+The established transformer stages and report format remain in `src/pipeline.py`; that file delegates only the three flow variants to `src/flow_workflow.py`. Flow architectures and objectives are isolated in `src/flow_intervention.py`, while flow evaluation adds paired-$Z'$ recovery and support diagnostics.
+
+The active data supports the configured `do(X=3)` query; the deployable flows also
+train a no-op. Other schema-valid flow interventions are accepted for exploratory
+inference with a warning, but are outside training support. Downstream stages read
+the existing 5,000-unit dataset and its official split; they do not regenerate the
+data, re-encode CVs, or retrain the frozen semantic decoder. The small generation
+example in `exp/sim/config.yaml` is not the size of those stored artifacts.
+
 The separate `langvae_ft` baseline uses native LangVAE fine-tuned on CV passages,
 with unchanged architecture. See the [checkpoint and downstream handoff](docs/experiments/langvae_ft_handoff.md)
 for model transfer and opt-in encoding/training commands. Its checkpoints stay
