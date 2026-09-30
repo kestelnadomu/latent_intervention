@@ -49,6 +49,7 @@ from src.latent_intervention import (
     train_latent_intervention_preadditive,
 )
 from src.pair_encoding import LatentArtifact, load_latent_artifact, sha256_file
+from src.oracle_regression import ORACLE_VARIANT
 from src.schema import ColumnSpec, load_intervention, load_schema
 from src.semantic_decoder import (
     accuracy,
@@ -290,6 +291,11 @@ def stage_train_decoder(config: dict[str, Any]) -> dict[str, Any]:
 
 def stage_train_manipulator(config: dict[str, Any]) -> None:
     """Train the configured manipulator on official training units."""
+    if config["latent_intervention"]["variant"] == ORACLE_VARIANT:
+        from src.oracle_workflow import train_oracle_manipulator
+
+        train_oracle_manipulator(config)
+        return
     if config["latent_intervention"]["variant"] in FLOW_VARIANTS:
         train_flow_manipulator(config)
         return
@@ -395,6 +401,11 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
 
 def stage_evaluate(config: dict[str, Any]) -> None:
     """Evaluate decoder and manipulator behavior on official test units only."""
+    if config["latent_intervention"]["variant"] == ORACLE_VARIANT:
+        from src.oracle_workflow import evaluate_oracle_manipulator
+
+        evaluate_oracle_manipulator(config)
+        return
     if config["latent_intervention"]["variant"] in FLOW_VARIANTS:
         evaluate_flow_manipulator(config)
         return
@@ -505,7 +516,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--manipulator-variant",
-        choices=(*INTERVENTION_VARIANTS, *FLOW_VARIANTS),
+        choices=(*INTERVENTION_VARIANTS, *FLOW_VARIANTS, ORACLE_VARIANT),
         default=None,
         help="override latent_intervention.variant before artifact paths are resolved",
     )

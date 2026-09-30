@@ -88,6 +88,7 @@ latent_intervention:
   #   state_flow -> p(Z|S) flow; abduct under factual S and render under target S'
   #   distilled_flow -> standalone q(Z'|Z,delta) distilled from state_flow
   #   direct_semantic_flow -> standalone q(Z'|Z,delta) trained through frozen g and h_S
+  #   oracle_regression -> residual MLP fitted to privileged training-pair Z', not g/h_S
   variant: baseline
   tag: null                # optional artifact name; defaults to variant
   d_model: 128
@@ -138,6 +139,22 @@ latent_intervention:
       proximity_weight: 0.1
       support_weight: 0.05
       identity_weight: 1.0
+  oracle_regression:
+    hidden_dim: 512
+    n_hidden: 2
+    dropout: 0.1
+    epochs: 500           # ceiling; restore minimum validation MSE checkpoint
+    batch_size: 64
+    lr: 1.0e-3
+    weight_decay: 1.0e-5
+    validation_split: 0.2 # only within official training IDs
+    split_seed: 42
+    patience: 30
+    min_delta: 1.0e-7     # mean squared error per latent coordinate
+    scheduler_patience: 10
+    scheduler_factor: 0.5
+    min_lr: 1.0e-6
+    grad_clip: 5.0
 
 finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.py)
   epochs: 5
@@ -157,10 +174,12 @@ paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/
   sim_factual: data/sim_talent/sim_data_factual.csv
   sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
   latents: data/latents/talent/{encoder}/z_pairs.pt
+  oracle_targets: data/latents/talent/{encoder}/oracle_train/z_prime.pt
   decoder_model: models/talent/{encoder}/g-{decoder}/semantic_decoder.pt
   decoder_report: reports/talent/{encoder}/g-{decoder}/semantic_decoder.json
   manipulator_model: models/talent/{encoder}/g-{decoder}/h-{manipulator}/latent_intervention.pt
   eval_report: reports/talent/{encoder}/g-{decoder}/h-{manipulator}/eval.json
+  oracle_training_report: reports/talent/{encoder}/g-{decoder}/h-{manipulator}/training.json
   # Flow outputs use the same component tags as transformer outputs. The teacher
   # is shared only within one encoder/decoder pair, never between latent spaces.
   flow_manipulator_model: models/talent/{encoder}/g-{decoder}/h-{manipulator}/latent_intervention.pt
