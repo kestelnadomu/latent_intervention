@@ -1,25 +1,39 @@
 # Text encoder $f$
 
-$$f: \mathcal X \to \mathcal Z = \mathbb R^{128}$$
+$$f: \mathcal X \to \mathcal Z = \mathbb R^d$$
+
+LangVAE uses $d=128$. Nomic supports $d\in\{64,128,256,512,768\}$, configured by
+`encoder.nomic_latent_dim` or `--nomic-dim`, defaulting to 128. Nomic artifacts are named
+`nomic_<d>`, including `nomic_128`; this changes the artifact tag, not the `nomic` variant.
+Qwen3-Embedding-0.6B supports the configured grid
+$d\in\{32,64,128,256,512,768,1024\}$ through `encoder.qwen3_latent_dim` or `--qwen3-dim`.
+Its directories are `qwen3_<d>`; `qwen3` refers exclusively to the 0.6B checkpoint.
+EmbeddingGemma-300m adds $d\in\{128,256,512,768\}$, selected by
+`encoder.embeddinggemma_latent_dim` or `--embeddinggemma-dim`, with `embeddinggemma_<d>` paths.
 
 $f$ maps a CV text to a fixed latent. It is **frozen** and deterministic, so $g$ and $h_Z$ are
 trained on a fixed set of latents and $h_Z(f(x))$ is well defined.
 Code: `src/encoder.py`, called by `src/pair_encoding.py` (`pipeline encode`); select a variant
-with `encoder.variant` in `src/config.yaml`.
+with `--encoder-variant langvae|nomic|qwen3|embeddinggemma` (or `encoder.variant` in `src/config.yaml`).
+Qwen's implementation is in `src/qwen3_encoder.py`; its encoding queue uses an
+isolated environment to avoid changing LangVAE dependencies.
+Shared width/protocol validation and metadata live in `src/encoder_protocols.py`;
+`src/latent_writer.py` publishes the same canonical paired artifacts atomically.
+These extractions do not change the encoding recipe or invalidate saved latents.
 
 **Notation.**
 
 | symbol | meaning |
 |---|---|
 | $x \in \mathcal X$ | CV text (`cv_factual.csv`, `cv_counterfactual.csv`) |
-| $z = f(x) \in \mathcal Z = \mathbb R^{128}$ | latent; $x'$ and $z' = f(x')$ for counterfactual texts |
-| $L = 512$ | input budget in tokens (`encoder.max_len`) |
+| $z = f(x) \in \mathcal Z = \mathbb R^d$ | latent; $x'$ and $z' = f(x')$ for counterfactual texts |
+| $L = 512$ | LangVAE/Nomic input budget in tokens (`encoder.max_len`); Qwen uses `encoder.qwen3_max_len=1024` |
 | $B = 500$ | GPT-2 token budget enforced at generation (`text_length.max_tokens`, `exp/sim/config.yaml`) |
 | $\mathrm{BERT}(\cdot)$, $\mathrm{NomicBERT}(\cdot)$ | frozen transformer; token embeddings in $\mathbb R^{768}$ |
 | $\bar e(x) \in \mathbb R^{768}$ | masked mean pool of the token embeddings |
 | $W \in \mathbb R^{256\times768}$ | LangVAE's trained posterior projection (no bias) |
 | $\mu(x), \sigma^2(x)$ | LangVAE posterior mean and variance, each in $\mathbb R^{128}$ |
-| $[v]_{1:128}$ | first 128 coordinates (Matryoshka truncation) |
+| $[v]_{1:d}$ | first $d$ coordinates (Matryoshka truncation) |
 | $\mathrm{LN}$ | layer norm without affine parameters |
 
 ## Overview
@@ -28,35 +42,52 @@ with `encoder.variant` in `src/config.yaml`.
 |---|---|---|---|---|---|---|---|
 | `langvae` | `TextEncoder` | $\mu(x)$ | EntailmentBank sentences | $L$ | yes (GPT-2) | $\mathbb R^{128}$, VAE prior | default |
 | `langvae` + `local_checkpoint` | `TextEncoder` | $\mu(x)$, refit $W$ | generated CVs | $L$ | yes | as above | implemented (`src/finetune_vae.py`) |
-| `nomic` | `NomicTextEncoder` | $[\mathrm{LN}(\bar e)]_{1:128} / \lVert\cdot\rVert_2$ | general contrastive pairs | $L$ (model: 8192) | no | unit sphere $S^{127}$ | implemented |
-| `nomic`, long input | `NomicTextEncoder` | as above | as above | $> L$ | no | $S^{127}$ | planned |
+| `nomic` | `NomicTextEncoder` | $[\mathrm{LN}(\bar e)]_{1:d} / \lVert\cdot\rVert_2$ | general contrastive pairs | $L$ (model: 8192) | no | unit sphere $S^{d-1}$ | implemented |
+| `qwen3` | `Qwen3TextEncoder` | last nonpadding token, first $d$, L2 normalize | general embedding tasks | 1024 (model: 32k) | no | unit sphere $S^{d-1}$ | implemented, 0.6B only |
+| `embeddinggemma` | `EmbeddingGemmaTextEncoder` | bidirectional mean pool, two learned projections, first $d$, L2 normalize | general embedding tasks | 2048 | no | unit sphere $S^{d-1}$ | implemented, 300m only |
+| `nomic`, long input | `NomicTextEncoder` | as above | as above | $> L$ | no | $S^{d-1}$ | planned |
 
-Both variants are a frozen transformer, mean pooling, and a map to 128 dimensions. They differ in
-what that last map was trained for: reconstruction (`langvae`) or similarity (`nomic`).
+All variants use a frozen transformer. LangVAE and Nomic use mean pooling; Qwen uses
+the last nonpadding token. LangVAE's final map was trained for reconstruction, while
+Nomic and Qwen were trained for embedding tasks, not CV reconstruction.
 
 ## Shared interface and artifact
 
 $$\mathcal D_Z = \{(\mathrm{id}, f(x))\} \cup \{(\mathrm{id}, f(x'))\ :\ \mathrm{id} \in \text{test}\}$$
 
-* **Interface.** `encode(texts, deterministic=True, batch_size)` returns an `(n, 128)` tensor.
-  `latent_dim` is 128. `make_encoder(config, variant=None)` builds the configured class.
+* **Interface.** `encode(texts, deterministic=True, batch_size)` returns an `(n, d)` tensor.
+  `latent_dim` is the configured width. `make_encoder(config, variant=None)` builds the class.
 * **Pairs.** `encode_pairs` encodes all factual texts and the non-identity test counterfactuals in
-  one pass. Identity pairs ($x' = x$) copy $z$ exactly. It checks that the latents are 128-D and
+  one pass. Identity pairs ($x' = x$) copy $z$ exactly. It checks that the latents have the configured width and are
   finite.
 * **Provenance.** Each latent space gets its own directory: `{encoder}` in `paths.latents`,
   `decoder_model`, `manipulator_model` and `eval_report` is replaced by the encoder tag
-  (`src/config.py::encoder_tag`: `encoder.tag`, else the variant, or `langvae_ft` with
-  `local_checkpoint`). The sibling `*.info.json` records the tag, variant, model, revisions,
-  prefix, normalisation and input hashes, and the pipeline refuses latents whose tag differs from
-  the config. **Changing the encoder means re-encoding and retraining $g$ and $h_Z$.** The two
+  (`src/config.py::encoder_tag`: explicit `encoder.tag`, otherwise `nomic_<d>`, `qwen3_<d>`, `langvae`, or
+  `langvae_ft` with `local_checkpoint`). The sibling `*.info.json` records the variant, model,
+  dimension, revisions, prefix, normalisation and input hashes; incompatible provenance is rejected.
+  **Changing the encoder/dimension means new encodings and newly trained $g$ and $h_Z$.** The
   latent spaces are not interchangeable.
-* **Length budget.** Any token beyond $L$ is cut silently. Generation therefore rejects CVs over
+* **Pinned loading.** Nomic is first materialised as the configured model revision before its
+  remote loader runs. LangVAE's top-level checkpoint and the BERT/GPT-2 base snapshots it
+  reconstructs are pinned separately. This prevents a moving Hub `main` branch from silently
+  changing an artifact whose metadata claims a fixed revision. Qwen loads a pinned local
+  snapshot without remote code; its queue also hashes all model/tokenizer files.
+* **Length budget.** LangVAE/Nomic cut tokens beyond $L$. Generation therefore rejects CVs over
   $B$ GPT-2 tokens (`exp/sim/text_length.py`). On the current `cv_factual.csv`: at most 499 GPT-2
   tokens, 501 BERT-cased tokens, and 498 Nomic tokens including the prefix. Nothing is truncated
-  today, but the margin is small.
-* **128 dimensions are fixed.** The dimension of $\mathcal Z$ is shared by $g$, $h_Z$ and the
-  sparsity and proximity penalties on $z' - z$, so both variants must output 128-D vectors
-  natively, without an added projection.
+  today, but the margin is small. Qwen instead rejects over-budget inputs; the real tokenizer
+  audit over all factual and test-counterfactual texts found a maximum of 491 tokens,
+  below its configured 1024-token budget.
+* **Dimension consistency.** $g$ and $h_Z$ obtain their input width from the artifact. Their
+  internal hidden widths are separate hyperparameters. Existing 128-D checkpoints cannot be
+  reused with another width; penalty scales must be considered when comparing dimensions.
+* **Dimension queue.** `python -m src.nomic_encoding --prepare` validates the plan without
+  inference. `bash scripts/run_nomic_dimensions.sh` launches the serial queue in tmux. One
+  768-D pass supplies all smaller outputs via prefix slicing and L2 renormalization (never
+  another layer norm on the prefix). Existing artifacts are verified and preserved. See README
+  for logs, resumability, and the relocation of the old `nomic/` directory to `nomic_128/`.
+  Qwen uses the same atomic publication and verification machinery through
+  `src.qwen3_encoding`, with a real-model preflight and one 1024-D pass.
 
 ---
 
@@ -125,10 +156,10 @@ class TextEncoder:
 ```mermaid
 flowchart LR
   x((x)) --> pre["'classification: ' + x, cut at L"] --> N["NomicBERT (frozen)"]
-  N --> p[mean pool] --> ln[layer norm] --> tr["keep first 128"] --> l2[L2 normalise] --> z((z))
+  N --> p[mean pool] --> ln[layer norm at 768D] --> tr["keep first d"] --> l2[L2 normalise] --> z((z))
 ```
 
-$$f(x) = \frac{[\mathrm{LN}(\bar e(x))]_{1:128}}{\lVert[\mathrm{LN}(\bar e(x))]_{1:128}\rVert_2},\qquad
+$$f(x) = \frac{[\mathrm{LN}(\bar e(x))]_{1:d}}{\lVert[\mathrm{LN}(\bar e(x))]_{1:d}\rVert_2},\qquad
 \bar e(x) = \mathrm{meanpool}\,\mathrm{NomicBERT}(\texttt{"classification: "} \oplus x)_{1:L}$$
 
 * `nomic-ai/nomic-embed-text-v1.5` (137M parameters). The model and its remote code are pinned
@@ -139,10 +170,8 @@ $$f(x) = \frac{[\mathrm{LN}(\bar e(x))]_{1:128}}{\lVert[\mathrm{LN}(\bar e(x))]_
 * Deterministic only: `deterministic=False` raises `ValueError`. No decoder.
 
 **Benefits**
-* **The 128-D output was trained, not cut down afterwards.** Matryoshka training covers
-  768/512/256/128/64 dimensions, so it fits $\mathcal Z = \mathbb R^{128}$ with no extra
-  projection that could confound results. Most embedders only reach 128-D through PCA or ad hoc
-  truncation.
+* **Trained prefixes.** Matryoshka training covers 768/512/256/128/64 dimensions. Each selected
+  prefix is therefore a supported representation, without fitting an extra projection or PCA.
 * **Long context.** The architecture uses rotary positions and supports up to 8192 tokens, which
   removes BERT's hard 512 limit once the budget is raised (see the planned long-input variant).
 * **Open and reproducible.** Weights, training code and data are public (Apache-2.0), and the exact
@@ -152,7 +181,7 @@ $$f(x) = \frac{[\mathrm{LN}(\bar e(x))]_{1:128}}{\lVert[\mathrm{LN}(\bar e(x))]_
 **Caveats**
 * **No generative path.** There is no $\mathcal Z \to \mathcal X$ decoder, so it supports checking
   consistency in $\mathcal Z$ but not generating counterfactual text. `decode` does not exist.
-* **The latents lie on the unit sphere $S^{127}$.** $z + \Delta$ leaves the sphere, and the
+* **The latents lie on the unit sphere $S^{d-1}$.** $z + \Delta$ leaves the sphere, and the
   sparsity and proximity weights (tuned for the LangVAE scale) need retuning.
 * **Trained for similarity.** Contrastive training may suppress attributes that don't affect
   topical similarity, such as the country region $X$. Check the per-column accuracy of $g$ before
@@ -161,7 +190,8 @@ $$f(x) = \frac{[\mathrm{LN}(\bar e(x))]_{1:128}}{\lVert[\mathrm{LN}(\bar e(x))]_
 
 ```python
 class NomicTextEncoder:
-    latent_dim = 128
+    def __init__(self, latent_dim=128, ...):
+        self.latent_dim = nomic_dimension(latent_dim)
 
     @torch.no_grad()
     def encode(self, texts, deterministic=True, batch_size=32):
@@ -180,7 +210,7 @@ class NomicTextEncoder:
 
 ```mermaid
 flowchart LR
-  x(("x, longer than L")) --> N["NomicBERT, max_len > 512"] --> post["pool → LN → first 128 → L2"] --> z((z))
+  x(("x, longer than L")) --> N["NomicBERT, max_len > 512"] --> post["pool → LN → first d → L2"] --> z((z))
 ```
 
 $$f(x) \text{ as for } \texttt{nomic},\ \text{with } L > 512$$
@@ -202,17 +232,87 @@ $$f(x) \text{ as for } \texttt{nomic},\ \text{with } L > 512$$
 
 ## Alternatives considered
 
+Qwen3-Embedding-0.6B was originally listed here as the strongest candidate for testing
+encoder dependence (roughly four times the Nomic parameter count). It is now implemented
+as a separate frozen-encoder baseline, described below; the 4B/8B models are out of scope.
+
 | model | trained 128-D | context | why not now |
 |---|---|---|---|
-| Qwen3-Embedding-0.6B | yes (Matryoshka, down to 32) | 32k | 4× larger; the strongest candidate for testing whether results depend on the encoder |
-| EmbeddingGemma-300m | yes | 2k | Gemma licence |
+| EmbeddingGemma-300m | yes | 2k | now implemented below; gated Gemma licence acceptance required |
 | jina-embeddings-v3 | yes | 8k | non-commercial licence, 570M |
 | mxbai-embed-large, bge, e5 | no | 512 | same limit as LangVAE, no trained 128-D output |
 | OpenAI `text-embedding-3` | via `dimensions` | 8k | closed and can change silently; not reproducible; billed |
 
+## Qwen3-Embedding-0.6B (`qwen3`)
+
+Let $e_{\mathrm{last}}(x)\in\mathbb R^{1024}$ be the hidden state of the last nonpadding
+token. The encoding is
+
+$$f_d(x)=\frac{[e_{\mathrm{last}}(x)]_{1:d}}{\lVert[e_{\mathrm{last}}(x)]_{1:d}\rVert_2}.$$
+
+This follows the [official Transformers example](https://github.com/QwenLM/Qwen3-Embedding/blob/main/examples/qwen3_embedding_transformers.py)
+and the [0.6B model card](https://huggingface.co/Qwen/Qwen3-Embedding-0.6B).
+Unlike Nomic, there is no extra layer norm on the pooled vector and no mean pooling.
+The model supports widths from 32 to 1024; this project fixes the seven-width grid above
+for comparisons, rather than exposing every possible integer width.
+
+* **Model/environment.** `Qwen/Qwen3-Embedding-0.6B`, revision
+  `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3`. Inference uses
+  `.venv-qwen3`, Transformers 4.57.6, float32 weights and SDPA attention. Dependencies
+  are hash-locked in `requirements/qwen3.lock`; the LangVAE/Nomic `.venv` is untouched.
+* **Input protocol.** Plain CV text, no retrieval instruction or Nomic task prefix,
+  left padding, last-nonpadding-token pooling, no chat template, no silent truncation.
+  `encoder.qwen3_instruction` can define a later instruction experiment, but changing
+  it invalidates compatibility with existing artifacts and requires separate outputs.
+* **One transformer pass.** Encode 1024-D once; derive each smaller width by slicing
+  and L2 renormalizing. The full-vector normalization cancels when normalizing a
+  prefix. The preflight checks this against direct smaller-width inference and
+  tests batch-size invariance before a queue may run.
+* **Split/provenance.** The existing pair artifact contract is unchanged: all factual
+  rows, only official test counterfactuals, and exact copies for identity pairs.
+  Record the model, revision, instruction, pooling, dtype, attention implementation,
+  normalization, token limit and source hashes. No counterfactual training targets
+  are introduced by adding this encoder.
+* **Downstream interpretation.** Like Nomic, these vectors lie on a unit sphere and
+  have no text reconstruction decoder. Train a separate $g$ and $h_Z$ for every
+  width, examine $g$'s per-attribute performance, and retune penalties before drawing
+  comparisons with LangVAE. A larger embedding width does not by itself establish
+  better recovery of causal attributes.
+
+See the README for setup, preflight, preparation, the detached tmux launcher and reports.
+
+## EmbeddingGemma-300m (`embeddinggemma`)
+
+This frozen baseline follows the [official model](https://huggingface.co/google/embeddinggemma-300m)
+using Sentence Transformers 5.1.2 and Transformers 4.57.6 in `.venv-embeddinggemma`.
+The native 768-D output includes masked mean pooling **and both released learned
+projection layers** (768 → 3072 → 768, identity activations, no biases). Using only
+the transformer hidden states would define a different encoder.
+
+The predeclared prompt is `task: classification | query: `, chosen because `g`
+predicts structured attributes; it contains no sample-specific label information.
+The exact same prompt is used in both worlds, included in mean pooling, and
+recorded in artifact compatibility metadata. No prompt selection uses test outcomes.
+Unlike Nomic, there is no extra post-pooling layer norm. Unlike Qwen, the backbone
+uses bidirectional attention and mean pooling, not last-token pooling.
+
+The implementation validates the released module stack, disables KV caching, uses
+float32 SDPA inference, and refuses silent truncation beyond 2048 tokens including
+the prompt and special tokens. Native vectors are prefix-sliced and renormalized
+for 128/256/512-D outputs. Preflight checks complete input alignment, token lengths,
+batch-size consistency, agreement with the official named classification prompt,
+and direct-versus-derived dimensions. One full native-width run supplies all four
+artifacts using the shared atomic dimension queue.
+
+Use `src/embeddinggemma_encoder.py`, `src/embeddinggemma_preflight.py`, and
+`src/embeddinggemma_encoding.py`; the README has setup and detached launch commands.
+The pinned revision is `57c266a740f537b4dc058e1b0cda161fd15afa75`. Cached weights and
+all source/model hashes are kept separate from credentials; access approval is
+performed by the user, not automated. Setup/preflight does not run the full corpus.
+
 ## Open questions
 
-* Does `g` recover $X$, $D$ and $U$ equally well from both spaces? Compare per-column accuracy on
+* Does `g` recover $X$, $D$ and $U$ equally well across encoders and widths? Compare per-column accuracy on
   the same split before comparing $h_Z$ variants.
-* Is the text decoder needed for the paper's claims? If so, `nomic` stays a comparison only, and
+* Is the text decoder needed for the paper's claims? If so, `nomic`, `qwen3` and `embeddinggemma` stay comparisons only, and
   the main line is fine-tuned `langvae`.
