@@ -236,6 +236,15 @@ unchanged; it does not automatically include this encoder.
 
 ### Downstream training
 
+To train and compare both `g` variants across **all saved encoder dimensions**,
+see the [all-encoder decoder benchmark](docs/experiments/decoder_benchmark.md).
+It runs the common tuning budget in detached tmux and automatically writes a
+Markdown comparison, with validation-based selection and separate held-out tests.
+Canonical `g` checkpoints and their training reports, plus the benchmark summary,
+per-seed metrics, configurations and provenance, are eligible for Git tracking.
+They still need to be added, committed and pushed; tuning/extra-seed checkpoints,
+archives and logs remain ignored. See the benchmark guide for the exact policy.
+
 The same decoder commands work with `--encoder-variant nomic`. `pair_index.csv` is the sole train/test authority. `train-decoder` reserves a fixed validation holdout from the official training IDs. It trains for at most 500 epochs, halves the learning rate on a validation plateau, stops after 30 epochs without sufficient improvement, and restores the checkpoint with the lowest validation joint NLL. Per-epoch history, the exact split, hyperparameters, checkpoint checksum, and descriptive accuracy/ECE are saved below `reports/talent/{encoder}/g-{decoder}/`. The validation metrics are used for selection and are not test estimates; no temperature scaling is fitted. `train-manipulator` uses all official training IDs, while `evaluate` uses only official test IDs.
 
 To tune and repeat all four baseline combinations with the same budget:
@@ -244,7 +253,7 @@ To tune and repeat all four baseline combinations with the same budget:
 uv run python -m src.decoder_experiment --run-id cv-g500-v1 --workers 4 --threads-per-worker 1
 ```
 
-This runs 20 common hyperparameter candidates per combination, selects each by validation joint NLL, then trains five initialization seeds with the split held fixed. Seed 42 is declared in advance as the active model; all five are retained and summarized. Trials and final seeds live in `experiments/{run-id}/` under each model/report directory. The overall protocol, source snapshot, input hashes, status, and publication manifest are under `reports/talent/decoder_experiments/{run-id}/`. The previous active checkpoint and report are archived before the new verified files replace them. Repeating the command resumes verified completed trials; an interrupted trial restarts. Use a new run ID after code, inputs, or configuration change. These generated files remain Git-ignored and need explicit transfer to another server.
+This runs 20 common hyperparameter candidates per combination, selects each by validation joint NLL, then trains five initialization seeds with the split held fixed. Seed 42 is declared in advance as the active model; all five are retained and summarized. Trials and final seeds live in `experiments/{run-id}/` under each model/report directory. The overall protocol, source snapshot, input hashes, status, and publication manifest are under `reports/talent/decoder_experiments/{run-id}/`. The previous active checkpoint and report are archived before the new verified files replace them. Repeating the command resumes verified completed trials; an interrupted trial restarts. Use a new run ID after code, inputs, or configuration change. Canonical active checkpoints and their reports are eligible for Git tracking; the four-case experiment tree, archives and logs remain ignored and need explicit transfer to another server.
 
 Latent, decoder, and manipulator artifacts are separated by encoder, decoder, and manipulator variant and bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
 
