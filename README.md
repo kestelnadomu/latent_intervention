@@ -334,6 +334,130 @@ ignored. Training refuses to overwrite an existing run; use a fresh
 Interrupted training restarts, rather than resuming optimizer state. This adds
 the baseline, not the multi-variant tuning/benchmark runner.
 
+### Queued nine-family h_Z benchmark (EmbeddingGemma 256D / 768D)
+
+The isolated runner reuses the existing losses and frozen independent `g` models.
+Its protocol is in `configs/hz_benchmark.yaml`; ordinary pipeline defaults are
+unchanged. Preparation checks inputs and saves a manifest, but **does not encode,
+train, evaluate on the test set, or launch tmux**:
+
+```bash
+.venv/bin/python -m src.hz_benchmark --prepare --run-id hz-gemma-v1
+```
+
+Defaults: four CPU worker processes, one numerical thread each; 18 cases;
+eight learning-rate/width candidates per case; five final seeds (42–46);
+500-epoch ceiling, early stopping with patience 30, learning-rate reduction with
+patience 10, and best-validation checkpoint restoration. This is **234 fits**,
+not 234 fits times an extra teacher budget. `dist` uses 100 pretraining epochs
+plus at most 400 joint epochs; stopping/selection begin in the joint phase.
+These settings are a reproducible starting search budget, not a guarantee of
+publication-quality convergence or exhaustive tuning. The three flow variants,
+`dist`, and `oracle_regression` use explicit per-dimension/per-family width
+overrides (`model_widths`) from the benchmark YAML. All nine families' two size
+tiers match the standard baseline transformer within 7% in trainable parameters.
+Flows keep all eight blocks, `dist` keeps its weight and realiser components,
+and the oracle keeps its two-hidden-layer residual MLP. Only their widths are
+adjusted. This is parameter-budget matching, not equal compute or a convergence
+guarantee. Actual counts and constructor settings are
+saved in `plan.json`, with a count table in `summary.md` and counts in each
+training report. Frozen `g` and separate distillation teachers are excluded.
+Regularizer strengths and other architecture settings remain fixed at their
+`src/config.yaml` values; the ordinary pipeline's model defaults are unchanged.
+
+Before the full queue, run the isolated fit/validation pilot:
+
+```bash
+bash scripts/run_hz_pilot.sh
+```
+
+It fits one size and learning rate for all nine families at both dimensions,
+with one seed and a 50-epoch ceiling. `dist` has 10 pretraining epochs plus
+up to 40 joint epochs. For `pre_additive`, it also compares full-vector RMS
+noise levels 0.1, 0.25, 0.5 and 1.0, plus the previous per-coordinate
+`noise_std=1` as a control. The model uses `noise_std = RMS / sqrt(d)`.
+These are 26 separate fits; each candidate's constructor, learning curve,
+loss components, runtime and checksum are saved under
+`reports/talent/hz_benchmarks/hz-gemma-pilot-v1/` and matching isolated model
+paths. The pilot selects a noise level for each dimension by validation
+semantic KL. Its report also shows the no-edit reference and output spread.
+It does not score official-test targets or publish deployment models. Once
+reviewed, enter the selected noise levels in `pre_additive_noise_rms` in the
+benchmark YAML, refresh the unstarted full-run preparation, and check
+readiness before launching the full queue. The pilot is a feasibility and
+noise-scale check; its short histories do not certify full-run convergence.
+
+The completed `hz-gemma-pilot-v1` run selected RMS 0.5 at both dimensions:
+validation semantic KL was 0.269941 at 256D and 0.192790 at 768D, versus
+0.949295 and 0.993450 with the previous per-coordinate `noise_std=1`.
+Its [pilot report](reports/talent/hz_benchmarks/hz-gemma-pilot-v1/summary.md)
+records all 26 fit/validation runs, diagnostics, and selection. The prepared
+`hz-gemma-v1` full-run manifest uses those selected scales; it remains
+unstarted until the explicit launch command below.
+
+All h_Z fitting uses the same 3,200/800 split within the official 4,000 training
+IDs. The 1,000 test units never select hyperparameters or stopping epochs.
+Validation criteria differ by family: structured counterfactual NLL for the
+baseline, factual conditional NLL for state flow, teacher energy distance for
+distillation, true training-pair MSE for the oracle, and semantic forward KL for
+the semantic distributional variants. These are **not** used for a combined
+cross-family validation ranking. They are selection criteria; the established
+training losses still include their original regularizers. Frozen `g` was tuned
+on the same inner validation split, so this is not nested end-to-end validation.
+
+The search queue waits for a dimension's state-flow search before its distilled
+flow search. Final distillation waits for the same-dimension, same-seed final
+state-flow teacher. Every teacher fits only the 3,200 fit IDs. All search choices
+are frozen before test scoring begins. Evaluation uses 64 draws/unit (point
+masses for deterministic models), batching, fit-only standardization, normalized
+energy scores, latent recovery, structured/semantic diagnostics, a no-edit
+reference, and identity/nonidentity breakdowns. Observed-state flow inference
+is reported separately from latent-only inference. `baseline` and `dist` receive
+paired S' labels; the oracle additionally receives paired training Z'. These
+information-access differences are explicit in the report.
+
+Before a future launch, oracle training targets must exist at both dimensions.
+The runner reports missing targets and refuses to launch an incomplete nine-family
+benchmark; it **never** launches their encoding implicitly. After explicitly
+running the separate oracle-target queue above, check and launch with:
+
+```bash
+.venv/bin/python -m src.hz_benchmark --check-ready --run-id hz-gemma-v1
+bash scripts/run_hz_benchmark.sh hz-gemma-v1
+```
+
+The launcher creates detached tmux session `hz-benchmark`. Closing the client
+does not kill it (a server reboot still does). `status.json` and each fit's
+`progress.json` expose progress; `run.log` contains completion/failure messages.
+Relaunching the same command reuses hash-verified completed jobs; an interrupted
+fit restarts from its fixed seed, **not** from a saved optimizer state. A failed
+job blocks its dependents while unrelated jobs finish; failures are not silently
+dropped from model selection. Changed source/config/input hashes require a new
+run ID. Edit the protocol before preparing a run or use a fresh ID after edits.
+
+Outputs are isolated, leaving existing encodings, `g`, and canonical h_Z untouched:
+
+```text
+reports/talent/hz_benchmarks/<run>/
+  plan.json, readiness.json, selection.json, results.json, summary.md
+  fits/embeddinggemma_<d>/g-independent/h-<variant>/{search,final}/<label>/training.json
+  evaluation/embeddinggemma_<d>/g-independent/h-<variant>/seed-<n>.json
+models/talent/embeddinggemma_<d>/g-independent/h-<variant>/benchmarks/<run>/
+  search/trial-<n>/latent_intervention.pt
+  final/seed-<n>/latent_intervention.pt
+  selected/latent_intervention.pt
+```
+
+Selected deployment weights (predeclared seed 42, not the best test seed), their
+sidecars, all completed training histories/evaluations, and the reproducibility
+bundle are Git-trackable. Trial/other-seed weights, logs, live progress, locks,
+and failures remain local. Nothing is automatically staged, committed, or pushed.
+The benchmark checkpoints include their constructor settings and provenance;
+reload them with `src.hz_training.load_model(path)`, not the legacy pipeline loader.
+The modules `hz_benchmark_matrix`, `hz_training`/`hz_validation`, `hz_evaluation`,
+and `hz_report` separate planning, fitting, evaluation, and reporting; only small
+optional epoch-control hooks were added to the established trainers.
+
 ## Publish
 
 From root directory:

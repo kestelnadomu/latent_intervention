@@ -35,7 +35,7 @@ data/latents/**
 !data/latents/talent/langvae_ft/z_pairs.pt
 !data/latents/talent/langvae_ft/z_pairs.info.json
 # Keep published semantic decoders and the oracle regression reference portable.
-# Trials, archives, other h_Z models, encoder checkpoints and temporary files stay local.
+# Trials, archives, legacy unselected h_Z models, encoder checkpoints and temporary files stay local.
 models/**
 !models/talent/
 !models/talent/*/
@@ -45,6 +45,13 @@ models/**
 !models/talent/*/g-*/h-oracle_regression/
 !models/talent/*/g-*/h-oracle_regression/latent_intervention.pt
 !models/talent/*/g-*/h-oracle_regression/latent_intervention.info.json
+# h_Z benchmark: one predeclared deployment seed per case/run, not every trial.
+!models/talent/*/g-*/h-*/
+!models/talent/*/g-*/h-*/benchmarks/
+!models/talent/*/g-*/h-*/benchmarks/*/
+!models/talent/*/g-*/h-*/benchmarks/*/selected/
+!models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.pt
+!models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.info.json
 
 # Published training reports and the small all-encoder benchmark audit bundle.
 reports/**
@@ -80,6 +87,31 @@ reports/**
 !reports/talent/decoder_benchmarks/*/source/**/*.json
 !reports/talent/decoder_benchmarks/*/source/**/*.sh
 !reports/talent/decoder_benchmarks/*/source/uv.lock
+# h_Z benchmark protocol, all completed histories/metrics, and source snapshot.
+!reports/talent/hz_benchmarks/*/
+!reports/talent/hz_benchmarks/*/plan.json
+!reports/talent/hz_benchmarks/*/readiness.json
+!reports/talent/hz_benchmarks/*/oracle_inputs.json
+!reports/talent/hz_benchmarks/*/selection.json
+!reports/talent/hz_benchmarks/*/status.json
+!reports/talent/hz_benchmarks/*/results.json
+!reports/talent/hz_benchmarks/*/published.json
+!reports/talent/hz_benchmarks/*/summary.md
+!reports/talent/hz_benchmarks/*/configs/
+!reports/talent/hz_benchmarks/*/configs/*.yaml
+!reports/talent/hz_benchmarks/*/fits/
+!reports/talent/hz_benchmarks/*/fits/**/
+!reports/talent/hz_benchmarks/*/fits/**/training.json
+!reports/talent/hz_benchmarks/*/evaluation/
+!reports/talent/hz_benchmarks/*/evaluation/**/
+!reports/talent/hz_benchmarks/*/evaluation/**/seed-*.json
+!reports/talent/hz_benchmarks/*/source/
+!reports/talent/hz_benchmarks/*/source/**/
+!reports/talent/hz_benchmarks/*/source/**/*.py
+!reports/talent/hz_benchmarks/*/source/**/*.yaml
+!reports/talent/hz_benchmarks/*/source/**/*.sh
+!reports/talent/hz_benchmarks/*/source/pyproject.toml
+!reports/talent/hz_benchmarks/*/source/uv.lock
 
 # Overleaf repo
 overleaf*

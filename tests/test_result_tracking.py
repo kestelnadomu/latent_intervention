@@ -11,7 +11,32 @@ def test_result_tracking_allowlist(tmp_path):
     bundle = "reports/talent/decoder_benchmarks/test-run"
     model = "models/talent/embeddinggemma_768/g-independent"
     report = "reports/talent/embeddinggemma_768/g-independent"
+    hz = "reports/talent/hz_benchmarks/test-run"
+    hz_model = f"{model}/h-state_flow/benchmarks/test-run"
     portable = {
+        f"{hz_model}/selected/latent_intervention.pt",
+        f"{hz_model}/selected/latent_intervention.info.json",
+        *(
+            f"{hz}/{name}"
+            for name in (
+                "plan.json",
+                "readiness.json",
+                "oracle_inputs.json",
+                "selection.json",
+                "status.json",
+                "results.json",
+                "published.json",
+                "summary.md",
+            )
+        ),
+        f"{hz}/fits/embeddinggemma_768/g-independent/h-state_flow/search/trial-000/training.json",
+        f"{hz}/fits/embeddinggemma_256/g-independent/h-oracle_regression/final/seed-43/training.json",
+        f"{hz}/evaluation/embeddinggemma_768/g-independent/h-particles/seed-42.json",
+        f"{hz}/source/src/hz_training.py",
+        f"{hz}/source/exp/sim/talent_sfm.py",
+        f"{hz}/source/pyproject.toml",
+        f"{hz}/source/uv.lock",
+        f"{hz}/configs/benchmark.yaml",
         f"{model}/semantic_decoder.pt",
         f"{report}/semantic_decoder.json",
         f"{model}/h-oracle_regression/latent_intervention.pt",
@@ -47,6 +72,14 @@ def test_result_tracking_allowlist(tmp_path):
         f"{bundle}/source/uv.lock",
     }
     local = {
+        f"{hz_model}/search/trial-000/latent_intervention.pt",
+        f"{hz_model}/final/seed-42/latent_intervention.pt",
+        f"{hz_model}/selected/.latent_intervention.pt.tmp",
+        f"{hz}/fits/embeddinggemma_768/g-independent/h-state_flow/search/trial-000/progress.json",
+        f"{hz}/fits/embeddinggemma_768/g-independent/h-state_flow/search/trial-000/failure.json",
+        f"{hz}/run.log",
+        f"{hz}/errors.json",
+        f"{hz}/source/.env",
         f"{model}/experiments/test-run/search/trial-000/semantic_decoder.pt",
         f"{model}/experiments/test-run/final/seed-43/semantic_decoder.pt",
         f"{model}/archive/test-run/semantic_decoder.pt",

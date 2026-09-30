@@ -1,0 +1,1054 @@
+{
+  "completed_fits": 26,
+  "format": "hz_pilot_v1",
+  "input_splits": {
+    "fit": 3200,
+    "validation": 800
+  },
+  "median_fit_seconds": 237.70251918584108,
+  "noise_diagnostics": {
+    "05fdaa11a6ca8288d6d590263c33a72b93690efec18ec7d2248eb192a607e536": {
+      "dimension": 256,
+      "mean_shift_l2": 2.093189239501953,
+      "no_edit_validation_kl": 13.44161003112793,
+      "noise_rms": 16.0,
+      "noise_std": 1.0,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.12917931377887726,
+      "sample_units": 64
+    },
+    "0c539202aeb88168598ab3efec1067ed61b93b530e98e516cd126b73e5f3ade2": {
+      "dimension": 768,
+      "mean_shift_l2": 1.291810154914856,
+      "no_edit_validation_kl": 13.405992927551269,
+      "noise_rms": 0.5,
+      "noise_std": 0.018042195912175808,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.0793927013874054,
+      "sample_units": 64
+    },
+    "0e99a8c8c69214972049418049c09e41ccee5b82a51c77f3a63b85ba6d6f8ff4": {
+      "dimension": 768,
+      "mean_shift_l2": 1.6758437156677246,
+      "no_edit_validation_kl": 13.405992927551269,
+      "noise_rms": 0.25,
+      "noise_std": 0.009021097956087904,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.05623655766248703,
+      "sample_units": 64
+    },
+    "154e58f54f0ccabfa350cba6a14abd5825c366cc158d3c65240f649097832a7f": {
+      "dimension": 768,
+      "mean_shift_l2": 1.7769489288330078,
+      "no_edit_validation_kl": 13.405992927551269,
+      "noise_rms": 0.1,
+      "noise_std": 0.0036084391824351613,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.024951636791229248,
+      "sample_units": 64
+    },
+    "6482a61e5adb00c7fb5d0032fc9fef7931dab3ad8801c1bd268be626e237462b": {
+      "dimension": 256,
+      "mean_shift_l2": 0.7886168360710144,
+      "no_edit_validation_kl": 13.44161003112793,
+      "noise_rms": 0.1,
+      "noise_std": 0.00625,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.02313116379082203,
+      "sample_units": 64
+    },
+    "659158bfefbea9d4ead3dd7fc4877ba4ea4285c5e656be653dcaa8b5494f14e4": {
+      "dimension": 768,
+      "mean_shift_l2": 1.057192325592041,
+      "no_edit_validation_kl": 13.405992927551269,
+      "noise_rms": 1.0,
+      "noise_std": 0.036084391824351615,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.10512835532426834,
+      "sample_units": 64
+    },
+    "6a754ac1c5fa744b7c7f44f8867c9cb4ba615f01bfd9cc66ea6e886e59a34a4c": {
+      "dimension": 256,
+      "mean_shift_l2": 0.8528403043746948,
+      "no_edit_validation_kl": 13.44161003112793,
+      "noise_rms": 1.0,
+      "noise_std": 0.0625,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.12235306948423386,
+      "sample_units": 64
+    },
+    "7bf35c44e7b0affd91ecdcae7234363557257279aa8be5650a3e4528020344ac": {
+      "dimension": 256,
+      "mean_shift_l2": 0.7482662796974182,
+      "no_edit_validation_kl": 13.44161003112793,
+      "noise_rms": 0.5,
+      "noise_std": 0.03125,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.07575098425149918,
+      "sample_units": 64
+    },
+    "8dc07f077cc181d7909ff04e8a36847cdba09cecfa2642c31af73eae3d786c49": {
+      "dimension": 768,
+      "mean_shift_l2": 3.521075487136841,
+      "no_edit_validation_kl": 13.405992927551269,
+      "noise_rms": 27.712812921102035,
+      "noise_std": 1.0,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.15631599724292755,
+      "sample_units": 64
+    },
+    "f0f7fc26f30795bdb489b799d7078e4e96ec7997e75d75d933dd27cc34e1d4ac": {
+      "dimension": 256,
+      "mean_shift_l2": 0.7149394154548645,
+      "no_edit_validation_kl": 13.44161003112793,
+      "noise_rms": 0.25,
+      "noise_std": 0.015625,
+      "sample_draws": 16,
+      "sample_spread_l2": 0.05139565467834473,
+      "sample_units": 64
+    }
+  },
+  "official_test_scoring": false,
+  "plan_sha256": "50ffe18d20506a4467bb22761c1f15b118e55b11b1e11488a7803ffe96726eac",
+  "rows": [
+    {
+      "best_epoch": 50,
+      "best_validation": 0.49132293939590455,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-baseline",
+      "checkpoint_sha256": "093acb184a954a6c9fc8050bcf2ae8b3aee0037ad4d58656674a23ed8e5268ee",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "consistency": 1.991111032962799,
+        "proximity": 0.004543598428135738,
+        "sparsity": 0.0499582527205348,
+        "total": 2.045612871646881
+      },
+      "first_validation": 1.4637700843811035,
+      "last_training": {
+        "consistency": 0.4243263852596283,
+        "proximity": 0.003594762631691992,
+        "sparsity": 0.03391210116446018,
+        "total": 0.4618332487344742
+      },
+      "last_validation": 0.49132293939590455,
+      "phases": [
+        "train"
+      ],
+      "seconds": 34.69471301138401,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-baseline/pilot/reference/training.json",
+      "validation_metric": "counterfactual_state_nll",
+      "variant": "baseline"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.10613476783037186,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-direct_semantic_flow",
+      "checkpoint_sha256": "1a6074b3b1714892f14dc74dd903f08ab52a1ab40a2dd803aa4f06bb669bf16f",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "entropy": 0.8278467655181885,
+        "grad_norm": 6.0354344940185545,
+        "identity": 0.010506071976851671,
+        "log_det": 24.52588693857193,
+        "proximity": 0.014443133124150336,
+        "semantic_kl": 6.501533927917481,
+        "spread": 0.8866555500030517,
+        "support": 0.579782098531723,
+        "total": 6.625258092880249
+      },
+      "first_validation": 3.9409780597686765,
+      "last_training": {
+        "entropy": 0.8112284278869629,
+        "grad_norm": 1.4345995378494263,
+        "identity": 0.0006383978843223304,
+        "log_det": 11.396970715522766,
+        "proximity": 0.05215545117855072,
+        "semantic_kl": 0.0734682796150446,
+        "spread": 1.6246122026443481,
+        "support": 0.6380715465545654,
+        "total": 0.19234864473342894
+      },
+      "last_validation": 0.10613476783037186,
+      "phases": [
+        "train"
+      ],
+      "seconds": 171.5789796859026,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-direct_semantic_flow/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "direct_semantic_flow"
+    },
+    {
+      "best_epoch": 46,
+      "best_validation": 0.0941653460264206,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-dist",
+      "checkpoint_sha256": "d176704750bde32d347d1a74648c6853deb6f4a99aceb412c23b0384ba40c767",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 0.6852767443656922,
+        "phase": 1.0,
+        "sparsity": 0.02597065843641758,
+        "total": 0.7127922606468201
+      },
+      "first_validation": 0.5643593633174896,
+      "last_training": {
+        "kl": 0.12689076691865922,
+        "phase": 1.0,
+        "sparsity": 0.008304704427719117,
+        "total": 0.1354810681939125
+      },
+      "last_validation": 0.16258314847946168,
+      "phases": [
+        "pretrain",
+        "joint"
+      ],
+      "seconds": 323.46567718684673,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-dist/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "dist"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.1040627419948578,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-distilled_flow",
+      "checkpoint_sha256": "77158f0333f6ea11630fdd435503f01167c2ca255ed2f2f58b29e1cd9c72d12d",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "energy": 0.40180389702320096,
+        "grad_norm": 0.08943122208118438,
+        "identity_fraction": 0.2015625,
+        "spread": 0.9110823893547058,
+        "total": 0.40180389702320096
+      },
+      "first_validation": 0.3465577971935272,
+      "last_training": {
+        "energy": 0.08659437507390975,
+        "grad_norm": 0.3500076940655708,
+        "identity_fraction": 0.1915625,
+        "spread": 0.9818787479400635,
+        "total": 0.08659437507390975
+      },
+      "last_validation": 0.1040627419948578,
+      "phases": [
+        "train"
+      ],
+      "seconds": 224.80387611687183,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-distilled_flow/pilot/reference/training.json",
+      "validation_metric": "teacher_energy_distance",
+      "variant": "distilled_flow"
+    },
+    {
+      "best_epoch": 48,
+      "best_validation": 0.22758972525596619,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-noise_token",
+      "checkpoint_sha256": "9b0fb5a3e7210cc6522be37a8cb8d773bb210757a034efb9a3d6b01736ca458c",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "entropy": 0.794544653892517,
+        "kl": 4.727520565986634,
+        "proximity": 0.003957807124825194,
+        "sparsity": 0.04864027347415686,
+        "spread": 0.22742452815175057,
+        "total": 4.859573130607605
+      },
+      "first_validation": 1.9567372941970824,
+      "last_training": {
+        "entropy": 0.806151602268219,
+        "kl": 0.2514419198036194,
+        "proximity": 0.001175262430915609,
+        "sparsity": 0.017948431633412837,
+        "spread": 0.09334051281213761,
+        "total": 0.3511807769536972
+      },
+      "last_validation": 0.2683089590072632,
+      "phases": [
+        "train"
+      ],
+      "seconds": 276.24997217953205,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-noise_token/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "noise_token"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.00016379776818212122,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-oracle_regression",
+      "checkpoint_sha256": "c2f27f5bd0b27b25b8cb0d829c3ea4c876d250e05c0bfc4d76f73725cc2cc857",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "mse": 0.00045712743944022806
+      },
+      "first_validation": 0.00042093935073353353,
+      "last_training": {
+        "mse": 0.0001678097984404303
+      },
+      "last_validation": 0.00016379776818212122,
+      "phases": [
+        "train"
+      ],
+      "seconds": 10.687804266810417,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-oracle_regression/pilot/reference/training.json",
+      "validation_metric": "counterfactual_latent_mse",
+      "variant": "oracle_regression"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.19384303987026213,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-particles",
+      "checkpoint_sha256": "dea62aff8d44ed319ace475a120b98002e4c43ed0e6742af750ef15a275beb20",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "distinct_states": 7.415625,
+        "eff_particles": 15.989708271026611,
+        "entropy": 0.5627867746353149,
+        "kl": 3.2556116223335265,
+        "proximity": 0.0019524325185921044,
+        "sparsity": 0.03493164218962193,
+        "total": 3.3487743139266968
+      },
+      "first_validation": 1.2470461225509644,
+      "last_training": {
+        "distinct_states": 4.36625,
+        "eff_particles": 12.707780017852784,
+        "entropy": 0.5254131144285202,
+        "kl": 0.23498484432697297,
+        "proximity": 0.00031379610823933034,
+        "sparsity": 0.009401236567646265,
+        "total": 0.297241188287735
+      },
+      "last_validation": 0.19384303987026213,
+      "phases": [
+        "train"
+      ],
+      "seconds": 160.7125405073166,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-particles/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "particles"
+    },
+    {
+      "best_epoch": 47,
+      "best_validation": 0.45487740337848664,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 0.1,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-pre_additive",
+      "checkpoint_sha256": "6482a61e5adb00c7fb5d0032fc9fef7931dab3ad8801c1bd268be626e237462b",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 4.528511261940002,
+        "proximity": 0.003940007184864953,
+        "sparsity": 0.048624016232788565,
+        "total": 4.581075286865234
+      },
+      "first_validation": 7.003627433776855,
+      "last_training": {
+        "kl": 0.353392236828804,
+        "proximity": 0.002459357106126845,
+        "sparsity": 0.025999272912740706,
+        "total": 0.38185086846351624
+      },
+      "last_validation": 0.6895640325546265,
+      "phases": [
+        "train"
+      ],
+      "seconds": 236.56165412068367,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-pre_additive/pilot/rms-0p1/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.30301128268241884,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 0.25,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-pre_additive",
+      "checkpoint_sha256": "f0f7fc26f30795bdb489b799d7078e4e96ec7997e75d75d933dd27cc34e1d4ac",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 4.503295373916626,
+        "proximity": 0.003925649436423555,
+        "sparsity": 0.04857426945120096,
+        "total": 4.555795340538025
+      },
+      "first_validation": 4.440751714706421,
+      "last_training": {
+        "kl": 0.4141432410478592,
+        "proximity": 0.0020560993417166173,
+        "sparsity": 0.023525853231549262,
+        "total": 0.4397251963615417
+      },
+      "last_validation": 0.30301128268241884,
+      "phases": [
+        "train"
+      ],
+      "seconds": 236.1723250001669,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-pre_additive/pilot/rms-0p25/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 43,
+      "best_validation": 0.26994064152240754,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 0.5,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-pre_additive",
+      "checkpoint_sha256": "7bf35c44e7b0affd91ecdcae7234363557257279aa8be5650a3e4528020344ac",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 4.5838746738433835,
+        "proximity": 0.0038422586652450265,
+        "sparsity": 0.048037624061107634,
+        "total": 4.635754561424255
+      },
+      "first_validation": 8.320602951049805,
+      "last_training": {
+        "kl": 0.44615795254707336,
+        "proximity": 0.001957217853050679,
+        "sparsity": 0.023009878322482108,
+        "total": 0.47112505078315736
+      },
+      "last_validation": 0.316747869849205,
+      "phases": [
+        "train"
+      ],
+      "seconds": 236.76128731667995,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-pre_additive/pilot/rms-0p5/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.4188239419460297,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 1.0,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-pre_additive",
+      "checkpoint_sha256": "6a754ac1c5fa744b7c7f44f8867c9cb4ba615f01bfd9cc66ea6e886e59a34a4c",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 4.486564834117889,
+        "proximity": 0.0037742178118787707,
+        "sparsity": 0.04761399809271097,
+        "total": 4.5379530668258665
+      },
+      "first_validation": 4.152713632583618,
+      "last_training": {
+        "kl": 0.6243443155288696,
+        "proximity": 0.002923957551829517,
+        "sparsity": 0.028265740759670734,
+        "total": 0.6555340164899826
+      },
+      "last_validation": 0.4188239419460297,
+      "phases": [
+        "train"
+      ],
+      "seconds": 238.6437510550022,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-pre_additive/pilot/rms-1p0/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 44,
+      "best_validation": 0.9492946219444275,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 16.0,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-pre_additive",
+      "checkpoint_sha256": "05fdaa11a6ca8288d6d590263c33a72b93690efec18ec7d2248eb192a607e536",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 3.2478853607177736,
+        "proximity": 0.001016006610589102,
+        "sparsity": 0.024308990910649298,
+        "total": 3.2732103776931765
+      },
+      "first_validation": 1.8775646591186523,
+      "last_training": {
+        "kl": 1.234523389339447,
+        "proximity": 0.01662510894238949,
+        "sparsity": 0.0723236346244812,
+        "total": 1.3234721279144288
+      },
+      "last_validation": 0.9999454212188721,
+      "phases": [
+        "train"
+      ],
+      "seconds": 249.93621969223022,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-pre_additive/pilot/legacy-std-one/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 49,
+      "best_validation": -2.849518823623657,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_256/g-independent/h-state_flow",
+      "checkpoint_sha256": "369a757a5bd18fedb38491d5bd633d49aa479d813564cc0a00029f4ea7eaf395",
+      "dimension": 256,
+      "epochs_run": 50,
+      "first_training": {
+        "grad_norm": 11.00535798072815,
+        "nll": -516.7285620117187,
+        "total": -516.7285620117187
+      },
+      "first_validation": -2.078864793777466,
+      "last_training": {
+        "grad_norm": 444.37157165527344,
+        "nll": -747.77634765625,
+        "total": -747.77634765625
+      },
+      "last_validation": -2.8462826919555666,
+      "phases": [
+        "train"
+      ],
+      "seconds": 36.483585610985756,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_256/g-independent/h-state_flow/pilot/reference/training.json",
+      "validation_metric": "factual_conditional_nll_per_coordinate",
+      "variant": "state_flow"
+    },
+    {
+      "best_epoch": 45,
+      "best_validation": 0.5193960082530975,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-baseline",
+      "checkpoint_sha256": "cad04d3395e4b411333538e140ba09d9dc9b4f82f9a255b8229e7fc46de25f2c",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "consistency": 2.0037035405635835,
+        "proximity": 0.0021460179786663503,
+        "sparsity": 0.03544623948633671,
+        "total": 2.0412957870960238
+      },
+      "first_validation": 1.0298126721382141,
+      "last_training": {
+        "consistency": 0.34964836061000826,
+        "proximity": 0.0020738967857323585,
+        "sparsity": 0.024035424329340457,
+        "total": 0.3757576808333397
+      },
+      "last_validation": 0.5431054902076721,
+      "phases": [
+        "train"
+      ],
+      "seconds": 40.306191861629486,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-baseline/pilot/reference/training.json",
+      "validation_metric": "counterfactual_state_nll",
+      "variant": "baseline"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.06723452672362328,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-direct_semantic_flow",
+      "checkpoint_sha256": "c813423d8c148faa34ab7d20ec9f706b93de9d51295103192fe5d12b0e56ecd5",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "entropy": 0.6638155287504196,
+        "grad_norm": 4.08642418384552,
+        "identity": 0.010492916349321604,
+        "log_det": 56.70567640423775,
+        "proximity": 0.012583064371719957,
+        "semantic_kl": 7.036561131477356,
+        "spread": 1.5011794185638427,
+        "support": 0.5907595944404602,
+        "total": 7.144231839179993
+      },
+      "first_validation": 4.055696210861206,
+      "last_training": {
+        "entropy": 0.6842467486858368,
+        "grad_norm": 1.1734300613403321,
+        "identity": 0.0008050301868934185,
+        "log_det": 23.350113468170164,
+        "proximity": 0.052453743293881416,
+        "semantic_kl": 0.04506411775946617,
+        "spread": 3.3525248193740844,
+        "support": 0.6608916532993316,
+        "total": 0.15258378267288208
+      },
+      "last_validation": 0.06723452672362328,
+      "phases": [
+        "train"
+      ],
+      "seconds": 415.6455916762352,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-direct_semantic_flow/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "direct_semantic_flow"
+    },
+    {
+      "best_epoch": 45,
+      "best_validation": 0.07401666581630707,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-dist",
+      "checkpoint_sha256": "f7732467e1131dfefad6b08009ff8c1ba57cd00105d61e6b2c90a33863cf3547",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 0.3803957015275955,
+        "phase": 1.0,
+        "sparsity": 0.025853128060698508,
+        "total": 0.40768682658672334
+      },
+      "first_validation": 0.3094503474235535,
+      "last_training": {
+        "kl": 0.06464890994131565,
+        "phase": 1.0,
+        "sparsity": 0.010496515221893788,
+        "total": 0.07552581645548344
+      },
+      "last_validation": 0.10044183164834976,
+      "phases": [
+        "pretrain",
+        "joint"
+      ],
+      "seconds": 402.1608263105154,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-dist/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "dist"
+    },
+    {
+      "best_epoch": 47,
+      "best_validation": 0.06844582468271256,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-distilled_flow",
+      "checkpoint_sha256": "b936ed2ef3e9cbd49ffc4d10a8d31779674a208201d7d1af47f1c05cb4805013",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "energy": 0.2741364288330078,
+        "grad_norm": 0.054375509060919286,
+        "identity_fraction": 0.2015625,
+        "spread": 1.4530190420150757,
+        "total": 0.2741364288330078
+      },
+      "first_validation": 0.21524041175842284,
+      "last_training": {
+        "energy": 0.058503180742263794,
+        "grad_norm": 0.1553735390305519,
+        "identity_fraction": 0.1915625,
+        "spread": 1.1415393793582915,
+        "total": 0.058503180742263794
+      },
+      "last_validation": 0.06846317887306214,
+      "phases": [
+        "train"
+      ],
+      "seconds": 584.4304125607014,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-distilled_flow/pilot/reference/training.json",
+      "validation_metric": "teacher_energy_distance",
+      "variant": "distilled_flow"
+    },
+    {
+      "best_epoch": 49,
+      "best_validation": 0.2092056691646576,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-noise_token",
+      "checkpoint_sha256": "7a1b77fca6a86924fca5b617909c43ef51a745cb2e9ae319a329e3ba2e048b53",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "entropy": 0.9219784133229405,
+        "kl": 6.248379197120666,
+        "proximity": 0.001909126591635868,
+        "sparsity": 0.03341132402420044,
+        "spread": 0.3400327054411173,
+        "total": 6.375897531509399
+      },
+      "first_validation": 2.271288914680481,
+      "last_training": {
+        "entropy": 0.7714480686187745,
+        "kl": 0.25246484160423277,
+        "proximity": 0.002695728102698922,
+        "sparsity": 0.031014005355536937,
+        "spread": 0.15852677583694458,
+        "total": 0.3633193856477737
+      },
+      "last_validation": 0.23906689941883086,
+      "phases": [
+        "train"
+      ],
+      "seconds": 346.2420829385519,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-noise_token/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "noise_token"
+    },
+    {
+      "best_epoch": 49,
+      "best_validation": 7.02091723602886e-05,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-oracle_regression",
+      "checkpoint_sha256": "396960b508778370b5dec8e05b0e15dbaadc64d435fee0664cbc06c5ecc748c6",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "mse": 0.00019611544790677728
+      },
+      "first_validation": 0.0001826086702446143,
+      "last_training": {
+        "mse": 7.246149325510488e-05
+      },
+      "last_validation": 7.031287687520186e-05,
+      "phases": [
+        "train"
+      ],
+      "seconds": 15.269848212599754,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-oracle_regression/pilot/reference/training.json",
+      "validation_metric": "counterfactual_latent_mse",
+      "variant": "oracle_regression"
+    },
+    {
+      "best_epoch": 41,
+      "best_validation": 0.43675769805908204,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-particles",
+      "checkpoint_sha256": "499931abf4d652c0373b7c484a6f7b2e6e54b15474557a3e8d482d866d2c2100",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "distinct_states": 6.9075,
+        "eff_particles": 15.993076553344727,
+        "entropy": 0.654551647938788,
+        "kl": 5.180460329055786,
+        "proximity": 0.002162556139519438,
+        "sparsity": 0.03580345280468464,
+        "total": 5.283881595134735
+      },
+      "first_validation": 1.6237844705581665,
+      "last_training": {
+        "distinct_states": 4.596875,
+        "eff_particles": 15.64483169555664,
+        "entropy": 0.4542287468910217,
+        "kl": 0.5258038032054901,
+        "proximity": 0.00014460613369010389,
+        "sparsity": 0.007460347721353173,
+        "total": 0.5788316267728806
+      },
+      "last_validation": 0.5014100337028503,
+      "phases": [
+        "train"
+      ],
+      "seconds": 219.8959188759327,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-particles/pilot/reference/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "particles"
+    },
+    {
+      "best_epoch": 46,
+      "best_validation": 0.3012294381856918,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 0.1,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-pre_additive",
+      "checkpoint_sha256": "154e58f54f0ccabfa350cba6a14abd5825c366cc158d3c65240f649097832a7f",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 6.180815143585205,
+        "proximity": 0.0018112918094266206,
+        "sparsity": 0.03279373239725828,
+        "total": 6.215420179367065
+      },
+      "first_validation": 4.312691593170166,
+      "last_training": {
+        "kl": 0.39114834755659106,
+        "proximity": 0.0038702324545010925,
+        "sparsity": 0.03838884294033051,
+        "total": 0.4334074231982231
+      },
+      "last_validation": 0.34548019886016845,
+      "phases": [
+        "train"
+      ],
+      "seconds": 290.4258650690317,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-pre_additive/pilot/rms-0p1/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 39,
+      "best_validation": 0.25978010475635527,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 0.25,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-pre_additive",
+      "checkpoint_sha256": "0e99a8c8c69214972049418049c09e41ccee5b82a51c77f3a63b85ba6d6f8ff4",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 6.1728518772125245,
+        "proximity": 0.001855753322597593,
+        "sparsity": 0.03301354207098484,
+        "total": 6.207721199989319
+      },
+      "first_validation": 4.473091297149658,
+      "last_training": {
+        "kl": 0.3283235001564026,
+        "proximity": 0.003344274326227605,
+        "sparsity": 0.03522212527692318,
+        "total": 0.36688990145921707
+      },
+      "last_validation": 0.34927588820457456,
+      "phases": [
+        "train"
+      ],
+      "seconds": 287.1575613170862,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-pre_additive/pilot/rms-0p25/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": 0.19278995156288148,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 0.5,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-pre_additive",
+      "checkpoint_sha256": "0c539202aeb88168598ab3efec1067ed61b93b530e98e516cd126b73e5f3ade2",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 6.202823705673218,
+        "proximity": 0.0018284071853850038,
+        "sparsity": 0.032903106585144996,
+        "total": 6.2375552940368655
+      },
+      "first_validation": 5.41715726852417,
+      "last_training": {
+        "kl": 0.3243064957857132,
+        "proximity": 0.002205573758110404,
+        "sparsity": 0.028124678134918212,
+        "total": 0.3546367457509041
+      },
+      "last_validation": 0.19278995156288148,
+      "phases": [
+        "train"
+      ],
+      "seconds": 273.1867718100548,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-pre_additive/pilot/rms-0p5/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 45,
+      "best_validation": 0.2354724258184433,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 1.0,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-pre_additive",
+      "checkpoint_sha256": "659158bfefbea9d4ead3dd7fc4877ba4ea4285c5e656be653dcaa8b5494f14e4",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 6.108217206001282,
+        "proximity": 0.001740766477305442,
+        "sparsity": 0.03203571390360594,
+        "total": 6.1419937348365785
+      },
+      "first_validation": 8.897638549804688,
+      "last_training": {
+        "kl": 0.44725098192691803,
+        "proximity": 0.0013997372891753912,
+        "sparsity": 0.021942456401884556,
+        "total": 0.4705931770801544
+      },
+      "last_validation": 0.36323190152645113,
+      "phases": [
+        "train"
+      ],
+      "seconds": 268.8447964191437,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-pre_additive/pilot/rms-1p0/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 47,
+      "best_validation": 0.9934502339363098,
+      "candidate": {
+        "lr": 0.0003,
+        "noise_rms": 27.712812921102035,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-pre_additive",
+      "checkpoint_sha256": "8dc07f077cc181d7909ff04e8a36847cdba09cecfa2642c31af73eae3d786c49",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "kl": 4.26179871559143,
+        "proximity": 0.0016752073532552458,
+        "sparsity": 0.029939694199711084,
+        "total": 4.293413624763489
+      },
+      "first_validation": 2.324201464653015,
+      "last_training": {
+        "kl": 1.2372153425216674,
+        "proximity": 0.018360826149582864,
+        "sparsity": 0.0896173346042633,
+        "total": 1.3451935052871704
+      },
+      "last_validation": 1.302003598213196,
+      "phases": [
+        "train"
+      ],
+      "seconds": 248.5332876741886,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-pre_additive/pilot/legacy-std-one/training.json",
+      "validation_metric": "semantic_forward_kl",
+      "variant": "pre_additive"
+    },
+    {
+      "best_epoch": 50,
+      "best_validation": -3.3796347618103026,
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "case": "embeddinggemma_768/g-independent/h-state_flow",
+      "checkpoint_sha256": "fa8535f114b66997389612cb9b579c1c767abb506bbd8e06bc353e823bf6faed",
+      "dimension": 768,
+      "epochs_run": 50,
+      "first_training": {
+        "grad_norm": 25.635565948486327,
+        "nll": -1894.2899291992187,
+        "total": -1894.2899291992187
+      },
+      "first_validation": -2.537221546173096,
+      "last_training": {
+        "grad_norm": 1434.4337719726564,
+        "nll": -2637.5022119140626,
+        "total": -2637.5022119140626
+      },
+      "last_validation": -3.3796347618103026,
+      "phases": [
+        "train"
+      ],
+      "seconds": 54.17986969649792,
+      "test_targets_used": false,
+      "training_report": "/home/boustanip/latent_intervention/latent_intervention/reports/talent/hz_benchmarks/hz-gemma-pilot-v1/fits/embeddinggemma_768/g-independent/h-state_flow/pilot/reference/training.json",
+      "validation_metric": "factual_conditional_nll_per_coordinate",
+      "variant": "state_flow"
+    }
+  ],
+  "selected_noise_rms": {
+    "256": {
+      "checkpoint_sha256": "7bf35c44e7b0affd91ecdcae7234363557257279aa8be5650a3e4528020344ac",
+      "noise_rms": 0.5,
+      "noise_std": 0.03125,
+      "validation_kl": 0.26994064152240754
+    },
+    "768": {
+      "checkpoint_sha256": "0c539202aeb88168598ab3efec1067ed61b93b530e98e516cd126b73e5f3ade2",
+      "noise_rms": 0.5,
+      "noise_std": 0.018042195912175808,
+      "validation_kl": 0.19278995156288148
+    }
+  },
+  "total_fit_seconds": 5883.031410172582
+}
