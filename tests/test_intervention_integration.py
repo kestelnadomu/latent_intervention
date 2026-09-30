@@ -10,8 +10,11 @@ import pytest
 from src import flow_workflow, pipeline
 from src.config import load_config
 
-
-VARIANTS = (*pipeline.INTERVENTION_VARIANTS, *flow_workflow.FLOW_VARIANTS)
+VARIANTS = (
+    *pipeline.INTERVENTION_VARIANTS,
+    *flow_workflow.FLOW_VARIANTS,
+    pipeline.ORACLE_VARIANT,
+)
 
 
 @pytest.mark.parametrize("dimension", [256, 768])
