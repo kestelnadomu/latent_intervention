@@ -31,8 +31,46 @@ data/latents/**
 !data/latents/talent/langvae_ft/
 !data/latents/talent/langvae_ft/z_pairs.pt
 !data/latents/talent/langvae_ft/z_pairs.info.json
-models/
-reports/
+# Keep only published semantic decoders portable. Trials, archives, h_Z models,
+# encoder checkpoints and temporary files remain local.
+models/**
+!models/talent/
+!models/talent/*/
+!models/talent/*/g-independent/
+!models/talent/*/g-autoregressive/
+!models/talent/*/g-*/semantic_decoder.pt
+
+# Published training reports and the small all-encoder benchmark audit bundle.
+reports/**
+!reports/talent/
+!reports/talent/*/
+!reports/talent/*/g-independent/
+!reports/talent/*/g-autoregressive/
+!reports/talent/*/g-*/semantic_decoder.json
+!reports/talent/decoder_benchmarks/*/
+!reports/talent/decoder_benchmarks/*/summary.md
+!reports/talent/decoder_benchmarks/*/results.json
+!reports/talent/decoder_benchmarks/*/evaluation.json
+!reports/talent/decoder_benchmarks/*/selection.json
+!reports/talent/decoder_benchmarks/*/protocol.json
+!reports/talent/decoder_benchmarks/*/plan.json
+!reports/talent/decoder_benchmarks/*/status.json
+!reports/talent/decoder_benchmarks/*/published.json
+!reports/talent/decoder_benchmarks/*/backups.json
+!reports/talent/decoder_benchmarks/*/configs/
+!reports/talent/decoder_benchmarks/*/configs/*.yaml
+!reports/talent/decoder_benchmarks/*/evaluation/
+!reports/talent/decoder_benchmarks/*/evaluation/*/
+!reports/talent/decoder_benchmarks/*/evaluation/*/g-*/
+!reports/talent/decoder_benchmarks/*/evaluation/*/g-*/seed-*.json
+!reports/talent/decoder_benchmarks/*/evaluation/*/g-*/summary.json
+!reports/talent/decoder_benchmarks/*/source/
+!reports/talent/decoder_benchmarks/*/source/**/
+!reports/talent/decoder_benchmarks/*/source/**/*.py
+!reports/talent/decoder_benchmarks/*/source/**/*.yaml
+!reports/talent/decoder_benchmarks/*/source/**/*.json
+!reports/talent/decoder_benchmarks/*/source/**/*.sh
+!reports/talent/decoder_benchmarks/*/source/uv.lock
 
 # Overleaf repo
 overleaf*
