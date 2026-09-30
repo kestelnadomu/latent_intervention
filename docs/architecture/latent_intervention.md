@@ -7,6 +7,9 @@ paths from $z$ to counterfactual states agree: $h_S\circ g = g\circ h_Z$. The fl
 below instead use factual likelihood, teacher distillation, or this semantic objective explicitly.
 Existing models live in `src/latent_intervention.py`, flow models in
 `src/flow_intervention.py`, and their pipeline adapter in `src/flow_workflow.py`.
+The separate oracle-supervised reference lives in `src/oracle_regression.py`
+and `src/oracle_workflow.py`; its privileged training targets are isolated by
+`src/oracle_targets.py` and prepared by `src/oracle_encoding.py`.
 Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 
 **Notation.**
@@ -35,11 +38,36 @@ Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 | F1 | `state_flow` / `StateConditionalFlow` | shared-noise transport through $F_\theta(S,U)$ | exact inverse/forward | observed or inferred $S$, then $h_S$ | target state $S'$ |
 | F2 | `distilled_flow` / `DistilledFlowIntervention` | conditional flow $D_\phi(E;z,\delta)$ | sampled | distilled state-flow teacher | none |
 | F3 | `direct_semantic_flow` / `DirectSemanticFlowIntervention` | conditional flow $D_\psi(E;z,\delta)$ | Monte Carlo | $g$ and $h_S$ during training only | none |
+| O | `oracle_regression` / `OracleRegression` | point mass at $z+r_\theta(z)$ for fixed $\delta$ | evaluation only | ordinary paired regression | observed training $Z'$ |
 
 The plans run from least to most structure in $h_Z$. A and B use continuous noise. C and D are
 finite mixtures: C indexes its components by symbolic states, D by unlabelled slots. Taking the
 weights of C from $h_S\circ g$ instead of learning them gives the most symbolic end
 (C-sym, see Plan C).
+
+## Oracle-supervised reference
+
+For one fixed intervention, fit a flexible residual MLP with
+$\widehat Z'=Z+r_\theta(Z)$ and ordinary per-coordinate MSE against the observed
+counterfactual training embeddings. Neither $g$ nor $h_S$ appears in the loss.
+The encoder remains frozen. Predictions are unconstrained conditional means,
+not renormalized embeddings or draws from a learned counterfactual distribution.
+This uses more supervision than the consistency/distributional methods and is
+not a mathematical upper bound on their test performance.
+
+Official test counterfactuals remain evaluation-only in the canonical
+`z_pairs.pt`. A separate `oracle_train/z_prime.pt` artifact contains exactly the
+official training IDs, with matching encoder/data hashes and exact identity
+copies. No existing editor consumes it. Validation/early stopping use a seeded
+holdout within official train; the best validation-MSE checkpoint is restored.
+The fixed intervention is recorded and checked on reload/prediction; arbitrary
+interventions (including an untrained no-op action) are not supported.
+
+The pipeline's oracle evaluator reloads only the model and canonical test pairs,
+then uses the frozen $g$/$h_S$ for descriptive evaluation. It reports raw latent
+recovery, separate identity/nonidentity results, a no-edit reference, and shared
+flow-style diagnostics. Training-target files are not needed at inference or
+evaluation. See the README's oracle-regression section for commands and paths.
 
 ## Normalizing-flow variants
 

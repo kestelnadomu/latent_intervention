@@ -28,17 +28,23 @@ data/latents/**
 !data/latents/talent/embeddinggemma_*/
 !data/latents/talent/embeddinggemma_*/z_pairs.pt
 !data/latents/talent/embeddinggemma_*/z_pairs.info.json
+!data/latents/talent/embeddinggemma_*/oracle_train/
+!data/latents/talent/embeddinggemma_*/oracle_train/z_prime.pt
+!data/latents/talent/embeddinggemma_*/oracle_train/z_prime.info.json
 !data/latents/talent/langvae_ft/
 !data/latents/talent/langvae_ft/z_pairs.pt
 !data/latents/talent/langvae_ft/z_pairs.info.json
-# Keep only published semantic decoders portable. Trials, archives, h_Z models,
-# encoder checkpoints and temporary files remain local.
+# Keep published semantic decoders and the oracle regression reference portable.
+# Trials, archives, other h_Z models, encoder checkpoints and temporary files stay local.
 models/**
 !models/talent/
 !models/talent/*/
 !models/talent/*/g-independent/
 !models/talent/*/g-autoregressive/
 !models/talent/*/g-*/semantic_decoder.pt
+!models/talent/*/g-*/h-oracle_regression/
+!models/talent/*/g-*/h-oracle_regression/latent_intervention.pt
+!models/talent/*/g-*/h-oracle_regression/latent_intervention.info.json
 
 # Published training reports and the small all-encoder benchmark audit bundle.
 reports/**
@@ -47,6 +53,9 @@ reports/**
 !reports/talent/*/g-independent/
 !reports/talent/*/g-autoregressive/
 !reports/talent/*/g-*/semantic_decoder.json
+!reports/talent/*/g-*/h-oracle_regression/
+!reports/talent/*/g-*/h-oracle_regression/training.json
+!reports/talent/*/g-*/h-oracle_regression/eval.json
 !reports/talent/decoder_benchmarks/*/
 !reports/talent/decoder_benchmarks/*/summary.md
 !reports/talent/decoder_benchmarks/*/results.json

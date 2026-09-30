@@ -259,7 +259,7 @@ Latent, decoder, and manipulator artifacts are separated by encoder, decoder, an
 
 Choose $h_Z$ with `--manipulator-variant` or `latent_intervention.variant` in
 `src/config.yaml`: `baseline`, `pre_additive`, `noise_token`, `dist`, `particles`,
-`state_flow`, `distilled_flow`, or `direct_semantic_flow`. All use separate
+`state_flow`, `distilled_flow`, `direct_semantic_flow`, or `oracle_regression`. All use separate
 `models/talent/{encoder}/g-{decoder}/h-{variant}/` and matching report directories.
 Distilled training creates or reuses a compatible `h-state_flow` teacher within
 the same encoder/decoder combination; different embedding dimensions never share
@@ -279,6 +279,60 @@ The separate `langvae_ft` baseline uses native LangVAE fine-tuned on CV passages
 with unchanged architecture. See the [checkpoint and downstream handoff](docs/experiments/langvae_ft_handoff.md)
 for model transfer and opt-in encoding/training commands. Its checkpoints stay
 outside Git; stock LangVAE, Nomic and the shared pipeline defaults are unchanged.
+
+### Oracle-supervised latent regression
+
+`oracle_regression` is the ninth editor: a residual MLP fitted to **training-pair
+counterfactual embeddings**, using ordinary MSE, without loading `g` or `h_S`.
+It is a privileged conditional-mean reference, not a guaranteed upper bound. It
+supports only the fixed intervention recorded in its checkpoint (currently
+`do(X=3)`); predictions are not projected onto the unit sphere.
+
+The existing `z_pairs.pt` files remain unchanged and contain counterfactual
+embeddings only for official test units. Prepare the separate training targets:
+
+```bash
+# Inspect inputs and save a plan only: no model inference or training.
+.venv/bin/python -m src.oracle_encoding --prepare
+
+# Only when ready: detached tmux encoding, using the existing pinned environment.
+bash scripts/run_oracle_targets.sh
+```
+
+This encodes the 2,972 nonidentity training counterfactual texts once at 768D,
+copies the 1,028 identity factual embeddings exactly, then derives 256D by prefix
+truncation and L2 normalization. Each encoder directory receives a separate
+`oracle_train/z_prime.pt` plus a provenance/checksum sidecar. Only the oracle
+loader can consume this artifact; it requires exactly the official training IDs.
+The queue verifies factual encoder probes, refuses incompatible outputs, and
+reuses verified completed dimensions. An interrupted native pass restarts.
+Logs and status are under `reports/talent/oracle_targets/oracle-targets-v1/`.
+After source/config/input changes, choose a fresh `--run-id` (launcher argument).
+
+After target encoding completes, train and evaluate one dimension at a time:
+
+```bash
+.venv/bin/python -m src.pipeline train-manipulator --encoder-variant embeddinggemma --embeddinggemma-dim 256 --decoder-variant independent --manipulator-variant oracle_regression
+.venv/bin/python -m src.pipeline evaluate --encoder-variant embeddinggemma --embeddinggemma-dim 256 --decoder-variant independent --manipulator-variant oracle_regression
+# Repeat with --embeddinggemma-dim 768 for the other selected candidate.
+```
+
+Defaults are two 512-wide hidden layers, AdamW, a 500-epoch ceiling, validation
+MSE selection, plateau LR reduction, and early stopping. The seeded 3,200/800
+fit/validation split uses only the 4,000 official training IDs. The 1,000 test
+pairs are evaluation-only. The model, its sidecar, `training.json` (including the
+exact split and epoch history), and `eval.json` live in the encoder/decoder's
+`h-oracle_regression/` directories. Evaluation reports raw MSE, squared L2,
+cosine recovery, identity/nonidentity groups, the no-edit reference, and the
+existing flow-style distributional/semantic diagnostics. MSE is per coordinate;
+do not rank embedding dimensions merely by that dimension-dependent scale.
+
+Canonical oracle targets/checkpoints/reports are Git-trackable but must still be
+added, committed, and pushed. Logs, progress, locks, and staging files remain
+ignored. Training refuses to overwrite an existing run; use a fresh
+`latent_intervention.tag` in a separate `--config` YAML for another seed/config.
+Interrupted training restarts, rather than resuming optimizer state. This adds
+the baseline, not the multi-variant tuning/benchmark runner.
 
 ## Publish
 
