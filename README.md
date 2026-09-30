@@ -2,7 +2,12 @@
 
 Research code and publication materials for the *latent intervention* project.
 
-The pipeline builds counterfactual latent representations of text: an SCM simulates paired factual and counterfactual candidate attributes, an LLM verbalizes the approved worlds into CV personal statements, the configured frozen LangVAE or Nomic encoder maps them into 128-dimensional latents, a semantic decoder grounds those latents in the SCM variables, and a latent manipulator learns to transform them analogously to the SCM's counterfactual operation.
+For a student-facing walkthrough with diagrams, configuration maps and function
+call trees, start with the [codebase guide](docs/codebase_guide.md).
+For the behavior-preserving cleanup and a map of the smaller entry points, see the
+[implementation review map](docs/implementation_refactor.md).
+
+The pipeline builds counterfactual latent representations of text: an SCM simulates paired factual and counterfactual candidate attributes, an LLM verbalizes the approved worlds into CV personal statements, the configured frozen LangVAE, Nomic, Qwen3 or EmbeddingGemma encoder maps them into fixed-width latents, a semantic decoder grounds those latents in the SCM variables, and a latent manipulator learns to transform them analogously to the SCM's counterfactual operation. LangVAE uses 128 dimensions; the other encoders offer multiple embedding widths.
 
 The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 2601.10700](https://arxiv.org/abs/2601.10700)). Text generation is a protocol-faithful adaptation of its Appendix D.3: seed personal statements are abstracted into narrative templates, personas are generated for sampled job titles, and each rendered world combines a fixed template, persona, and the unit's attribute values. This is not a literal replication of the released benchmark.
 
@@ -13,7 +18,7 @@ The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 26
 | `exp/sim/` | Data generation pipeline: Python SCM, codebook, generation prompts (`prompts/`), seed statements + job titles, LLM plumbing, stage runner, `config.yaml` (own README) |
 | `exp/sim/R/` | Original SCM simulation in R, kept as the reference implementation (own README, renv) |
 | `src/` | Encoder, semantic decoder, latent manipulator, training/eval pipeline, `config.yaml` (per-module hyperparameters) |
-| `data/` | Generated artifacts (`sim/`, `text/`, `latents/` — only `text/` is tracked) and the older sampling pools |
+| `data/` | Generated simulation/text handoffs (tracked), latent artifacts (local by default), and older sampling pools |
 | `poster/` | Quarto poster and slides |
 
 ## Setup
@@ -21,7 +26,7 @@ The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 26
 Requires Python ≥ 3.12 and [uv](https://docs.astral.sh/uv/). Run all commands from the repository root:
 
 ```bash
-uv sync
+uv sync --extra dev --frozen
 ```
 
 All billed stages—templates, personas, and CVs—use the single endpoint in `exp/sim/config.yaml`. The default configuration targets Azure OpenAI and reads `AZURE_OPENAI_API_KEY`. The key must grant access to that endpoint and to the deployment named `gpt-5.4` in `exp/sim/prompts/*.yaml`.
@@ -51,8 +56,8 @@ The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test 
 | `S`, `S'` | All units | `data/sim_talent/sim_data_{factual,counterfactual}.csv` |
 | `X` | All units | `data/text_talent/cv_factual.csv` |
 | `X'` | All units by default; test only when configured | `data/text_talent/cv_counterfactual.csv` |
-| `Z=f(X)` | All units | `z` in `data/latents/talent/z_pairs.pt` |
-| `Z'=f(X')` | Test units only | `z_prime` in `data/latents/talent/z_pairs.pt` |
+| `Z=f(X)` | All units | `z` in `data/latents/talent/{encoder}/z_pairs.pt` |
+| `Z'=f(X')` | Test units only | `z_prime` in `data/latents/talent/{encoder}/z_pairs.pt` |
 
 By default (`generation.include_train_counterfactual_texts: true` or omitted), `X'` is created for every unit; setting the option to `false` creates `X'` for test units only. Selected identity units copy `X'=X` without another LLM call, and identity test units use `Z'=Z` without another encoding. Nonidentity worlds reuse the same template, persona, and bin quantiles. Training `X'` is available for future work but does not enter the current training losses; `Z'` and counterfactual recovery evaluation remain test-only.
 
@@ -82,17 +87,198 @@ Stop here for the data-generation handoff. Encoding and model training below are
 Paired latent encoding and the existing training/evaluation stages use `src/config.yaml`:
 
 ```bash
-uv run python -m src.pipeline encode             # configured frozen encoder: X plus test X' -> z_pairs.pt
-uv run python -m src.pipeline train-decoder      # semantic decoder g: Z -> S + calibration report
-uv run python -m src.pipeline train-manipulator  # manipulator h_Z against frozen g and counterfactual targets
-uv run python -m src.pipeline evaluate           # consistency accuracy + latent shift -> reports/talent/eval.json
+uv run python -m src.pipeline encode --encoder-variant langvae
+uv run python -m src.pipeline encode --encoder-variant nomic
+
+# Select one encoder/decoder combination per run; artifacts never overwrite another variant.
+uv run python -m src.pipeline train-decoder --encoder-variant langvae --decoder-variant independent
+uv run python -m src.pipeline train-decoder --encoder-variant langvae --decoder-variant autoregressive
+
+uv run python -m src.pipeline train-manipulator --encoder-variant langvae --decoder-variant independent --manipulator-variant baseline
+uv run python -m src.pipeline evaluate --encoder-variant langvae --decoder-variant independent --manipulator-variant baseline
 ```
 
-`pair_index.csv` is the sole train/test authority. `train-decoder` deterministically reserves a calibration holdout only from the official training IDs and writes per-column accuracy, ECE, and reliability bins to `reports/talent/semantic_decoder.json`; these measurements do not apply temperature scaling. `train-manipulator` uses all official training IDs, while `evaluate` uses only official test IDs.
+Nomic defaults to `nomic_128`. Select another width with `--nomic-dim 64|128|256|512|768`
+(one integer, not the whole list) or `encoder.nomic_latent_dim`. This selects dimension-stamped
+latent/model/report directories automatically; LangVAE remains 128-D. Existing Nomic 128-D
+artifacts and their model/report directories were relocated from `nomic/` to `nomic_128/`
+without changing tensor/checkpoint contents. Historical experiment records retain original
+path strings; the relocation manifest is `reports/talent/nomic_dimensions/nomic_128_migration.json`.
+Canonical `nomic_<dimension>/z_pairs.{pt,info.json}` files are trackable by Git; queue logs,
+pending outputs, models and reports remain ignored.
 
-Latent, decoder, and manipulator artifacts are bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
+To prepare all five Nomic dimensions, then launch the queue separately:
 
-When `encoder.variant: langvae` is selected, LangVAE may optionally be fine-tuned first (`uv run python -m src.finetune_vae`); point `encoder.local_checkpoint` in `src/config.yaml` at the resulting folder, then regenerate every downstream artifact.
+```bash
+.venv/bin/python -m src.nomic_encoding --prepare
+# When ready to start (detached; survives closing this terminal):
+bash scripts/run_nomic_dimensions.sh
+```
+
+Preparation does not load the encoder or produce new embeddings. The queue encodes 768-D
+once, checks it against the existing 128-D artifact, then derives 64/256/512-D by prefix
+truncation and L2 renormalization. It retains the same pinned model, prefix, token limit,
+input hashes and official split. Completed artifacts are verified and reused, never
+overwritten. Complete output directories are published atomically after validation; an
+interrupted transformer pass restarts, while any incomplete staging files are retained.
+Only test counterfactuals are encoded. A lock prevents concurrent queues. The launcher uses
+the installed `.venv` and cached model offline; it does not install or update packages.
+
+Logs, protocol, plan and runtime status are in
+`reports/talent/nomic_dimensions/nomic-dimensions-v1/`. Inspect `run.log`, `launcher.log`,
+and `status.json`; before launch, only `plan.json` and `protocol.json` exist. Re-run the
+launcher to resume completed stages. After changing code/config/inputs, prepare and launch
+with a fresh `--run-id` / script argument. No decoder training is part of this queue.
+
+### Qwen3-Embedding-0.6B dimensions
+
+Only the 0.6B checkpoint is supported by the `qwen3` variant. The embedding width, not
+the parameter count, appears in the artifact directory name:
+`data/latents/talent/qwen3_{32,64,128,256,512,768,1024}/`. Each completed directory
+contains `z_pairs.pt` and its provenance sidecar `z_pairs.info.json`. The model name
+and pinned revision are recorded in metadata; larger Qwen checkpoints cannot use
+these names through this configuration.
+
+Qwen needs a newer Transformers version than the LangVAE environment. Keep its
+hash-locked dependencies in the separate `.venv-qwen3`; do not upgrade `.venv`:
+
+```bash
+# Setup on a new machine: installs the isolated environment and caches the pinned model.
+bash scripts/setup_qwen3.sh
+
+# Audit every input length and smoke-test the real model (not a full encoding run).
+.venv-qwen3/bin/python -m src.qwen3_encoding --preflight
+# Validate and save the seven-dimension plan, without inference.
+.venv-qwen3/bin/python -m src.qwen3_encoding --prepare
+
+# When ready to start (detached tmux session; survives closing this terminal):
+bash scripts/run_qwen3_dimensions.sh
+```
+
+The baseline embeds plain CV text with no retrieval instruction. It uses the last
+nonpadding token, then prefix truncation and L2 normalization: **no mean pooling or
+Nomic-style extra layer norm**. Inference is frozen, float32, CPU by default, and
+offline from the pinned local cache; remote model code is disabled. The 1024-token
+budget is enforced with an error, never silent truncation. The current input audit
+found a maximum of 491 Qwen tokens across 5,000 factual and 1,000 test-counterfactual
+texts. Identity pairs reuse factual embeddings exactly.
+
+One 1024-D transformer pass supplies all seven dimensions. Smaller outputs are
+derived by normalizing their prefixes, not by rerunning the transformer. The shared
+dimension queue validates artifacts before atomically publishing each complete
+directory, refuses overwrites, locks concurrent writers, and resumes verified
+completed stages. An interrupted transformer pass restarts. No downstream training
+is started by this queue.
+
+Reports live in `reports/talent/qwen3_dimensions/qwen3-dimensions-v1/`:
+`preflight.json`, `protocol.json`, `plan.json`, then `run.log`, `launcher.log`, and
+`status.json` after launch. Preparation and launch require a passing preflight for
+the exact inputs, model files, code, settings and recorded environment versions.
+After changing those, choose a fresh run ID, repeat preflight and preparation with
+`--run-id NEW_ID`, then pass `NEW_ID` to the launcher. Generated reports and the model
+cache are Git-ignored; copy reports explicitly when transferring results.
+
+Once the embeddings exist, downstream commands can use the original `.venv` with
+`--encoder-variant qwen3 --qwen3-dim 128` (or another configured width); they load the
+saved latents, not the transformer. Train a separate `g` and `h_Z` for each latent
+space. The four-combination `decoder_experiment` baseline runner below is not
+automatically expanded to include Qwen or the additional Nomic dimensions.
+
+### EmbeddingGemma-300m dimensions
+
+The `embeddinggemma` variant uses the gated
+[Google checkpoint](https://huggingface.co/google/embeddinggemma-300m), pinned to
+`57c266a740f537b4dc058e1b0cda161fd15afa75`. Before setup on a new machine, personally
+accept the model's Gemma terms on Hugging Face and authenticate with a read-capable
+token using `hf auth login`. Never put credentials in the repository or logs.
+
+```bash
+# Installs .venv-embeddinggemma from its hash lock and downloads the approved model.
+bash scripts/setup_embeddinggemma.sh
+
+# Bounded validation, followed by plan preparation; neither starts full encoding.
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false \
+  .venv-embeddinggemma/bin/python -m src.embeddinggemma_encoding --preflight
+.venv-embeddinggemma/bin/python -m src.embeddinggemma_encoding --prepare
+
+# Only when ready: detached tmux worker, safe to close the terminal afterwards.
+bash scripts/run_embeddinggemma_dimensions.sh
+```
+
+Outputs are `data/latents/talent/embeddinggemma_{128,256,512,768}/`, each with
+`z_pairs.pt` and `z_pairs.info.json`. One native 768-D pass supplies the smaller
+dimensions by prefix truncation and L2 normalization. These folders are created
+only when verified artifacts are ready to publish; setup does not leave empty
+production directories. Existing Nomic/Qwen/LangVAE artifacts are not replaced.
+
+The fixed baseline uses Google's classification prefix (`task: classification | query: `)
+for every factual and counterfactual CV. The full released SentenceTransformer
+stack is retained: bidirectional Gemma3, masked mean pooling including the prompt,
+both learned dense projections, then normalization. Float32 CPU inference avoids
+float16, which this model does not support. Inputs above 2,048 tokens cause an error;
+the audit includes prompts and special tokens. No text decoder or fine-tuning is added.
+
+The shared queue preserves official splits and exact identity copies, hashes inputs
+and model files, prevents concurrent writes, and atomically publishes verified
+directories. Completed dimensions can resume; an interrupted transformer pass must
+restart. Reports are under
+`reports/talent/embeddinggemma_dimensions/embeddinggemma-dimensions-v1/`.
+`--prepare` and `--run` require a matching passing `--preflight`. After source,
+settings, inputs or environment changes, use a fresh run ID for preflight and
+preparation and pass that ID to the launcher. Reports and weights stay Git-ignored;
+only canonical embedding artifacts are eligible for tracking.
+
+Later downstream training uses the original `.venv` and
+`--encoder-variant embeddinggemma --embeddinggemma-dim 128` (or another supported
+width). It reads stored embeddings and does not load Sentence Transformers.
+Train separate `g`/`h_Z` models per latent space. The four-case decoder sweep is
+unchanged; it does not automatically include this encoder.
+
+### Downstream training
+
+To train and compare both `g` variants across **all saved encoder dimensions**,
+see the [all-encoder decoder benchmark](docs/experiments/decoder_benchmark.md).
+It runs the common tuning budget in detached tmux and automatically writes a
+Markdown comparison, with validation-based selection and separate held-out tests.
+Canonical `g` checkpoints and their training reports, plus the benchmark summary,
+per-seed metrics, configurations and provenance, are eligible for Git tracking.
+They still need to be added, committed and pushed; tuning/extra-seed checkpoints,
+archives and logs remain ignored. See the benchmark guide for the exact policy.
+
+The same decoder commands work with `--encoder-variant nomic`. `pair_index.csv` is the sole train/test authority. `train-decoder` reserves a fixed validation holdout from the official training IDs. It trains for at most 500 epochs, halves the learning rate on a validation plateau, stops after 30 epochs without sufficient improvement, and restores the checkpoint with the lowest validation joint NLL. Per-epoch history, the exact split, hyperparameters, checkpoint checksum, and descriptive accuracy/ECE are saved below `reports/talent/{encoder}/g-{decoder}/`. The validation metrics are used for selection and are not test estimates; no temperature scaling is fitted. `train-manipulator` uses all official training IDs, while `evaluate` uses only official test IDs.
+
+To tune and repeat all four baseline combinations with the same budget:
+
+```bash
+uv run python -m src.decoder_experiment --run-id cv-g500-v1 --workers 4 --threads-per-worker 1
+```
+
+This runs 20 common hyperparameter candidates per combination, selects each by validation joint NLL, then trains five initialization seeds with the split held fixed. Seed 42 is declared in advance as the active model; all five are retained and summarized. Trials and final seeds live in `experiments/{run-id}/` under each model/report directory. The overall protocol, source snapshot, input hashes, status, and publication manifest are under `reports/talent/decoder_experiments/{run-id}/`. The previous active checkpoint and report are archived before the new verified files replace them. Repeating the command resumes verified completed trials; an interrupted trial restarts. Use a new run ID after code, inputs, or configuration change. Canonical active checkpoints and their reports are eligible for Git tracking; the four-case experiment tree, archives and logs remain ignored and need explicit transfer to another server.
+
+Latent, decoder, and manipulator artifacts are separated by encoder, decoder, and manipulator variant and bound to the configured encoder, source hashes, schema, and upstream artifact hashes. Loading incompatible or incomplete metadata fails with an instruction to re-encode or retrain instead of silently mixing latent spaces.
+
+Choose $h_Z$ with `--manipulator-variant` or `latent_intervention.variant` in
+`src/config.yaml`: `baseline`, `pre_additive`, `noise_token`, `dist`, `particles`,
+`state_flow`, `distilled_flow`, or `direct_semantic_flow`. All use separate
+`models/talent/{encoder}/g-{decoder}/h-{variant}/` and matching report directories.
+Distilled training creates or reuses a compatible `h-state_flow` teacher within
+the same encoder/decoder combination; different embedding dimensions never share
+that checkpoint. The state flow uses factual $S$ and $h_S$; distilled and direct
+flows expose the standalone inference interface $(Z,\delta)\mapsto\Delta(\mathcal Z)$.
+
+The established transformer stages and report format remain in `src/pipeline.py`; that file delegates only the three flow variants to `src/flow_workflow.py`. Flow architectures and objectives are isolated in `src/flow_intervention.py`, while flow evaluation adds paired-$Z'$ recovery and support diagnostics.
+
+The active data supports the configured `do(X=3)` query; the deployable flows also
+train a no-op. Other schema-valid flow interventions are accepted for exploratory
+inference with a warning, but are outside training support. Downstream stages read
+the existing 5,000-unit dataset and its official split; they do not regenerate the
+data, re-encode CVs, or retrain the frozen semantic decoder. The small generation
+example in `exp/sim/config.yaml` is not the size of those stored artifacts.
+
+The separate `langvae_ft` baseline uses native LangVAE fine-tuned on CV passages,
+with unchanged architecture. See the [checkpoint and downstream handoff](docs/experiments/langvae_ft_handoff.md)
+for model transfer and opt-in encoding/training commands. Its checkpoints stay
+outside Git; stock LangVAE, Nomic and the shared pipeline defaults are unchanged.
 
 ## Publish
 

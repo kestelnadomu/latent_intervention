@@ -5,12 +5,15 @@ $$g(\mathbf s \mid z): \mathcal Z \to \Delta(\mathcal S)$$
 $g$ maps a frozen latent to a **distribution** over structured states, not a point estimate.
 The consistency constraint $h_S\circ g = g\circ h_Z$ compares two such distributions.
 Code: `src/semantic_decoder.py`; select a variant with `semantic_decoder.variant` in `src/config.yaml`.
+Optimization/validation selection lives in `src/decoder_training.py`; the original
+training import remains available from `semantic_decoder.py`. Per-run checkpoint
+and report bookkeeping lives in `src/decoder_reporting.py`.
 
 **Notation.**
 
 | symbol | meaning |
 |---|---|
-| $z \in \mathcal Z = \mathbb R^{128}$ | latent $f(x)$ (see `text_encoder.md`) |
+| $z \in \mathcal Z = \mathbb R^d$ | latent $f(x)$; dimension read from the artifact (see `text_encoder.md`) |
 | $\mathbf s = (s_X, s_T, s_D, s_U) \in \mathcal S$ | structured state in schema order, $\lvert\mathcal S\rvert = 4\cdot3\cdot3\cdot3 = 108$ |
 | $s_{<i}$ | the columns before $i$ in schema order (= topological order of the SCM) |
 | $\Delta(\mathcal S)$ | probability simplex: $q\in\mathbb R^{108}_{\ge0}$, $\sum_{\mathbf s} q_{\mathbf s}=1$ |
@@ -43,19 +46,30 @@ $$\mathcal L_g = \mathbb E_{(z,\mathbf s)}\big[-\log g(\mathbf s\mid z)\big]$$
 * `train_semantic_decoder(decoder, latents, targets)` works for both variants via `decoder.nll`.
   `targets_from_dataframe` turns a sim CSV into per-column targets.
 * `pair_index.csv` is the sole train/test authority. Decoder fitting and the deterministic
-  calibration holdout both use official training IDs; official test IDs are reserved for final
-  evaluation. The manipulator is trained on all official training IDs.
+  validation holdout both use official training IDs; official test IDs are reserved for final
+  evaluation. `semantic_decoder.split_seed` fixes the holdout independently of initialization.
+  The current split is 3,200 fit / 800 validation / 1,000 official test.
+  The manipulator is trained on all official training IDs.
+* The pipeline uses a **500-epoch maximum**, evaluates validation joint NLL every epoch, and
+  restores the best checkpoint. Early stopping has patience 30 and an absolute improvement
+  threshold of `1e-4` nats/example. Checkpoints track the literal minimum loss; the improvement
+  threshold only controls patience. Adam's learning rate is halved by `ReduceLROnPlateau`
+  after more than 10 bad epochs, down to `1e-6`. Calls without validation retain fixed-epoch
+  training for backward compatibility.
 * **Calibration matters more than accuracy.** The consistency target $h_S\circ g$ uses $g$'s
   probabilities directly, so a miscalibrated $g$ corrupts every $h_Z$ plan. The decoder report
-  records per-column accuracy, ECE, and nonempty reliability bins on the train-only calibration
-  holdout. These measurements are descriptive; no temperature scaling is applied at present.
+  records per-column accuracy, ECE, and nonempty reliability bins on the validation holdout.
+  These measurements are descriptive and selection-biased; no temperature scaling is applied.
+  Any future fitted calibrator needs its own holdout or cross-validation within official train.
 * **Loss scales differ.**
   * `independent`: `nll` is the *mean* cross-entropy per column (the joint NLL divided by the number of schema columns).
   * `autoregressive`: `nll` is the *full* joint NLL.
 
   The effective learning rate differs between the variants, and so does any downstream loss that
   calls `decoder.nll` (the Plan 0 consistency term, Plan B's realiser pretraining) relative to its
-  penalties.
+  penalties. `joint_nll` multiplies the independent objective by the number of columns, so
+  checkpoint selection, scheduling, and reported joint losses are comparable in nats/example.
+  The optimization objective itself retains its existing scale for each variant.
 * **$T$ has a ceiling.** $T$ is never verbalised and reaches the text only through the proxies
   $P, L, H, A$. The $T$ head cannot beat the Bayes-optimal recovery
   `exp.sim.talent_sfm.talent_posterior_accuracy()`. Compare against it, not against 100 %.
@@ -66,6 +80,27 @@ inputs. The manipulator sidecar binds its exact checkpoint to the decoder, laten
 counterfactual targets. Downstream loading rejects missing or incompatible metadata with an
 instruction to re-encode or retrain. The existing `encode`, `train-decoder`,
 `train-manipulator`, and `evaluate` stages are the only public pipeline stages.
+
+### Repeated tuning experiment
+
+`python -m src.decoder_experiment --run-id cv-g500-v1` runs a separate orchestration layer:
+
+1. Evaluate 20 shared configurations (the original settings plus 19 seeded random samples)
+   for each encoder/decoder pair. Search learning rate, Adam weight decay, dropout, and width.
+2. Select minimum validation joint NLL with a deterministic trial-index tie break.
+3. Retrain the chosen configuration with seeds 42–46, preserving the same split.
+4. Save all five best checkpoints and report mean/sample standard deviation of validation
+   metrics. This variability reflects initialization, shuffling, and dropout on a fixed split;
+   it is not a test confidence interval.
+5. Publish predeclared seed 42 after all four combinations pass reload/provenance checks.
+   Preserve previous active files in `archive/{run-id}/` and use atomic replacement per file.
+
+Each epoch has a progress record; complete reports contain learning curves, actual and best
+epochs, optimizer settings, explicit unit IDs, hashes, and timestamps. Separate experiment
+directories retain all trials and final seeds. The root experiment manifest preserves the
+source/configuration snapshot and input hashes. Completed trials can be resumed; incomplete
+trials restart from their seed. Publication verifies all four models before changing active
+files; `published.json` tracks completion if interrupted between individual file replacements.
 
 ---
 

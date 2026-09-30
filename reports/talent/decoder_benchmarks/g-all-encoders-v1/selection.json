@@ -1,0 +1,265 @@
+{
+  "best_by_decoder": {
+    "autoregressive": "embeddinggemma_768/g-autoregressive",
+    "independent": "embeddinggemma_768/g-independent"
+  },
+  "criterion": "Lowest mean validation full joint NLL over the five predeclared final seeds; exact ties broken by case name.",
+  "deployment_seed": 42,
+  "frozen_before_test_evaluation": true,
+  "ranking": [
+    {
+      "case": "embeddinggemma_768/g-independent",
+      "validation_joint_nll": {
+        "mean": 0.37875752449035643,
+        "std": 0.002315562361769273
+      }
+    },
+    {
+      "case": "embeddinggemma_768/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 0.38235172629356384,
+        "std": 0.00304326720125917
+      }
+    },
+    {
+      "case": "embeddinggemma_512/g-independent",
+      "validation_joint_nll": {
+        "mean": 0.4135524868965149,
+        "std": 0.001284646504931151
+      }
+    },
+    {
+      "case": "embeddinggemma_512/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 0.4149559497833252,
+        "std": 0.004683732138394277
+      }
+    },
+    {
+      "case": "embeddinggemma_256/g-independent",
+      "validation_joint_nll": {
+        "mean": 0.5150259613990784,
+        "std": 0.004242875465511997
+      }
+    },
+    {
+      "case": "embeddinggemma_256/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 0.5295400261878968,
+        "std": 0.003669437471308406
+      }
+    },
+    {
+      "case": "qwen3_1024/g-independent",
+      "validation_joint_nll": {
+        "mean": 0.9127955317497254,
+        "std": 0.00476437228887972
+      }
+    },
+    {
+      "case": "embeddinggemma_128/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 0.9262356281280517,
+        "std": 0.00886155457451037
+      }
+    },
+    {
+      "case": "qwen3_1024/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 0.9449426651000976,
+        "std": 0.004106846003262184
+      }
+    },
+    {
+      "case": "embeddinggemma_128/g-independent",
+      "validation_joint_nll": {
+        "mean": 0.9464277386665344,
+        "std": 0.005924893383755786
+      }
+    },
+    {
+      "case": "qwen3_768/g-independent",
+      "validation_joint_nll": {
+        "mean": 0.9494153022766113,
+        "std": 0.00593573433693491
+      }
+    },
+    {
+      "case": "qwen3_768/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 0.9776924014091491,
+        "std": 0.013228310085190657
+      }
+    },
+    {
+      "case": "qwen3_512/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 1.0713457107543944,
+        "std": 0.004968369091359717
+      }
+    },
+    {
+      "case": "qwen3_512/g-independent",
+      "validation_joint_nll": {
+        "mean": 1.083305835723877,
+        "std": 0.00597590322228585
+      }
+    },
+    {
+      "case": "nomic_768/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 1.1971811532974244,
+        "std": 0.02660700198153258
+      }
+    },
+    {
+      "case": "nomic_768/g-independent",
+      "validation_joint_nll": {
+        "mean": 1.221597385406494,
+        "std": 0.014001587261213116
+      }
+    },
+    {
+      "case": "nomic_512/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 1.3671817302703857,
+        "std": 0.017935562588957937
+      }
+    },
+    {
+      "case": "qwen3_256/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 1.375673031806946,
+        "std": 0.00204275331298889
+      }
+    },
+    {
+      "case": "nomic_512/g-independent",
+      "validation_joint_nll": {
+        "mean": 1.3946776866912842,
+        "std": 0.035789721637873716
+      }
+    },
+    {
+      "case": "qwen3_256/g-independent",
+      "validation_joint_nll": {
+        "mean": 1.4270033359527587,
+        "std": 0.007901309233051464
+      }
+    },
+    {
+      "case": "nomic_256/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 1.7094900131225585,
+        "std": 0.010590734877574219
+      }
+    },
+    {
+      "case": "nomic_256/g-independent",
+      "validation_joint_nll": {
+        "mean": 1.8378214120864869,
+        "std": 0.013690851021893076
+      }
+    },
+    {
+      "case": "qwen3_128/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 1.8603009700775146,
+        "std": 0.003234003002161169
+      }
+    },
+    {
+      "case": "qwen3_128/g-independent",
+      "validation_joint_nll": {
+        "mean": 2.0074539184570312,
+        "std": 0.003254639417722967
+      }
+    },
+    {
+      "case": "nomic_128/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 2.210789346694946,
+        "std": 0.004415097551244062
+      }
+    },
+    {
+      "case": "nomic_128/g-independent",
+      "validation_joint_nll": {
+        "mean": 2.3867403507232665,
+        "std": 0.0054917729447049824
+      }
+    },
+    {
+      "case": "langvae_ft/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 2.4164944648742677,
+        "std": 0.008408990600480237
+      }
+    },
+    {
+      "case": "qwen3_64/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 2.4502988338470457,
+        "std": 0.010001123874079195
+      }
+    },
+    {
+      "case": "langvae/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 2.5228249073028564,
+        "std": 0.016255627196556655
+      }
+    },
+    {
+      "case": "langvae_ft/g-independent",
+      "validation_joint_nll": {
+        "mean": 2.6029963970184324,
+        "std": 0.009850976563958475
+      }
+    },
+    {
+      "case": "nomic_64/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 2.622322607040405,
+        "std": 0.008473992273761744
+      }
+    },
+    {
+      "case": "qwen3_64/g-independent",
+      "validation_joint_nll": {
+        "mean": 2.6304036140441895,
+        "std": 0.011889898827869963
+      }
+    },
+    {
+      "case": "langvae/g-independent",
+      "validation_joint_nll": {
+        "mean": 2.749958038330078,
+        "std": 0.01847178534232563
+      }
+    },
+    {
+      "case": "nomic_64/g-independent",
+      "validation_joint_nll": {
+        "mean": 2.8304275035858155,
+        "std": 0.007119709001215365
+      }
+    },
+    {
+      "case": "qwen3_32/g-autoregressive",
+      "validation_joint_nll": {
+        "mean": 3.002083683013916,
+        "std": 0.008327566886500814
+      }
+    },
+    {
+      "case": "qwen3_32/g-independent",
+      "validation_joint_nll": {
+        "mean": 3.2881311416625976,
+        "std": 0.007908085020463347
+      }
+    }
+  ],
+  "recommended_case": "embeddinggemma_768/g-independent",
+  "test_metrics_used_for_selection": false
+}

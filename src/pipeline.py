@@ -4,15 +4,14 @@ Training and evaluation pipeline: text latents -> semantic decoder -> manipulato
 Stages (hyperparameters from src/config.yaml; data + schema from exp/sim/):
     encode             encode generated input texts into latents (data/latents/)
     train-decoder      train the semantic decoder g: Z -> S on factual pairs
-    train-manipulator  train the latent manipulator h_Z against frozen g and
-                       counterfactual targets S' from the SCM simulation
+    train-manipulator  train the configured latent manipulator h_Z
     evaluate           manipulator faithfulness on the official test split
 
 Run from the repository root:
-    uv run python -m src.pipeline encode
-    uv run python -m src.pipeline train-decoder
-    uv run python -m src.pipeline train-manipulator
-    uv run python -m src.pipeline evaluate
+    uv run python -m src.pipeline encode --encoder-variant langvae
+    uv run python -m src.pipeline train-decoder --encoder-variant langvae --decoder-variant independent
+    uv run python -m src.pipeline train-manipulator --encoder-variant langvae --decoder-variant independent
+    uv run python -m src.pipeline evaluate --encoder-variant langvae --decoder-variant independent
 """
 
 from __future__ import annotations
@@ -20,20 +19,33 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 import torch
 
-from src.config import load_config
+from src.artifact_io import write_json
+from src.config import CONFIG_PATH, load_config
+from src.decoder_reporting import DecoderTrainingRun
+from src.encoder_protocols import add_encoder_arguments
+from src.flow_workflow import (
+    FLOW_VARIANTS,
+    evaluate_flow_manipulator,
+    train_flow_manipulator,
+)
 from src.latent_intervention import (
     LatentIntervention,
+    LatentInterventionNoiseToken,
     LatentInterventionDist,
+    LatentInterventionParticles,
     LatentInterventionPreAdditive,
     make_objective,
     train_latent_intervention,
     train_latent_intervention_dist,
+    train_latent_intervention_noise_token,
+    train_latent_intervention_particles,
     train_latent_intervention_preadditive,
 )
 from src.pair_encoding import LatentArtifact, load_latent_artifact, sha256_file
@@ -41,6 +53,7 @@ from src.schema import ColumnSpec, load_intervention, load_schema
 from src.semantic_decoder import (
     accuracy,
     calibration_metrics,
+    joint_nll,
     load_semantic_decoder,
     make_semantic_decoder,
     targets_from_dataframe,
@@ -48,11 +61,12 @@ from src.semantic_decoder import (
 )
 from src.symbolic_intervention import load_symbolic_kernel
 
-
 INTERVENTION_VARIANTS = {
     "baseline": LatentIntervention,
     "pre_additive": LatentInterventionPreAdditive,
+    "noise_token": LatentInterventionNoiseToken,
     "dist": LatentInterventionDist,
+    "particles": LatentInterventionParticles,
 }
 
 
@@ -150,12 +164,7 @@ def _decoder_metadata(
 
 
 def _write_json(path: str | Path, payload: dict[str, Any]) -> None:
-    output = Path(path)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(
-        json.dumps(payload, indent=2, sort_keys=True),
-        encoding="utf-8",
-    )
+    write_json(path, payload)
 
 
 def _manipulator_info_path(model_path: str | Path) -> Path:
@@ -220,8 +229,9 @@ def stage_encode(config: dict[str, Any]) -> None:
     encode_pairs(config)
 
 
-def stage_train_decoder(config: dict[str, Any]) -> None:
-    """Fit the decoder on official-train units and assess a train-only holdout."""
+def stage_train_decoder(config: dict[str, Any]) -> dict[str, Any]:
+    """Select g by validation NLL within official train; never inspect test metrics."""
+    started_at = datetime.now(timezone.utc).isoformat()
     artifact = load_latent_artifact(config)
     columns, _ = load_schema(config.get("sim_config"))
     targets = _aligned_targets(config["paths"]["sim_factual"], artifact.ids, columns)
@@ -230,7 +240,7 @@ def stage_train_decoder(config: dict[str, Any]) -> None:
     fit_idx, calibration_idx = _fit_calibration_split(
         official_train_idx,
         float(cfg["calibration_split"]),
-        int(config["seed"]),
+        int(cfg.get("split_seed", config["seed"])),
     )
 
     torch.manual_seed(int(config["seed"]))
@@ -243,53 +253,47 @@ def stage_train_decoder(config: dict[str, Any]) -> None:
         dropout=float(cfg["dropout"]),
         embed_dim=int(cfg["autoregressive"]["embed_dim"]),
     )
+    fit_targets = _subset(targets, fit_idx)
+    validation_targets = _subset(targets, calibration_idx)
+    run = DecoderTrainingRun(
+        config,
+        artifact,
+        fit_idx,
+        calibration_idx,
+        _decoder_metadata(config, artifact),
+        started_at,
+    )
     history = train_semantic_decoder(
         decoder,
         artifact.z[fit_idx],
-        _subset(targets, fit_idx),
+        fit_targets,
         epochs=int(cfg["epochs"]),
         batch_size=int(cfg["batch_size"]),
         lr=float(cfg["lr"]),
         seed=int(config["seed"]),
         device=config["encoder"]["device"],
+        validation_latents=artifact.z[calibration_idx],
+        validation_targets=validation_targets,
+        **run.trainer_options(),
     )
     metrics = calibration_metrics(
         decoder,
         artifact.z[calibration_idx],
-        _subset(targets, calibration_idx),
+        validation_targets,
         n_bins=int(cfg["calibration_bins"]),
     )
-    decoder.save(
-        config["paths"]["decoder_model"],
-        metadata=_decoder_metadata(config, artifact),
+    validation_loss = joint_nll(
+        decoder, artifact.z[calibration_idx], validation_targets
     )
-
-    report = {
-        "decoder_variant": cfg["variant"],
-        "seed": int(config["seed"]),
-        "latent_artifact_sha256": artifact.artifact_sha256,
-        "encoder": artifact.encoder_info,
-        "split": {
-            "official_train": len(official_train_idx),
-            "fit": len(fit_idx),
-            "calibration": len(calibration_idx),
-            "official_test": len(official_test_idx),
-        },
-        "training": {
-            "epochs": int(cfg["epochs"]),
-            "final_loss": history[-1],
-        },
-        "calibration": metrics,
-    }
-    _write_json(config["paths"]["decoder_report"], report)
-    ece = {name: round(values["ece"], 3) for name, values in metrics.items()}
-    print("calibration ECE:", ece)
-    print(f"wrote {config['paths']['decoder_model']}")
-    print(f"wrote {config['paths']['decoder_report']}")
+    return run.finish(decoder, history, metrics, validation_loss)
 
 
 def stage_train_manipulator(config: dict[str, Any]) -> None:
-    """Train the manipulator on official training units against the frozen decoder."""
+    """Train the configured manipulator on official training units."""
+    if config["latent_intervention"]["variant"] in FLOW_VARIANTS:
+        train_flow_manipulator(config)
+        return
+
     artifact = load_latent_artifact(config)
     train_idx, _ = _official_indices(artifact)
     columns, _ = load_schema(config.get("sim_config"))
@@ -331,6 +335,7 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
         device=config["encoder"]["device"],
     )
 
+    torch.manual_seed(int(config["seed"]))
     if cfg["variant"] == "baseline":
         model = LatentIntervention(**model_kwargs)
         train_latent_intervention(model=model, epochs=cfg["epochs"], **train_kwargs)
@@ -341,6 +346,16 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
             model=model,
             epochs=cfg["epochs"],
             n_samples=pa["n_samples"],
+            **train_kwargs,
+        )
+    elif cfg["variant"] == "noise_token":
+        nt = cfg["noise_token"]
+        model = LatentInterventionNoiseToken(**model_kwargs, noise_dim=nt["noise_dim"])
+        train_latent_intervention_noise_token(
+            model=model,
+            epochs=cfg["epochs"],
+            n_samples=nt["n_samples"],
+            entropy_weight=nt["entropy_weight"],
             **train_kwargs,
         )
     elif cfg["variant"] == "dist":
@@ -358,9 +373,21 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
             realiser_l2=dist["realiser_l2"],
             **train_kwargs,
         )
+    elif cfg["variant"] == "particles":
+        pt = cfg["particles"]
+        model = LatentInterventionParticles(
+            **model_kwargs,
+            n_particles=pt["n_particles"],
+            uniform_weights=pt["uniform_weights"],
+        )
+        train_latent_intervention_particles(
+            model=model,
+            epochs=cfg["epochs"],
+            entropy_weight=pt["entropy_weight"],
+            **train_kwargs,
+        )
     else:
         raise ValueError(f"unknown latent intervention variant: {cfg['variant']}")
-
     model.save(config["paths"]["manipulator_model"])
     _write_manipulator_info(config, artifact)
     print(f"wrote {config['paths']['manipulator_model']} (intervention {intervention})")
@@ -368,13 +395,19 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
 
 def stage_evaluate(config: dict[str, Any]) -> None:
     """Evaluate decoder and manipulator behavior on official test units only."""
+    if config["latent_intervention"]["variant"] in FLOW_VARIANTS:
+        evaluate_flow_manipulator(config)
+        return
+
     artifact = load_latent_artifact(config)
     _, test_idx = _official_indices(artifact)
     columns, _ = load_schema(config.get("sim_config"))
     intervention = load_intervention(config.get("sim_config"))
+    device = config["encoder"]["device"]
 
     decoder = load_semantic_decoder(
         config["paths"]["decoder_model"],
+        device=device,
         expected_variant=config["semantic_decoder"]["variant"],
         expected_columns=columns,
         expected_metadata=_decoder_metadata(config, artifact),
@@ -388,19 +421,28 @@ def stage_evaluate(config: dict[str, Any]) -> None:
             "unknown latent intervention variant: "
             f"{config['latent_intervention']['variant']}"
         )
-    model = manipulator_type.load(config["paths"]["manipulator_model"])
+    model = manipulator_type.load(
+        config["paths"]["manipulator_model"], device=device
+    )
     s_factual = _aligned_targets(
         config["paths"]["sim_factual"], artifact.ids, decoder.columns
     )
     s_prime = _aligned_targets(
         config["paths"]["sim_counterfactual"], artifact.ids, decoder.columns
     )
-    z_test = artifact.z[test_idx]
+    z_test = artifact.z[test_idx].to(device)
     values, mask = make_objective(
-        intervention, decoder.columns, batch_size=len(test_idx)
+        intervention, decoder.columns, batch_size=len(test_idx), device=device
     )
     with torch.no_grad():
-        z_prime = model(z_test, values, mask)
+        if isinstance(model, (LatentInterventionPreAdditive, LatentInterventionNoiseToken)):
+            # stochastic plans: one seeded draw per text, reproducible across runs
+            generator = torch.Generator(device=torch.device(device)).manual_seed(
+                config["seed"]
+            )
+            z_prime = model(z_test, values, mask, generator)
+        else:
+            z_prime = model(z_test, values, mask)
     preds = decoder.predict(z_prime)
 
     consistency = {
@@ -454,8 +496,29 @@ def main() -> None:
     parser.add_argument(
         "--config", default=None, help="path to an alternative config YAML"
     )
+    add_encoder_arguments(parser)
+    parser.add_argument(
+        "--decoder-variant",
+        choices=("independent", "autoregressive"),
+        default=None,
+        help="override semantic_decoder.variant before artifact paths are resolved",
+    )
+    parser.add_argument(
+        "--manipulator-variant",
+        choices=(*INTERVENTION_VARIANTS, *FLOW_VARIANTS),
+        default=None,
+        help="override latent_intervention.variant before artifact paths are resolved",
+    )
     args = parser.parse_args()
-    config = load_config(path=args.config) if args.config else load_config()
+    config = load_config(
+        path=args.config or CONFIG_PATH,
+        encoder_variant=args.encoder_variant,
+        decoder_variant=args.decoder_variant,
+        manipulator_variant=args.manipulator_variant,
+        nomic_dim=args.nomic_dim,
+        qwen3_dim=args.qwen3_dim,
+        embeddinggemma_dim=args.embeddinggemma_dim,
+    )
     STAGES[args.stage](config)
 
 
