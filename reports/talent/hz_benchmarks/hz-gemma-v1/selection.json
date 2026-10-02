@@ -1,0 +1,177 @@
+{
+  "cases": {
+    "embeddinggemma_256/g-independent/h-baseline": {
+      "candidate": {
+        "lr": 0.0001,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "fb0a0c265cd2b37acb2be6aa9218c1f1887148ad7eb5390a6000463a9fcfa8b7",
+      "search_validation": 0.36345970511436465,
+      "validation_metric": "counterfactual_state_nll"
+    },
+    "embeddinggemma_256/g-independent/h-direct_semantic_flow": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "e8dc866e2ad63a0a4af196d01fbd10d63d84e94f7bdfef40e6dfd0e82ba727e8",
+      "search_validation": 0.037250157669186594,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_256/g-independent/h-dist": {
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "87201e374daec210c8de80137f46d0fcebd1636a98dafc20b483084dca5ecbe7",
+      "search_validation": 0.022393124625086785,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_256/g-independent/h-distilled_flow": {
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "ca9b94f60a14afac1eeae4d2951e14ce0da45c511482556bb8cbd0394f836006",
+      "search_validation": 0.13064980775117874,
+      "validation_metric": "teacher_energy_distance"
+    },
+    "embeddinggemma_256/g-independent/h-noise_token": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "4f5446b06149f0fc8759a0baadc540206c5707b8866dc463c0728a55002f45b7",
+      "search_validation": 0.11787473112344742,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_256/g-independent/h-oracle_regression": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "625196aede1275ec5e7db3ca3c8d285b705680f7cf0524cf912285173a1b9ce2",
+      "search_validation": 0.00014874132117256522,
+      "validation_metric": "counterfactual_latent_mse"
+    },
+    "embeddinggemma_256/g-independent/h-particles": {
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "f80135dde3c340bb05ff0b3934332e9eec7d67d9bab37e0c03d71b1506c84779",
+      "search_validation": 0.020304431729018687,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_256/g-independent/h-pre_additive": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "e138ebf0472db73e5fd3dc960bbeff5382f9f9370eeb1fed8c73ad33ffe6f12d",
+      "search_validation": 0.14662970334291459,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_256/g-independent/h-state_flow": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "adf7b301d4b99ce45a4428065a1ab8d23ac4b445572bb58cf218977c3ef787df",
+      "search_validation": -2.9321501064300537,
+      "validation_metric": "factual_conditional_nll_per_coordinate"
+    },
+    "embeddinggemma_768/g-independent/h-baseline": {
+      "candidate": {
+        "lr": 3e-05,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "ade72d8bedc63b3f1377906a3e1a682a716036f7b6f6e82db28e7401e8032403",
+      "search_validation": 0.3102890884876251,
+      "validation_metric": "counterfactual_state_nll"
+    },
+    "embeddinggemma_768/g-independent/h-direct_semantic_flow": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "c85aa104d3976de23866df07cac46185abc0ca1a82f698cac8f6cdb8cfbb96ee",
+      "search_validation": 0.037967089861631394,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_768/g-independent/h-dist": {
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "d911d2b58161655de19cf56427c6802c18d1977b770f1175b978deba44808355",
+      "search_validation": 0.015548944044858216,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_768/g-independent/h-distilled_flow": {
+      "candidate": {
+        "lr": 0.0003,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "ce28c8d34532d681a3c65bdc2e363e565cdfaa74219a5ed47359e9d17f02df72",
+      "search_validation": 0.05369404926896095,
+      "validation_metric": "teacher_energy_distance"
+    },
+    "embeddinggemma_768/g-independent/h-noise_token": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "c7fcb480e07aeb9b63113892d680a5131886cff90036e5150109dde131108094",
+      "search_validation": 0.08461933702230454,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_768/g-independent/h-oracle_regression": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "b3c761cc5a658088a4b7dddefc7a82d51d32d7bc49af4ed871cfe245cf1c17c3",
+      "search_validation": 6.576970471845319e-05,
+      "validation_metric": "counterfactual_latent_mse"
+    },
+    "embeddinggemma_768/g-independent/h-particles": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "96dd9de8b3f3f453947129945c5dbb29cb8ecd0ff6ed64b15661b3614cddea07",
+      "search_validation": 0.017556879334151745,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_768/g-independent/h-pre_additive": {
+      "candidate": {
+        "lr": 0.001,
+        "width_multiplier": 1
+      },
+      "search_checkpoint_sha256": "d7f09d6ed5b7a3a2f219af80c3a3dc337eb70ade33116e58835af001be27ca0a",
+      "search_validation": 0.06908337354660034,
+      "validation_metric": "semantic_forward_kl"
+    },
+    "embeddinggemma_768/g-independent/h-state_flow": {
+      "candidate": {
+        "lr": 0.0001,
+        "width_multiplier": 2
+      },
+      "search_checkpoint_sha256": "3cd85f2f2545996cfdd8929e9dd2e73b38e4a8f93f0bac4545f3bc7154c484e7",
+      "search_validation": -3.6162768268585204,
+      "validation_metric": "factual_conditional_nll_per_coordinate"
+    }
+  },
+  "cross_family_validation_ranking": false,
+  "deployment_seed": 42,
+  "final_seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
+  "plan_sha256": "37a8bc6a1ba8c05865712fbe00a95ac2ad7ab4aa0da5a09f8295c403bfcdf618",
+  "test_metrics_used": false
+}
