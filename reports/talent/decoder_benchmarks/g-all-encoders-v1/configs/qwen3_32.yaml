@@ -1,0 +1,130 @@
+seed: 42
+sim_config: exp/sim/config.yaml
+encoder:
+  variant: qwen3
+  model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
+  model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
+  langvae_encoder_model_name: bert-base-cased
+  langvae_encoder_model_revision: cd5ef92a9fb2f889e972770a36d4ed042daf221e
+  langvae_decoder_model_name: gpt2
+  langvae_decoder_model_revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
+  local_checkpoint: null
+  tag: null
+  nomic_model_name: nomic-ai/nomic-embed-text-v1.5
+  nomic_model_revision: e5cf08aadaa33385f5990def41f7a23405aec398
+  nomic_code_revision: 7710840340a098cfb869c4f65e87cf2b1b70caca
+  nomic_task: classification
+  nomic_latent_dim: 128
+  qwen3_model_name: Qwen/Qwen3-Embedding-0.6B
+  qwen3_model_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  qwen3_latent_dim: 32
+  qwen3_instruction: ''
+  qwen3_max_len: 1024
+  qwen3_batch_size: 8
+  qwen3_cache_dir: .cache/huggingface/hub
+  embeddinggemma_model_name: google/embeddinggemma-300m
+  embeddinggemma_model_revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
+  embeddinggemma_latent_dim: 128
+  embeddinggemma_prompt: 'task: classification | query: '
+  embeddinggemma_max_len: 2048
+  embeddinggemma_batch_size: 8
+  embeddinggemma_cache_dir: .cache/huggingface/hub
+  max_len: 1024
+  batch_size: 8
+  device: cpu
+  deterministic: true
+semantic_decoder:
+  variant: independent
+  tag: null
+  hidden_dim: 256
+  n_hidden: 2
+  dropout: 0.1
+  epochs: 500
+  batch_size: 64
+  lr: 0.001
+  weight_decay: 0.0
+  split_seed: 42
+  calibration_split: 0.2
+  calibration_bins: 10
+  early_stopping:
+    patience: 30
+    min_delta: 0.0001
+  scheduler:
+    patience: 10
+    factor: 0.5
+    min_lr: 1.0e-06
+  search:
+    trials: 20
+    seed: 20260922
+    initialization_seed: 42
+    final_seeds:
+    - 42
+    - 43
+    - 44
+    - 45
+    - 46
+    deployment_seed: 42
+    lr:
+    - 0.0001
+    - 0.0003
+    - 0.001
+    - 0.003
+    weight_decay:
+    - 0.0
+    - 1.0e-06
+    - 1.0e-05
+    - 0.0001
+    - 0.001
+    dropout:
+    - 0.0
+    - 0.1
+    - 0.2
+    - 0.3
+    hidden_dim:
+    - 128
+    - 256
+    - 512
+  autoregressive:
+    embed_dim: 16
+latent_intervention:
+  variant: baseline
+  tag: null
+  d_model: 128
+  nhead: 4
+  dim_feedforward: 256
+  dropout: 0.1
+  epochs: 50
+  batch_size: 64
+  lr: 0.0001
+  sparsity_weight: 1.0
+  proximity_weight: 1.0
+  pre_additive:
+    noise_std: 1.0
+    n_samples: 8
+  dist:
+    embed_dim: 16
+    top_k: 16
+    pretrain_epochs: 30
+    joint_epochs: 20
+    realiser_l1: 1.0
+    realiser_l2: 1.0
+finetune_vae:
+  epochs: 5
+  batch_size: 8
+  lr: 0.0001
+  max_beta: 1.0
+  n_cycles: 1
+  target_kl: 2.0
+  val_split: 0.1
+  output_dir: models/langvae_cv
+paths:
+  texts: data/text_talent/cv_factual.csv
+  texts_counterfactual: data/text_talent/cv_counterfactual.csv
+  pair_index: data/sim_talent/pair_index.csv
+  sim_factual: data/sim_talent/sim_data_factual.csv
+  sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
+  latents: data/latents/talent/{encoder}/z_pairs.pt
+  decoder_model: models/talent/{encoder}/g-{decoder}/semantic_decoder.pt
+  decoder_report: reports/talent/{encoder}/g-{decoder}/semantic_decoder.json
+  manipulator_model: models/talent/{encoder}/g-{decoder}/h-{manipulator}/latent_intervention.pt
+  eval_report: reports/talent/{encoder}/g-{decoder}/h-{manipulator}/eval.json

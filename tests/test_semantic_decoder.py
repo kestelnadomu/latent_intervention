@@ -8,12 +8,13 @@ import torch
 import torch.nn.functional as F
 
 from src.schema import ColumnSpec, flat_state_index
-from src.semantic_decoder import (
+from src.semantic_decoder.model import (
     SEMANTIC_DECODER_FORMAT_VERSION,
     SemanticAutoRegDecoder,
     SemanticDecoder,
     accuracy,
     calibration_metrics,
+    joint_nll,
     load_semantic_decoder,
     make_semantic_decoder,
     targets_from_dataframe,
@@ -263,6 +264,108 @@ def test_training_rejects_empty_data() -> None:
             {"a": torch.empty(0, dtype=torch.long)},
             verbose=False,
         )
+
+
+@pytest.mark.parametrize("variant", ["independent", "autoregressive"])
+def test_joint_nll_matches_joint_distribution(variant, columns, sample) -> None:
+    latents, targets = sample
+    decoder = make_semantic_decoder(
+        variant, latent_dim=3, columns=columns, hidden_dim=8
+    )
+    decoder.eval()
+    flat = flat_state_index(
+        torch.stack([targets[c.name] for c in columns], dim=-1), columns
+    )
+    expected = -decoder.log_joint(latents).gather(1, flat[:, None]).mean().item()
+    decoder.train()
+    assert joint_nll(decoder, latents, targets, batch_size=3) == pytest.approx(expected)
+    assert decoder.training
+
+
+def test_early_stopping_restores_best_weights_and_reduces_lr(
+    monkeypatch, columns, sample
+) -> None:
+    import src.semantic_decoder.model as module
+
+    latents, targets = sample
+    losses = iter([3.0, 2.0, 2.2, 2.5, 2.7])
+    monkeypatch.setattr(module, "joint_nll", lambda *args: next(losses))
+    model = SemanticDecoder(3, columns, hidden_dim=8, dropout=0.0)
+    snapshots = []
+    records = []
+
+    def capture(decoder, record):
+        snapshots.append({k: v.clone() for k, v in decoder.state_dict().items()})
+        records.append(record)
+
+    history = train_semantic_decoder(
+        model,
+        latents,
+        targets,
+        epochs=100,
+        batch_size=2,
+        lr=0.01,
+        validation_latents=latents,
+        validation_targets=targets,
+        patience=3,
+        scheduler_patience=1,
+        epoch_callback=capture,
+        verbose=False,
+    )
+    assert len(history) == 5
+    assert model.training_summary["best_epoch"] == 2
+    assert model.training_summary["stopped_early"]
+    assert model.training_summary["optimizer_steps"] == 10
+    assert records[4]["learning_rate"] == pytest.approx(0.005)
+    for name, parameter in model.state_dict().items():
+        assert torch.equal(parameter, snapshots[1][name])
+    assert any(
+        not torch.equal(v, snapshots[-1][k]) for k, v in model.state_dict().items()
+    )
+    assert not model.training
+
+
+def test_training_rejects_nonfinite_validation(monkeypatch, columns, sample) -> None:
+    import src.semantic_decoder.model as module
+
+    latents, targets = sample
+    model = SemanticDecoder(3, columns, hidden_dim=8)
+    monkeypatch.setattr(module, "joint_nll", lambda *args: float("nan"))
+    with pytest.raises(FloatingPointError, match="validation"):
+        train_semantic_decoder(
+            model,
+            latents,
+            targets,
+            epochs=2,
+            validation_latents=latents,
+            validation_targets=targets,
+        )
+
+
+def test_validation_training_is_reproducible(columns, sample) -> None:
+    latents, targets = sample
+    models = [SemanticDecoder(3, columns, hidden_dim=8, dropout=0.3) for _ in range(2)]
+    histories = [
+        train_semantic_decoder(
+            model,
+            latents,
+            targets,
+            epochs=4,
+            batch_size=3,
+            seed=23,
+            validation_latents=latents,
+            validation_targets=targets,
+            verbose=False,
+        )
+        for model in models
+    ]
+    assert histories[0] == histories[1]
+    assert (
+        models[0].training_summary["best_epoch"]
+        == models[1].training_summary["best_epoch"]
+    )
+    for name, value in models[0].state_dict().items():
+        assert torch.equal(value, models[1].state_dict()[name])
 
 
 @pytest.mark.parametrize(

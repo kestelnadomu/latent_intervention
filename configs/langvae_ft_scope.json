@@ -1,0 +1,31 @@
+{
+  "baseline": "langvae_ft",
+  "implementation_base_head": "403b068e4286bd6b781319574c8bd30c4b9986a0",
+  "keep_for_code_transfer": [
+    "README.md",
+    "configs/langvae_ft.yaml",
+    "configs/langvae_ft_scope.json",
+    "docs/architecture/langvae_ft.md",
+    "docs/experiments/langvae_ft_handoff.md",
+    "exp/langvae_ft/environment/pyproject.toml",
+    "exp/langvae_ft/environment/uv.lock",
+    "exp/langvae_ft/__init__.py",
+    "exp/langvae_ft/__main__.py",
+    "exp/langvae_ft/artifacts.py",
+    "exp/langvae_ft/data.py",
+    "exp/langvae_ft/evaluation.py",
+    "exp/langvae_ft/model.py",
+    "exp/langvae_ft/training.py",
+    "tests/test_langvae_ft.py"
+  ],
+  "selected_checkpoint": "models/langvae_ft/20260928T075426Z-train-c8d72b43/checkpoint-024-974eea2e",
+  "checkpoint_manifest_sha256": "58f681c66f3ba8d0de9331ec2fe76ff6b226d80482e243bb755f94a5fcf71b89",
+  "artifact_archive": "langvae_ft-epoch24-20260929.tar.gz",
+  "artifact_archive_sha256": "fd933a6ff3af98c7d0ae619b58c3a2a143f7bbae45e5192bb2dcdd2e7eb9f9e8",
+  "artifact_transfer": "Separate private transfer; checkpoint, archive and data are not in Git.",
+  "final_encoding_destination_only": "data/latents/talent/langvae_ft/z_pairs.pt",
+  "downstream_namespaces": [
+    "models/talent/langvae_ft/",
+    "reports/talent/langvae_ft/"
+  ]
+}

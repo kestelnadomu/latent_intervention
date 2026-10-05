@@ -5,7 +5,6 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, version
 from numbers import Integral
 from pathlib import Path
 from typing import Any
@@ -13,9 +12,25 @@ from typing import Any
 import pandas as pd
 import torch
 
-_ARTIFACT_VERSION = 1
-_LATENT_DIMENSION = 128
+from src.artifact_io import sha256_file as sha256_file
+from src.encoder import (
+    encoder_dimension,
+    embedding_encoder_info,
+    get_encoder_factory,
+    validate_encoding_metadata,
+)
+from src.latent_writer import (
+    ARTIFACT_VERSION as _ARTIFACT_VERSION,
+    _input_hashes as _input_hashes,
+    _require_new_output as _require_new_output,
+    write_latent_payload,
+)
+
 _NOMIC_MODEL = "nomic-ai/nomic-embed-text-v1.5"
+_LANGVAE_ENCODER_MODEL = "bert-base-cased"
+_LANGVAE_ENCODER_REVISION = "cd5ef92a9fb2f889e972770a36d4ed042daf221e"
+_LANGVAE_DECODER_MODEL = "gpt2"
+_LANGVAE_DECODER_REVISION = "607a30d783dfa663caf39e06633721c8d4cfcd7e"
 _ENCODER_INFO_KEYS = (
     "encoder_variant",
     "encoder",
@@ -27,6 +42,10 @@ _ENCODER_INFO_KEYS = (
     "max_length",
     "deterministic",
     "latent_dimension",
+    "langvae_encoder_model",
+    "langvae_encoder_revision",
+    "langvae_decoder_model",
+    "langvae_decoder_revision",
 )
 
 
@@ -89,15 +108,6 @@ def _load_pair_index(path: str | Path) -> pd.DataFrame:
     return pairs
 
 
-def sha256_file(path: str | Path) -> str:
-    """Return the SHA-256 digest of a file's exact bytes."""
-    digest = hashlib.sha256()
-    with Path(path).open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 def _sha256_directory(path: Path) -> str:
     """Hash relative names and bytes of every file in a checkpoint directory."""
     digest = hashlib.sha256()
@@ -114,32 +124,43 @@ def _sha256_directory(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _package_version(name: str) -> str | None:
-    try:
-        return version(name)
-    except PackageNotFoundError:
-        return None
-
-
 def _active_encoder_info(config: dict[str, Any]) -> dict[str, Any]:
     variant = config.get("variant", "langvae")
-    if variant not in {"langvae", "nomic"}:
+    if variant not in {"langvae", "nomic", "qwen3", "embeddinggemma"}:
         raise ValueError(f"unknown encoder variant: {variant}")
     if config.get("deterministic", True) is not True:
         raise ValueError("paired latent artifacts require deterministic encoding")
 
+    if variant in {"qwen3", "embeddinggemma"}:
+        return embedding_encoder_info(config)
     if variant == "nomic":
         model = config.get("nomic_model_name", _NOMIC_MODEL)
         model_revision = config.get("nomic_model_revision")
         local_checkpoint = None
         code_revision = config.get("nomic_code_revision")
         task = config.get("nomic_task", "classification")
+        langvae_encoder_model = None
+        langvae_encoder_revision = None
+        langvae_decoder_model = None
+        langvae_decoder_revision = None
     else:
         model = config["model_name"]
         local_checkpoint = config.get("local_checkpoint")
         model_revision = None if local_checkpoint else config.get("model_revision")
         code_revision = None
         task = None
+        langvae_encoder_model = config.get(
+            "langvae_encoder_model_name", _LANGVAE_ENCODER_MODEL
+        )
+        langvae_encoder_revision = config.get(
+            "langvae_encoder_model_revision", _LANGVAE_ENCODER_REVISION
+        )
+        langvae_decoder_model = config.get(
+            "langvae_decoder_model_name", _LANGVAE_DECODER_MODEL
+        )
+        langvae_decoder_revision = config.get(
+            "langvae_decoder_model_revision", _LANGVAE_DECODER_REVISION
+        )
 
     local_path = Path(local_checkpoint).resolve() if local_checkpoint else None
     if local_path is not None:
@@ -159,7 +180,11 @@ def _active_encoder_info(config: dict[str, Any]) -> dict[str, Any]:
         "task": task,
         "max_length": int(config["max_len"]),
         "deterministic": True,
-        "latent_dimension": _LATENT_DIMENSION,
+        "latent_dimension": encoder_dimension(config),
+        "langvae_encoder_model": langvae_encoder_model,
+        "langvae_encoder_revision": langvae_encoder_revision,
+        "langvae_decoder_model": langvae_decoder_model,
+        "langvae_decoder_revision": langvae_decoder_revision,
     }
 
 
@@ -253,9 +278,15 @@ def load_latent_artifact(config: dict[str, Any]) -> LatentArtifact:
         expected_encoder_info = _active_encoder_info(config["encoder"])
     except (KeyError, TypeError, ValueError) as exc:
         raise _reencode("cannot be matched to the active encoder config") from exc
-    encoder_info = {key: info[key] for key in _ENCODER_INFO_KEYS}
+    if set(expected_encoder_info) - set(info):
+        raise _reencode("has missing encoder-specific metadata")
+    encoder_info = {key: info[key] for key in expected_encoder_info}
     if encoder_info != expected_encoder_info:
         raise _reencode("does not match the active encoder config")
+    try:
+        validate_encoding_metadata(info, encoder_info)
+    except ValueError as exc:
+        raise _reencode(str(exc)) from exc
 
     try:
         payload = torch.load(artifact_path, map_location="cpu", weights_only=True)
@@ -323,6 +354,8 @@ def load_latent_artifact(config: dict[str, Any]) -> LatentArtifact:
 def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]:
     """Encode all X and test X', copying identity latents exactly."""
     paths = config["paths"]
+    _require_new_output(paths["latents"])
+    input_hashes = _input_hashes(paths)
     pairs = _load_pair_index(paths["pair_index"])
     factual = _load_csv(paths["texts"], "factual texts", {"id", "text"})
     counterfactual = _load_csv(
@@ -367,13 +400,12 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
     enc = config["encoder"]
     encoder_info = _active_encoder_info(enc)
     if encoder_factory is None:
-        from src.encoder import make_encoder
-
-        encoder_factory = make_encoder
+        encoder_factory = get_encoder_factory(enc)
     encoder = encoder_factory(enc)
-    if int(encoder.latent_dim) != _LATENT_DIMENSION:
+    dimension = encoder_info["latent_dimension"]
+    if int(encoder.latent_dim) != dimension:
         raise ValueError(
-            f"encoder latent dimension must be 128, got {encoder.latent_dim}"
+            f"encoder latent dimension must be {dimension}, got {encoder.latent_dim}"
         )
     encoded = (
         encoder.encode(
@@ -386,7 +418,7 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
     )
     if (
         not torch.is_floating_point(encoded)
-        or encoded.shape != (len(texts), _LATENT_DIMENSION)
+        or encoded.shape != (len(texts), dimension)
         or not torch.isfinite(encoded).all()
     ):
         raise ValueError("encoder returned invalid latent vectors")
@@ -411,34 +443,29 @@ def encode_pairs(config: dict[str, Any], encoder_factory=None) -> dict[str, Any]
         "z_prime": z_prime,
         "is_identity": torch.tensor(identity, dtype=torch.bool),
     }
-    output = Path(paths["latents"])
-    output.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(payload, output)
-    info_path = output.with_suffix(".info.json")
-    is_nomic = encoder_info["encoder_variant"] == "nomic"
-    info_path.write_text(
-        json.dumps(
-            {
-                "artifact_version": _ARTIFACT_VERSION,
-                "artifact_sha256": sha256_file(output),
-                **encoder_info,
-                "task_prefix": f"{encoder_info['task']}: " if is_nomic else None,
-                "normalization": ("layer_norm+truncate_128+l2" if is_nomic else None),
-                "langvae_version": _package_version("langvae"),
-                "transformers_version": _package_version("transformers"),
-                "factual_units": len(all_ids),
-                "counterfactual_test_units": len(test_ids),
-                "identity_test_units": sum(identity),
-                "input_sha256": {
-                    "pair_index": sha256_file(paths["pair_index"]),
-                    "factual_text": sha256_file(paths["texts"]),
-                    "counterfactual_text": sha256_file(paths["texts_counterfactual"]),
-                },
-            },
-            indent=2,
-            sort_keys=True,
-        ),
-        encoding="utf-8",
+    write_latent_artifact(config, payload, expected_input_hashes=input_hashes)
+    print(
+        f"wrote {paths['latents']}: {len(all_ids)} factual and {len(test_ids)} test pairs"
     )
-    print(f"wrote {output}: {len(all_ids)} factual and {len(test_ids)} test pairs")
     return payload
+
+
+def write_latent_artifact(
+    config: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    derivation: dict | None = None,
+    expected_input_hashes: dict[str, str] | None = None,
+) -> None:
+    """Validate the latent tensors, then atomically publish the canonical payload."""
+    encoder_info = _active_encoder_info(config["encoder"])
+    dimension = encoder_info["latent_dimension"]
+    _latent_tensor(payload["z"], "z", len(payload["ids"]), dimension)
+    _latent_tensor(payload["z_prime"], "z_prime", len(payload["test_ids"]), dimension)
+    write_latent_payload(
+        config["paths"],
+        payload,
+        encoder_info,
+        derivation=derivation,
+        expected_input_hashes=expected_input_hashes,
+    )
