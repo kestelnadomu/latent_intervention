@@ -9,12 +9,12 @@ import yaml
 
 from src import pipeline
 from src.config import CONFIG_PATH, encoder_tag, resolve_paths
-from src.decoder_benchmark.decoder_experiment import candidate_settings
-from src.encoder_protocols import configure_encoder
-from src.encoders.langvae_ft.artifacts import inference_config, read_checkpoint
+from exp.benchmarks.semantic_decoder.experiment import candidate_settings
+from src.encoder import configure_encoder
+from exp.langvae_ft.artifacts import inference_config, read_checkpoint
 from src.pair_encoding import load_latent_artifact
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 DECODERS = ("independent", "autoregressive")
 
 
@@ -158,7 +158,7 @@ def annotate_result(result):
     result["encoder_tag"] = encoder_tag(config["encoder"])
     result["case"] = case_name(config)
     # The actual checkpoint records the width too; this field is for reporting.
-    from src.encoder_protocols import encoder_dimension
+    from src.encoder import encoder_dimension
 
     result["latent_dimension"] = encoder_dimension(config["encoder"])
     return result

@@ -3,7 +3,7 @@
 Use .venv-qwen3/bin/python. Shares the validated serial artifact queue with Nomic.
 """
 
-from src.encoders.nomic_encoding import main as queue_main
+from exp.encoding.queue import main as queue_main
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 """Serial, resumable Matryoshka dimension queues using one full-width pass.
 
-python -m src.encoders.nomic_encoding --prepare
-python -m src.encoders.nomic_encoding --run
+python -m exp.encoding.nomic_queue --prepare
+python -m exp.encoding.nomic_queue --run
 
 Completed stages resume after validation. An interrupted transformer pass restarts;
 partially written staging directories are retained, never silently overwritten.
@@ -24,16 +24,13 @@ from typing import Any
 from uuid import uuid4
 
 import torch
-import torch.nn.functional as F
 
 from src.artifact_io import write_json
 from src.config import (
     CONFIG_PATH,
-    NOMIC_DIMENSIONS,
-    QWEN3_DIMENSIONS,
-    EMBEDDINGGEMMA_DIMENSIONS,
     load_config,
 )
+from src.encoder.matryoshka import DIMENSIONS, compare_projection, projected_payload
 from src.pair_encoding import (
     LatentArtifact,
     _active_encoder_info,
@@ -42,13 +39,6 @@ from src.pair_encoding import (
     sha256_file,
     write_latent_artifact,
 )
-
-DIMENSIONS = {
-    "nomic": NOMIC_DIMENSIONS,
-    "qwen3": QWEN3_DIMENSIONS,
-    "embeddinggemma": EMBEDDINGGEMMA_DIMENSIONS,
-}
-
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -100,51 +90,6 @@ def verify_artifact(config: dict) -> LatentArtifact:
     return artifact
 
 
-def projected_payload(source: LatentArtifact, dim: int) -> dict[str, Any]:
-    """Slice a full-width normalized embedding source, then renormalize.
-
-    Do NOT reapply layer norm to the truncated prefix. Full-vector L2 scaling
-    cancels during the prefix normalization, up to floating-point rounding.
-    """
-    variant = source.encoder_info["encoder_variant"]
-    dimensions = DIMENSIONS.get(variant, ())
-    if not dimensions or source.z.shape[1] != max(dimensions) or dim not in dimensions:
-        raise ValueError(
-            "projection requires a full-width source and a supported dimension"
-        )
-    z = F.normalize(source.z[:, :dim], p=2, dim=1).contiguous()
-    z_prime = F.normalize(source.z_prime[:, :dim], p=2, dim=1).contiguous()
-    positions = {row_id: i for i, row_id in enumerate(source.ids)}
-    for i, (row_id, identity) in enumerate(
-        zip(source.test_ids, source.is_identity.tolist(), strict=True)
-    ):
-        if identity:
-            z_prime[i] = z[positions[row_id]]
-    return {
-        "ids": source.ids,
-        "z": z,
-        "test_ids": source.test_ids,
-        "z_prime": z_prime,
-        "is_identity": source.is_identity.clone(),
-    }
-
-
-def compare_projection(
-    source: LatentArtifact, target: LatentArtifact
-) -> dict[str, float]:
-    if source.ids != target.ids or source.test_ids != target.test_ids:
-        raise ValueError("cross-dimension IDs differ")
-    expected = projected_payload(source, target.z.shape[1])
-    differences = {}
-    for name, tensor in (("z", target.z), ("z_prime", target.z_prime)):
-        differences[name] = (tensor - expected[name]).abs().max().item()
-        if not torch.allclose(tensor, expected[name], atol=1e-6, rtol=1e-5):
-            raise ValueError(
-                f"{target.z.shape[1]}D {name} disagrees with {source.z.shape[1]}D source: {differences[name]}"
-            )
-    return differences
-
-
 def inspect_queue(configs: dict[int, dict]) -> list[dict[str, Any]]:
     rows = []
     full_dim = max(configs)
@@ -183,14 +128,14 @@ def protocol(configs: dict[int, dict], threads: int) -> dict:
     is_gemma = base["encoder"]["variant"] == "embeddinggemma"
     extra = {}
     if is_qwen3:
-        from src.encoders.qwen3_encoder import MODEL_FILES, cached_snapshot
+        from src.encoder.qwen3 import MODEL_FILES, cached_snapshot
 
         snapshot = Path(cached_snapshot(base["encoder"]))
         extra["model_files_sha256"] = {
             name: sha256_file(snapshot / name) for name in MODEL_FILES
         }
     if is_gemma:
-        from src.encoders.embeddinggemma_encoder import MODEL_FILES, cached_snapshot
+        from src.encoder.embeddinggemma import MODEL_FILES, cached_snapshot
 
         snapshot = Path(cached_snapshot(base["encoder"]))
         extra["model_files_sha256"] = {
@@ -216,30 +161,34 @@ def protocol(configs: dict[int, dict], threads: int) -> dict:
             for path in (
                 Path(__file__),
                 Path("src/config.py"),
-                Path("src/encoder.py"),
+                Path("src/encoder/__init__.py"),
+                Path("src/encoder/langvae.py"),
+                Path("src/encoder/nomic.py"),
+                Path("src/encoder/matryoshka.py"),
                 Path("src/pair_encoding.py"),
                 Path("src/artifact_io.py"),
-                Path("src/encoder_protocols.py"),
-                Path("src/encoding_progress.py"),
+                Path("src/encoder/protocols.py"),
+                Path("src/encoder/progress.py"),
                 Path("src/latent_writer.py"),
                 Path("uv.lock"),
                 *(
                     [
-                        Path("src/encoders/qwen3_encoder.py"),
-                        Path("src/encoders/qwen3_encoding.py"),
-                        Path("src/encoders/qwen3_preflight.py"),
-                        Path("requirements/qwen3.lock"),
+                        Path("src/encoder/qwen3.py"),
+                        Path("exp/encoding/qwen3_queue.py"),
+                        Path("exp/encoding/qwen3_preflight.py"),
+                        Path("exp/encoding/requirements/qwen3.lock"),
                     ]
                     if is_qwen3
                     else []
                 ),
                 *(
-                    [
-                        Path(f"src/encoders/embeddinggemma_{part}.py")
-                        for part in ("encoder", "encoding", "preflight", "setup")
+                    [Path("src/encoder/embeddinggemma.py")]
+                    + [
+                        Path(f"exp/encoding/embeddinggemma_{part}.py")
+                        for part in ("queue", "preflight", "setup")
                     ]
                     + [
-                        Path("requirements/embeddinggemma.lock"),
+                        Path("exp/encoding/requirements/embeddinggemma.lock"),
                         Path("scripts/run_embeddinggemma_dimensions.sh"),
                     ]
                     if is_gemma
@@ -414,9 +363,9 @@ def main(*, variant: str = "nomic") -> None:
             preflight_path = root / "preflight.json"
             if getattr(args, "preflight", False):
                 if variant == "qwen3":
-                    from src.encoders.qwen3_preflight import run_preflight
+                    from exp.encoding.qwen3_preflight import run_preflight
                 else:
-                    from src.encoders.embeddinggemma_preflight import run_preflight
+                    from exp.encoding.embeddinggemma_preflight import run_preflight
 
                 report = run_preflight(configs)
                 report["protocol_signature"] = signature

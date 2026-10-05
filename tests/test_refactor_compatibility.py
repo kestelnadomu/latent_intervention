@@ -10,7 +10,10 @@ import json
 
 import pytest
 
-from src import config, decoder_training, encoder_protocols, semantic_decoder
+from src import config
+from src import encoder as encoder_protocols
+from src.semantic_decoder import model as semantic_decoder
+from src.semantic_decoder import training as decoder_training
 from src.pair_encoding import _active_encoder_info
 
 METADATA_SHA256 = {
@@ -67,7 +70,7 @@ def test_historical_imports_remain_available():
 
 
 def test_progress_reporting_keeps_original_intervals_and_text(monkeypatch, capsys):
-    import src.encoding_progress as progress
+    import src.encoder.progress as progress
 
     monkeypatch.setattr(progress, "perf_counter", lambda: 20.0)
     progress.log_encoding_progress("Nomic", 0, 8, 200, 10.0, enabled=True)

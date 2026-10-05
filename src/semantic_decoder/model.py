@@ -16,7 +16,7 @@ import torch.nn.functional as F
 from torch import nn
 
 from src.artifact_io import save_torch
-from src.decoder_training import train_semantic_decoder as train_semantic_decoder
+from src.semantic_decoder.training import train_semantic_decoder as train_semantic_decoder
 from src.schema import ColumnSpec
 
 SEMANTIC_DECODER_FORMAT_VERSION = 1

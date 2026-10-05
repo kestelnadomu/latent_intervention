@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 
 from src.schema import ColumnSpec, flat_state_index
-from src.semantic_decoder import (
+from src.semantic_decoder.model import (
     SEMANTIC_DECODER_FORMAT_VERSION,
     SemanticAutoRegDecoder,
     SemanticDecoder,
@@ -285,7 +285,7 @@ def test_joint_nll_matches_joint_distribution(variant, columns, sample) -> None:
 def test_early_stopping_restores_best_weights_and_reduces_lr(
     monkeypatch, columns, sample
 ) -> None:
-    import src.semantic_decoder as module
+    import src.semantic_decoder.model as module
 
     latents, targets = sample
     losses = iter([3.0, 2.0, 2.2, 2.5, 2.7])
@@ -326,7 +326,7 @@ def test_early_stopping_restores_best_weights_and_reduces_lr(
 
 
 def test_training_rejects_nonfinite_validation(monkeypatch, columns, sample) -> None:
-    import src.semantic_decoder as module
+    import src.semantic_decoder.model as module
 
     latents, targets = sample
     model = SemanticDecoder(3, columns, hidden_dim=8)

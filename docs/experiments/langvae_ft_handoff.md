@@ -81,9 +81,9 @@ environment if necessary and use its existing Linux CLI; no separate installer
 or dependency upgrade is needed. Run the following steps in the same shell:
 
 ```sh
-uv sync --project environments/langvae-cu124 --frozen
-FT_HF=environments/langvae-cu124/.venv/bin/hf
-FT_PYTHON=environments/langvae-cu124/.venv/bin/python
+uv sync --project exp/langvae_ft/environment --frozen
+FT_HF=exp/langvae_ft/environment/.venv/bin/hf
+FT_PYTHON=exp/langvae_ft/environment/.venv/bin/python
 # Downloads require network access, even if an earlier training session was offline.
 unset HF_HUB_OFFLINE TRANSFORMERS_OFFLINE
 "$FT_HF" auth login
@@ -141,13 +141,13 @@ commands from the project root. The public backbone cache can now use its own
 location; the private checkpoint is already local.
 
 ```sh
-FT_PYTHON=environments/langvae-cu124/.venv/bin/python
+FT_PYTHON=exp/langvae_ft/environment/.venv/bin/python
 FT_CHECKPOINT=models/langvae_ft/20260928T075426Z-train-c8d72b43/checkpoint-024-974eea2e
 FT_CONFIG=models/langvae_ft/encoding.yaml
 export HF_HOME="$PWD/models/hf_cache"
 
-"$FT_PYTHON" -m src.encoders.langvae_ft verify --checkpoint "$FT_CHECKPOINT" --device cpu &&
-"$FT_PYTHON" -m src.encoders.langvae_ft configure --checkpoint "$FT_CHECKPOINT" --output "$FT_CONFIG" &&
+"$FT_PYTHON" -m exp.langvae_ft verify --checkpoint "$FT_CHECKPOINT" --device cpu &&
+"$FT_PYTHON" -m exp.langvae_ft configure --checkpoint "$FT_CHECKPOINT" --output "$FT_CONFIG" &&
 "$FT_PYTHON" -m src.pipeline encode --config "$FT_CONFIG"
 ```
 

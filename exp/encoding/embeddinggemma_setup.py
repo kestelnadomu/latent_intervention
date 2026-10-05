@@ -3,7 +3,7 @@
 from huggingface_hub import snapshot_download
 
 from src.config import load_config
-from src.encoders.embeddinggemma_encoder import MODEL_FILES, cached_snapshot
+from src.encoder.embeddinggemma import MODEL_FILES, cached_snapshot
 
 
 def main() -> None:

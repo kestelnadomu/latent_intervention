@@ -156,16 +156,6 @@ latent_intervention:
     min_lr: 1.0e-6
     grad_clip: 5.0
 
-finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.py)
-  epochs: 5
-  batch_size: 8
-  lr: 1.0e-4
-  max_beta: 1.0
-  n_cycles: 1
-  target_kl: 2.0
-  val_split: 0.1
-  output_dir: models/langvae_cv
-
 paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/text, data/latents/z_pairs.pt
   # {encoder} = encoder tag (src/config.py::encoder_tag): artifacts that depend on the latent space
   texts: data/text_talent/cv_factual.csv

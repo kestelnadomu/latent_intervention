@@ -21,7 +21,7 @@ import torch
 from src.artifact_io import sha256_file, write_json
 from src.config import load_config
 from src.encoder import make_encoder
-from src.encoders.langvae_ft.artifacts import ROOT, packages, read_checkpoint, verify_checkpoint
+from exp.langvae_ft.artifacts import ROOT, packages, read_checkpoint, verify_checkpoint
 from src.pair_encoding import encode_pairs, load_latent_artifact
 
 
@@ -150,7 +150,13 @@ def run(config_path, run_id, threads=4):
                     ).strip(),
                     "source_sha256": {
                         str(p.relative_to(ROOT)): sha256_file(p)
-                        for p in sorted((ROOT / "src").rglob("*.py"))
+                        for p in sorted(
+                            [
+                                *(ROOT / "src").rglob("*.py"),
+                                *(ROOT / "exp/langvae_ft").glob("*.py"),
+                                *(ROOT / "exp/encoding").glob("langvae_ft_queue.py"),
+                            ]
+                        )
                     },
                     "existing_artifacts_sha256": existing,
                 },

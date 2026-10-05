@@ -23,7 +23,7 @@ test ! -e "$encoding_report_dir/status.json"
 mkdir -p -- "$encoding_report_dir"
 printf -v encoding_command '%q ' env HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
     TOKENIZERS_PARALLELISM=false OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 \
-    "$encoding_python" -u -m src.encoders.langvae_ft_encoding --run-id "$encoding_run_id" --threads 4
+    "$encoding_python" -u -m exp.encoding.langvae_ft_queue --run-id "$encoding_run_id" --threads 4
 printf -v encoding_log '%q' "$encoding_report_dir/run.log"
 encoding_command+=" >> $encoding_log 2>&1"
 tmux new-session -d -s "$encoding_session" -c "$encoding_repo" "$encoding_command"

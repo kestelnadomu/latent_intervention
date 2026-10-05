@@ -15,7 +15,7 @@ from . import ARCHITECTURE, TAG
 from .data import file_hash
 from .model import load_native
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def atomic_json(path, value):
@@ -35,8 +35,8 @@ def atomic_torch(path, value):
 
 
 def source_hashes():
-    files = sorted((ROOT / "src/encoders/langvae_ft").glob("*.py"))
-    files += [ROOT / "src/encoder.py", ROOT / "src/config.py"]
+    files = sorted((ROOT / "exp/langvae_ft").glob("*.py"))
+    files += [ROOT / "src/encoder/langvae.py", ROOT / "src/config.py"]
     return {str(p.relative_to(ROOT)): file_hash(p) for p in files}
 
 
@@ -87,7 +87,7 @@ def restore_resume(path, adapter, optimizer):
 
 @torch.no_grad()
 def export_checkpoint(base, adapter, directory, dataset, run, epoch, validation):
-    """Save native LangVAE files: loadable by unchanged src.encoder.TextEncoder."""
+    """Save native LangVAE files: loadable by unchanged src.encoder.langvae.TextEncoder."""
     name = f"checkpoint-{epoch:03d}-{uuid.uuid4().hex[:8]}"
     temporary = directory / ("." + name)
     base.save(str(temporary))

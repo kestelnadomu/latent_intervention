@@ -16,7 +16,7 @@ from packaging.version import Version
 from transformers import AutoModel, AutoTokenizer
 
 from src.config import QWEN3_MODEL, QWEN3_REVISION, qwen3_dimension, qwen3_protocol
-from src.encoding_progress import log_encoding_progress
+from src.encoder.progress import log_encoding_progress
 
 MODEL_FILES = (
     "config.json",

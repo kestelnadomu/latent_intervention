@@ -4,7 +4,7 @@ from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from src.artifact_io import save_torch, write_json, sha256_file
-from src.encoder_protocols import encoding_metadata
+from src.encoder import encoding_metadata
 
 ARTIFACT_VERSION = 1
 

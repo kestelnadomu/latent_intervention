@@ -16,7 +16,7 @@ import torch
 
 from src.artifact_io import copy_atomic, sha256_file, write_json
 from src.config import CONFIG_PATH
-from src.hz.hz_benchmark_matrix import (
+from exp.benchmarks.latent_intervention.matrix import (
     PROTOCOL,
     ROOT,
     assert_unchanged,
@@ -26,9 +26,9 @@ from src.hz.hz_benchmark_matrix import (
     oracle_readiness,
     run_root,
 )
-from src.hz.hz_evaluation import evaluate
-from src.hz.hz_report import render
-from src.hz.hz_training import fit, job_paths, model_sizes, verify_fit
+from exp.benchmarks.latent_intervention.evaluation import evaluate
+from exp.benchmarks.latent_intervention.report import render
+from exp.benchmarks.latent_intervention.training import fit, job_paths, model_sizes, verify_fit
 
 DEFAULT_RUN = "hz-gemma-v1"
 
@@ -312,7 +312,7 @@ def publish(root, plan, finals):
             checkpoint_sha256=report["checkpoint_sha256"],
             source_checkpoint=report["checkpoint"],
             plan_sha256=digest(plan),
-            loader="src.hz.hz_training.load_model",
+            loader="exp.benchmarks.latent_intervention.training.load_model",
         )
         immutable_json(destination.with_suffix(".info.json"), info)
         published.append(dict(**info, checkpoint=str(destination)))

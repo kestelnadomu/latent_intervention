@@ -7,5 +7,5 @@ command -v uv >/dev/null
 if [[ ! -e .venv-embeddinggemma ]]; then
     uv venv .venv-embeddinggemma --python .venv/bin/python
 fi
-uv pip sync --python .venv-embeddinggemma/bin/python --require-hashes requirements/embeddinggemma.lock
-HF_HUB_DISABLE_XET=1 .venv-embeddinggemma/bin/python -m src.encoders.embeddinggemma_setup
+uv pip sync --python .venv-embeddinggemma/bin/python --require-hashes exp/encoding/requirements/embeddinggemma.lock
+HF_HUB_DISABLE_XET=1 .venv-embeddinggemma/bin/python -m exp.encoding.embeddinggemma_setup

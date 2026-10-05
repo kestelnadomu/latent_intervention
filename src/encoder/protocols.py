@@ -17,6 +17,20 @@ EMBEDDINGGEMMA_MODEL = "google/embeddinggemma-300m"
 EMBEDDINGGEMMA_REVISION = "57c266a740f537b4dc058e1b0cda161fd15afa75"
 EMBEDDINGGEMMA_PROMPT = "task: classification | query: "
 
+# Hugging Face snapshot allowlist for pinned base-model downloads (LangVAE, Nomic).
+BASE_MODEL_PATTERNS = (
+    "config.json",
+    "generation_config.json",
+    "model.safetensors",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "added_tokens.json",
+    "vocab.json",
+    "vocab.txt",
+    "merges.txt",
+)
+
 
 def embeddinggemma_dimension(value: Any = 128) -> int:
     if (
@@ -233,19 +247,34 @@ def validate_encoding_metadata(
         raise ValueError("has incompatible EmbeddingGemma normalization/prompt")
 
 
-def get_encoder_factory(config: dict[str, Any]):
-    """Lazy dispatch: isolated embedding environments never import LangVAE."""
-    if config.get("variant") == "qwen3":
-        from src.encoders.qwen3_encoder import make_qwen3_encoder
+def get_encoder_factory(config: dict[str, Any], variant: str | None = None):
+    """Return the configured backend's factory; ``variant`` optionally overrides config.
+
+    Backends are imported lazily, so isolated embedding environments never import LangVAE.
+    """
+    variant = variant or config.get("variant", "langvae")
+    if variant == "langvae":
+        from src.encoder.langvae import make_langvae_encoder
+
+        return make_langvae_encoder
+    if variant == "nomic":
+        from src.encoder.nomic import make_nomic_encoder
+
+        return make_nomic_encoder
+    if variant == "qwen3":
+        from src.encoder.qwen3 import make_qwen3_encoder
 
         return make_qwen3_encoder
-    if config.get("variant") == "embeddinggemma":
-        from src.encoders.embeddinggemma_encoder import make_embeddinggemma_encoder
+    if variant == "embeddinggemma":
+        from src.encoder.embeddinggemma import make_embeddinggemma_encoder
 
         return make_embeddinggemma_encoder
-    from src.encoder import make_encoder
+    raise ValueError(f"unknown encoder variant: {variant}")
 
-    return make_encoder
+
+def make_encoder(config: dict[str, Any], variant: str | None = None):
+    """Construct the configured encoder; ``variant`` optionally overrides config."""
+    return get_encoder_factory(config, variant)(config)
 
 
 def add_encoder_arguments(parser) -> None:

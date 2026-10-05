@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-import src.encoders.langvae_ft_encoding as worker
+import exp.encoding.langvae_ft_queue as worker
 
 
 class FakeEncoder:

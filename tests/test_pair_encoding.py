@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import torch
 
-import src.encoder as encoder_module
+import src.encoder.nomic as nomic_module
 from src.pair_encoding import encode_pairs, load_latent_artifact, sha256_file
 
 
@@ -171,7 +171,7 @@ def test_encode_pairs_records_active_nomic_encoder(tmp_path: Path, monkeypatch) 
         }
     )
 
-    monkeypatch.setattr(encoder_module, "make_encoder", lambda config: StubEncoder())
+    monkeypatch.setattr(nomic_module, "make_nomic_encoder", lambda config: StubEncoder())
     encode_pairs(config)
     info = json.loads((tmp_path / "z_pairs.info.json").read_text(encoding="utf-8"))
 

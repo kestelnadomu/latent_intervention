@@ -16,8 +16,8 @@ from torch import nn
 from transformers import GPT2Config, GPT2LMHeadModel
 
 from src.config import load_config, resolve_paths
-from src.encoders.langvae_ft import ARCHITECTURE, TAG
-from src.encoders.langvae_ft.artifacts import (
+from exp.langvae_ft import ARCHITECTURE, TAG
+from exp.langvae_ft.artifacts import (
     ROOT,
     inference_config,
     read_checkpoint,
@@ -27,16 +27,16 @@ from src.encoders.langvae_ft.artifacts import (
     trainable_schema,
     write_inference_config,
 )
-from src.encoders.langvae_ft.data import (
+from exp.langvae_ft.data import (
     audit_indices,
     file_hash,
     passage_records,
     split_cvs,
     wrong_cv_indices,
 )
-from src.encoders.langvae_ft.evaluation import evaluate
-from src.encoders.langvae_ft.model import NativeAdapter, loss_terms, parameter_hash, train_update
-from src.encoders.langvae_ft.training import read_settings
+from exp.langvae_ft.evaluation import evaluate
+from exp.langvae_ft.model import NativeAdapter, loss_terms, parameter_hash, train_update
+from exp.langvae_ft.training import read_settings
 
 
 class WordTokenizer:
@@ -330,7 +330,7 @@ def test_recipe_ignores_legacy_finetuning_and_keeps_root_config_unchanged():
 
 def test_package_has_no_legacy_experiment_dependencies():
     forbidden = ("src.vae_", "src.finetune_vae")
-    for path in (ROOT / "src/encoders/langvae_ft").glob("*.py"):
+    for path in (ROOT / "exp/langvae_ft").glob("*.py"):
         tree = ast.parse(path.read_text())
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom):
@@ -349,7 +349,7 @@ def test_transfer_allowlist_is_complete_and_excludes_legacy_work():
     assert all((ROOT / name).is_file() for name in keep)
     assert all(
         str(path.relative_to(ROOT)) in keep
-        for path in (ROOT / "src/encoders/langvae_ft").glob("*.py")
+        for path in (ROOT / "exp/langvae_ft").glob("*.py")
     )
     assert keep.isdisjoint(
         {"src/config.yaml", "src/finetune_vae.py", "src/pipeline.py"}

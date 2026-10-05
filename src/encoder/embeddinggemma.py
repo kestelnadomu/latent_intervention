@@ -11,7 +11,7 @@ from time import perf_counter
 import torch
 from huggingface_hub import snapshot_download
 from packaging.version import Version
-from src.encoding_progress import log_encoding_progress
+from src.encoder.progress import log_encoding_progress
 
 from src.config import (
     EMBEDDINGGEMMA_MODEL,

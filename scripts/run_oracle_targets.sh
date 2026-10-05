@@ -18,9 +18,9 @@ if tmux has-session -t "=$oracle_session" 2>/dev/null; then
 fi
 cd -- "$oracle_repo"
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
-"$oracle_python" -m src.hz.oracle_encoding --prepare --run-id "$oracle_run_id" --threads 4
+"$oracle_python" -m exp.encoding.oracle_targets --prepare --run-id "$oracle_run_id" --threads 4
 printf -v oracle_command '%q ' env HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false \
-    "$oracle_python" -u -m src.hz.oracle_encoding --run --run-id "$oracle_run_id" --threads 4
+    "$oracle_python" -u -m exp.encoding.oracle_targets --run --run-id "$oracle_run_id" --threads 4
 printf -v oracle_log '%q' "$oracle_report_dir/launcher.log"
 oracle_command+=" >> $oracle_log 2>&1"
 tmux new-session -d -s "$oracle_session" -c "$oracle_repo" "$oracle_command"

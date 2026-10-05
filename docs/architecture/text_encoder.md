@@ -13,11 +13,14 @@ EmbeddingGemma-300m adds $d\in\{128,256,512,768\}$, selected by
 
 $f$ maps a CV text to a fixed latent. It is **frozen** and deterministic, so $g$ and $h_Z$ are
 trained on a fixed set of latents and $h_Z(f(x))$ is well defined.
-Code: `src/encoder.py`, called by `src/pair_encoding.py` (`pipeline encode`); select a variant
+Code: `src/encoder/`, one module per backend (`langvae.py`, `nomic.py`, `qwen3.py`,
+`embeddinggemma.py`); `import src.encoder` exposes the protocols and the lazy `make_encoder`
+dispatch, called by `src/pair_encoding.py` (`pipeline encode`). The resumable encoding queues
+(run IDs, reports) live in `exp/encoding/`. Select a variant
 with `--encoder-variant langvae|nomic|qwen3|embeddinggemma` (or `encoder.variant` in `src/config.yaml`).
-Qwen's implementation is in `src/encoders/qwen3_encoder.py`; its encoding queue uses an
+Qwen's implementation is in `src/encoder/qwen3.py`; its encoding queue uses an
 isolated environment to avoid changing LangVAE dependencies.
-Shared width/protocol validation and metadata live in `src/encoder_protocols.py`;
+Shared width/protocol validation and metadata live in `src/encoder/protocols.py`;
 `src/latent_writer.py` publishes the same canonical paired artifacts atomically.
 These extractions do not change the encoding recipe or invalidate saved latents.
 
@@ -41,7 +44,7 @@ These extractions do not change the encoding recipe or invalidate saved latents.
 | variant | `variant` / class | $f(x)$ | trained on | context | decoder $\mathcal Z \to \mathcal X$ | geometry | status |
 |---|---|---|---|---|---|---|---|
 | `langvae` | `TextEncoder` | $\mu(x)$ | EntailmentBank sentences | $L$ | yes (GPT-2) | $\mathbb R^{128}$, VAE prior | default |
-| `langvae` + `local_checkpoint` | `TextEncoder` | $\mu(x)$, refit $W$ | generated CVs | $L$ | yes | as above | implemented (`src/finetune_vae.py`) |
+| `langvae` + `local_checkpoint` | `TextEncoder` | $\mu(x)$, refit $W$ | generated CVs | $L$ | yes | as above | implemented (`exp/langvae_ft/`) |
 | `nomic` | `NomicTextEncoder` | $[\mathrm{LN}(\bar e)]_{1:d} / \lVert\cdot\rVert_2$ | general contrastive pairs | $L$ (model: 8192) | no | unit sphere $S^{d-1}$ | implemented |
 | `qwen3` | `Qwen3TextEncoder` | last nonpadding token, first $d$, L2 normalize | general embedding tasks | 1024 (model: 32k) | no | unit sphere $S^{d-1}$ | implemented, 0.6B only |
 | `embeddinggemma` | `EmbeddingGemmaTextEncoder` | bidirectional mean pool, two learned projections, first $d$, L2 normalize | general embedding tasks | 2048 | no | unit sphere $S^{d-1}$ | implemented, 300m only |
@@ -81,13 +84,13 @@ $$\mathcal D_Z = \{(\mathrm{id}, f(x))\} \cup \{(\mathrm{id}, f(x'))\ :\ \mathrm
 * **Dimension consistency.** $g$ and $h_Z$ obtain their input width from the artifact. Their
   internal hidden widths are separate hyperparameters. Existing 128-D checkpoints cannot be
   reused with another width; penalty scales must be considered when comparing dimensions.
-* **Dimension queue.** `python -m src.encoders.nomic_encoding --prepare` validates the plan without
+* **Dimension queue.** `python -m exp.encoding.nomic_queue --prepare` validates the plan without
   inference. `bash scripts/run_nomic_dimensions.sh` launches the serial queue in tmux. One
   768-D pass supplies all smaller outputs via prefix slicing and L2 renormalization (never
   another layer norm on the prefix). Existing artifacts are verified and preserved. See README
   for logs, resumability, and the relocation of the old `nomic/` directory to `nomic_128/`.
   Qwen uses the same atomic publication and verification machinery through
-  `src.encoders.qwen3_encoding`, with a real-model preflight and one 1024-D pass.
+  `exp.encoding.qwen3_queue`, with a real-model preflight and one 1024-D pass.
 
 ---
 
@@ -115,8 +118,8 @@ $$\bar e(x) = \mathrm{meanpool}\,\mathrm{BERT}(x_{1:L}),\qquad
 * `deterministic=True` returns $\mu(x)$. `deterministic=False` samples
   $z \sim \mathcal N(\mu, \sigma^2)$ (not used by the pipeline).
 * `decode(z)` generates text with the GPT-2 decoder, as a round-trip sanity check.
-* **Fine-tuned option.** `src/finetune_vae.py` continues VAE training on the generated CVs
-  (cyclical-β schedule, `finetune_vae` section), starting from the pinned `model_revision`. Set
+* **Fine-tuned option.** `exp/langvae_ft/` continues VAE training on the generated CVs,
+  starting from the pinned `model_revision` (see [langvae_ft.md](langvae_ft.md)). Set
   `encoder.local_checkpoint` to the resulting folder (tag `langvae_ft`; set `encoder.tag` to keep
   several fine-tunes apart). Because BERT stays frozen, this refits $W$ and the decoder, not BERT's features.
 
@@ -259,7 +262,7 @@ for comparisons, rather than exposing every possible integer width.
 * **Model/environment.** `Qwen/Qwen3-Embedding-0.6B`, revision
   `97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3`. Inference uses
   `.venv-qwen3`, Transformers 4.57.6, float32 weights and SDPA attention. Dependencies
-  are hash-locked in `requirements/qwen3.lock`; the LangVAE/Nomic `.venv` is untouched.
+  are hash-locked in `exp/encoding/requirements/qwen3.lock`; the LangVAE/Nomic `.venv` is untouched.
 * **Input protocol.** Plain CV text, no retrieval instruction or Nomic task prefix,
   left padding, last-nonpadding-token pooling, no chat template, no silent truncation.
   `encoder.qwen3_instruction` can define a later instruction experiment, but changing
@@ -304,8 +307,8 @@ batch-size consistency, agreement with the official named classification prompt,
 and direct-versus-derived dimensions. One full native-width run supplies all four
 artifacts using the shared atomic dimension queue.
 
-Use `src/encoders/embeddinggemma_encoder.py`, `src/encoders/embeddinggemma_preflight.py`, and
-`src/encoders/embeddinggemma_encoding.py`; the README has setup and detached launch commands.
+Use `src/encoder/embeddinggemma.py`, `exp/encoding/embeddinggemma_preflight.py`, and
+`exp/encoding/embeddinggemma_queue.py`; the README has setup and detached launch commands.
 The pinned revision is `57c266a740f537b4dc058e1b0cda161fd15afa75`. Cached weights and
 all source/model hashes are kept separate from credentials; access approval is
 performed by the user, not automated. Setup/preflight does not run the full corpus.

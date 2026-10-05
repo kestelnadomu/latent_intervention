@@ -11,7 +11,7 @@ Use the existing CPU `.venv`, from the repository root:
 
 ```bash
 # Validate all artifacts, freeze the protocol, and create the initial report.
-.venv/bin/python -m src.decoder_benchmark.decoder_benchmark --prepare --run-id g-all-encoders-v1
+.venv/bin/python -m exp.benchmarks.semantic_decoder.run --prepare --run-id g-all-encoders-v1
 
 # Four worker processes, one CPU thread each; survives closing the terminal.
 bash scripts/run_decoder_benchmark.sh g-all-encoders-v1
@@ -129,7 +129,7 @@ configuration or input files while a run is active.
 To regenerate the Markdown without training:
 
 ```bash
-.venv/bin/python -m src.decoder_benchmark.decoder_benchmark --report --run-id g-all-encoders-v1
+.venv/bin/python -m exp.benchmarks.semantic_decoder.run --report --run-id g-all-encoders-v1
 ```
 
 The modules are separate from the established scripts: `decoder_benchmark_matrix`

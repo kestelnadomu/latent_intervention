@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 import torch
 
-from src.hz.oracle_regression import (
+from src.latent_intervention.oracle.regression import (
     OracleRegression,
     regression_metrics,
     train_oracle_regression,

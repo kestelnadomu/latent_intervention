@@ -8,12 +8,12 @@ organization, not the experiment. **Existing encodings do not need to be rerun.*
 
 | Established file | Responsibility retained | Extracted implementation |
 | --- | --- | --- |
-| [config.py](../src/config.py) | Load YAML, apply overrides, resolve artifact paths; preserve previous imports | [encoder_protocols.py](../src/encoder_protocols.py): supported dimensions, pinned defaults, protocol validation, encoder-specific metadata and lazy dispatch |
+| [config.py](../src/config.py) | Load YAML, apply overrides, resolve artifact paths; preserve previous imports | [encoder/protocols.py](../src/encoder/protocols.py): supported dimensions, pinned defaults, protocol validation, encoder-specific metadata and lazy dispatch |
 | [config.yaml](../src/config.yaml) | Explicit experiment settings, model pins, widths and training budget | Deliberately kept visible in one file; no hidden profile merging or changed values |
-| [encoder.py](../src/encoder.py) | LangVAE/Nomic numerical encoding and the existing factory | [encoding_progress.py](../src/encoding_progress.py): shared console logging only; Qwen/Gemma remain in their dedicated encoder files |
+| [encoder/langvae.py](../src/encoder/langvae.py), [encoder/nomic.py](../src/encoder/nomic.py) | LangVAE/Nomic numerical encoding and the existing factory | [encoder/progress.py](../src/encoder/progress.py): shared console logging only; Qwen/Gemma remain in their dedicated encoder files |
 | [pair_encoding.py](../src/pair_encoding.py) | Align IDs/splits, encode the same texts, preserve identity pairs, validate/load artifacts | [latent_writer.py](../src/latent_writer.py): no-overwrite publication, input hashes, metadata and atomic writes |
-| [pipeline.py](../src/pipeline.py) | Select stages, align labels, choose the official split, call training/evaluation | [decoder_reporting.py](../src/decoder_reporting.py): training protocol, best-checkpoint callback, progress and final reports |
-| [semantic_decoder.py](../src/semantic_decoder.py) | Both `g` architectures, loss definitions, metrics, checkpoint format and loading | [decoder_training.py](../src/decoder_training.py): unchanged optimization, validation selection, scheduling and early stopping |
+| [pipeline.py](../src/pipeline.py) | Select stages, align labels, choose the official split, call training/evaluation | [semantic_decoder/reporting.py](../src/semantic_decoder/reporting.py): training protocol, best-checkpoint callback, progress and final reports |
+| [semantic_decoder/model.py](../src/semantic_decoder/model.py) | Both `g` architectures, loss definitions, metrics, checkpoint format and loading | [semantic_decoder/training.py](../src/semantic_decoder/training.py): unchanged optimization, validation selection, scheduling and early stopping |
 
 Public commands and imports remain available, including
 `src.semantic_decoder.train_semantic_decoder`, `src.config.encoder_dimension`,

@@ -7,24 +7,26 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.hz.flow_intervention import (
-    DirectSemanticFlowIntervention,
-    DistilledFlowIntervention,
-    StateConditionalFlow,
+from src.latent_intervention.dispatch import (
     counterfactual,
     load_latent_intervention,
     make_latent_intervention,
-    multivariate_energy_distance,
     sample_counterfactual,
+    train_latent_intervention_model,
+)
+from src.latent_intervention.flow import (
+    DirectSemanticFlowIntervention,
+    DistilledFlowIntervention,
+    StateConditionalFlow,
+    multivariate_energy_distance,
     sample_symbolic_states,
     train_direct_semantic_flow,
     train_distilled_flow,
-    train_latent_intervention_model,
     train_state_conditional_flow,
 )
-from src.latent_intervention import LatentIntervention
+from src.latent_intervention.base import LatentIntervention
 from src.schema import ColumnSpec, flat_state_index, unflatten_state_index
-from src.semantic_decoder import SemanticDecoder
+from src.semantic_decoder.model import SemanticDecoder
 
 
 @pytest.fixture

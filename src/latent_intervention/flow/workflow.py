@@ -1,8 +1,9 @@
 """Pipeline-facing orchestration for the three normalizing-flow ``h_Z`` models.
 
-The main pipeline delegates flow variants to this module so its established
-transformer training and evaluation paths can remain unchanged.  Flow model
-definitions and objectives stay in :mod:`src.hz.flow_intervention`; this module owns
+The main pipeline delegates flow variants to this module, as it does base plans to
+:mod:`src.latent_intervention.base.workflow`.  Flow model definitions and objectives
+live in the sibling modules of :mod:`src.latent_intervention.flow`, and construction /
+persistence / sampling in :mod:`src.latent_intervention.dispatch`; this module owns
 only data alignment, artifact provenance, configured training, and reporting.
 """
 
@@ -17,16 +18,16 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 
-from src.hz.flow_intervention import (
-    FLOW_VARIANTS,
+from src.latent_intervention.dispatch import (
     load_latent_intervention,
     make_latent_intervention,
     sample_counterfactual,
     train_latent_intervention_model,
 )
+from src.latent_intervention.flow.common import FLOW_VARIANTS
 from src.pair_encoding import LatentArtifact, load_latent_artifact, sha256_file
 from src.schema import ColumnSpec, load_intervention, load_schema
-from src.semantic_decoder import (
+from src.semantic_decoder.model import (
     accuracy,
     calibration_metrics,
     load_semantic_decoder,

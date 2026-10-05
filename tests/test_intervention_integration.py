@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 
 from src import pipeline
-from src.hz import flow_workflow
+from src.latent_intervention.flow import workflow as flow_workflow
 from src.config import load_config
 
 VARIANTS = (
-    *pipeline.INTERVENTION_VARIANTS,
+    *pipeline.BASE_VARIANTS,
     *flow_workflow.FLOW_VARIANTS,
     pipeline.ORACLE_VARIANT,
 )

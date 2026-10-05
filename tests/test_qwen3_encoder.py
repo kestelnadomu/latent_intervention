@@ -4,7 +4,7 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-import src.encoders.qwen3_encoder as module
+import src.encoder.qwen3 as module
 
 
 @pytest.mark.parametrize("padding", ["left", "right"])

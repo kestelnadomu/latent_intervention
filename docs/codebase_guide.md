@@ -27,10 +27,10 @@ flowchart TB
     MODELCFG[src/config.yaml<br/>f, g, h_Z hyperparameters and path templates]
     SCHEMA[src/schema.py<br/>loads schema and experiment objects]
     LOAD[src/config.py::load_config<br/>CLI overrides + resolved paths]
-    PROTO[src/encoder_protocols.py<br/>valid dimensions and pinned protocols]
+    PROTO[src/encoder/protocols.py<br/>valid dimensions and pinned protocols]
     GEN[exp/sim/run.py<br/>data-generation stages]
     PIPE[src/pipeline.py<br/>encode / train / evaluate]
-    BENCH[src/decoder_benchmark/decoder_benchmark.py<br/>src/hz/hz_benchmark.py]
+    BENCH[exp/benchmarks/semantic_decoder/run.py<br/>exp/benchmarks/latent_intervention/run.py]
 
     SIMCFG --> SCHEMA --> GEN
     SIMCFG --> LOAD
@@ -41,10 +41,10 @@ flowchart TB
 | Specs | Main file | Main implementation |
 |---|---|---|
 | causal variables, intervention `do(...)` specification, sample count etc | `exp/sim/config.yaml` | `exp/sim/talent_sfm.py` |
-| encoder specs | `src/config.yaml` / CLI | `src/encoder_protocols.py` |
+| encoder specs | `src/config.yaml` / CLI | `src/encoder/protocols.py` |
 | locations info of all objects created during training | `src/config.yaml:paths` | `src/config.py`, `src/latent_writer.py` |
-| \(g\) architecture and training procedure | `src/config.yaml:semantic_decoder` | `src/semantic_decoder.py`, `src/decoder_training.py` |
-| \(h_Z\) benchmark matrix | `configs/hz_benchmark.yaml` | `src/hz/hz_benchmark*.py` |
+| \(g\) architecture and training procedure | `src/config.yaml:semantic_decoder` | `src/semantic_decoder/model.py`, `src/semantic_decoder/training.py` |
+| \(h_Z\) benchmark matrix | `configs/hz_benchmark.yaml` | `exp/benchmarks/latent_intervention/*.py` |
 
 ## 3. DAG
 
@@ -153,6 +153,6 @@ sequenceDiagram
 |---|---|
 | generate or validate the corpus | `python -m exp.sim.run <stage>` |
 | run one pipeline stage | `python -m src.pipeline <stage> ...` |
-| build the all-encoder \(g\) matrix | `python -m src.decoder_benchmark.decoder_benchmark` |
-| prepare/run/resume the \(h_Z\) matrix | `python -m src.hz.hz_benchmark` |
+| build the all-encoder \(g\) matrix | `python -m exp.benchmarks.semantic_decoder.run` |
+| prepare/run/resume the \(h_Z\) matrix | `python -m exp.benchmarks.latent_intervention.run` |
 | audit artifact compatibility | `tools/artifact_audit.py` |

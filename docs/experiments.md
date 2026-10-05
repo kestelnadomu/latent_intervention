@@ -71,7 +71,7 @@ floor and a ceiling.
 | | Role |
 |---|---|
 | Identity, $z' = z$ | floor: how much does *any* edit help |
-| Deterministic $h_Z$ (current `src/latent_intervention.py`) | is the stochastic kernel needed at all |
+| Deterministic $h_Z$ (current `src/latent_intervention/base/baseline.py`) | is the stochastic kernel needed at all |
 | Pre-additive engression $h_Z$ (Design A) | does explicit discrete-mode structure beat implicit noise-folding |
 | Oracle-$\mathbf S'$ editor (fed the true $\mathbf S'$) | separates *causal reasoning* error from *realisation* error |
 | Paired regressor trained on $Z'$ | ceiling: uses information the real method cannot have |

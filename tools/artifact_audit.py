@@ -18,16 +18,12 @@ import torch
 
 from src.artifact_io import write_json
 from src.config import load_config
-from src.encoders.nomic_encoding import (
-    DIMENSIONS,
-    compare_projection,
-    dimension_configs,
-    verify_artifact,
-)
+from exp.encoding.queue import dimension_configs, verify_artifact
+from src.encoder.matryoshka import DIMENSIONS, compare_projection
 from src.pair_encoding import load_latent_artifact, sha256_file
 from src.pipeline import _decoder_metadata
 from src.schema import ColumnSpec, load_schema
-from src.semantic_decoder import (
+from src.semantic_decoder.model import (
     load_semantic_decoder,
     make_semantic_decoder,
     train_semantic_decoder,

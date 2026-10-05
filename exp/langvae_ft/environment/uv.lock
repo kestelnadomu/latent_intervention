@@ -411,7 +411,7 @@ wheels = [
 [[package]]
 name = "latent-intervention"
 version = "0.1.0"
-source = { editable = "../../" }
+source = { editable = "../../../" }
 dependencies = [
     { name = "dotenv" },
     { name = "einops" },
@@ -462,7 +462,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "langvae", specifier = "==0.6.13" },
-    { name = "latent-intervention", extras = ["dev"], editable = "../../" },
+    { name = "latent-intervention", extras = ["dev"], editable = "../../../" },
     { name = "torch", specifier = "==2.6.0", index = "https://download.pytorch.org/whl/cu124" },
     { name = "transformers", specifier = "==4.48.0" },
 ]

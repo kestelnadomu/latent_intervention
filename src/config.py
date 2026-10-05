@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 
 # Compatibility exports; variant-specific policy lives in encoder_protocols.py.
-from src.encoder_protocols import (
+from src.encoder import (
     NOMIC_DIMENSIONS as NOMIC_DIMENSIONS,
     QWEN3_DIMENSIONS as QWEN3_DIMENSIONS,
     QWEN3_MODEL as QWEN3_MODEL,

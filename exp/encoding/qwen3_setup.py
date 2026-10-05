@@ -3,7 +3,7 @@
 from huggingface_hub import snapshot_download
 
 from src.config import load_config
-from src.encoders.qwen3_encoder import MODEL_FILES
+from src.encoder.qwen3 import MODEL_FILES
 
 
 def main() -> None:

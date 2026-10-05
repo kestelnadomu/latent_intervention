@@ -15,17 +15,17 @@ import yaml
 from src import pipeline
 from src.artifact_io import sha256_file
 from src.config import CONFIG_PATH, load_config
-from src.hz.oracle_targets import load_oracle_targets, source_metadata, training_texts
+from src.latent_intervention.oracle.targets import load_oracle_targets, source_metadata, training_texts
 from src.pair_encoding import load_latent_artifact
 from src.schema import load_intervention, load_schema
-from src.semantic_decoder import load_semantic_decoder
+from src.semantic_decoder.model import load_semantic_decoder
 from src.symbolic_intervention import load_symbolic_kernel
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 PROTOCOL = ROOT / "configs/hz_benchmark.yaml"
 REPORTS = ROOT / "reports/talent/hz_benchmarks"
 VARIANTS = (
-    *pipeline.INTERVENTION_VARIANTS,
+    *pipeline.BASE_VARIANTS,
     *pipeline.FLOW_VARIANTS,
     pipeline.ORACLE_VARIANT,
 )
@@ -285,8 +285,8 @@ def discover(config_path=CONFIG_PATH, protocol_path=PROTOCOL):
                 ]
     code_files = sorted(
         [
-            *ROOT.glob("src/*.py"),
-            *ROOT.glob("exp/sim/*.py"),
+            *ROOT.glob("src/**/*.py"),
+            *ROOT.glob("exp/**/*.py"),
             ROOT / "scripts/run_hz_benchmark.sh",
             ROOT / "scripts/run_hz_pilot.sh",
             ROOT / "pyproject.toml",

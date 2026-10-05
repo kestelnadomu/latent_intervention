@@ -17,10 +17,12 @@ The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 26
 | --- | --- |
 | `exp/sim/` | Data generation pipeline: Python SCM, codebook, generation prompts (`prompts/`), seed statements + job titles, LLM plumbing, stage runner, `config.yaml` (own README) |
 | `exp/sim/R/` | Original SCM simulation in R, kept as the reference implementation (own README, renv) |
-| `src/` | Core framework at top level (encoder, semantic decoder, latent manipulator, pipeline, `config.yaml`); `src/encoders/` (per-backend encoder implementations: Nomic, Qwen3, EmbeddingGemma, LangVAE-FT); `src/hz/` (the h_Z manipulator-variant research line: hz_\*, flow_\*, oracle_\*); `src/decoder_benchmark/` (decoder benchmarking suite) |
+| `exp/encoding/` | Resumable encoding queues (Nomic/Qwen3/EmbeddingGemma dimension queues, preflight, setup, LangVAE-FT encoding, oracle targets); `requirements/` holds the hash-locked dependencies of the isolated Qwen3/EmbeddingGemma venvs |
+| `exp/langvae_ft/` | LangVAE fine-tuning on the generated CVs; `environment/` is its pinned CUDA 12.4 uv project |
+| `exp/benchmarks/` | The all-encoder g benchmark (`semantic_decoder/`) and the nine-family h_Z benchmark (`latent_intervention/`) |
+| `src/` | The installable library, one package per learned map: `encoder/` (f: one module per backend), `semantic_decoder/` (g), `latent_intervention/` (h_Z: `base/`, `flow/` and `oracle/` variant families plus the shared `dispatch.py`); shared plumbing (`pipeline.py`, `config.py`/`config.yaml`, `schema.py`, latent-artifact I/O) at the top level. Never imports `exp/` |
 | `configs/` | Benchmark-run protocols (e.g. `hz_benchmark.yaml`, `langvae_ft.yaml`) consumed by `scripts/` |
 | `scripts/` | Operational launch/setup shell scripts per encoder backend and benchmark (`run_*.sh`, `setup_*.sh`) |
-| `requirements/`, `environments/` | Per-encoder isolated-venv dependency locks (Qwen3, EmbeddingGemma) and pinned GPU environments (LangVAE fine-tuning) |
 | `docs/` | Codebase guide, architecture notes, experiment write-ups |
 | `tests/` | Test suite |
 | `tools/` | One-off/archival CLI utilities not part of the live pipeline (e.g. `artifact_audit.py`) |
@@ -116,7 +118,7 @@ pending outputs, models and reports remain ignored.
 To prepare all five Nomic dimensions, then launch the queue separately:
 
 ```bash
-.venv/bin/python -m src.encoders.nomic_encoding --prepare
+.venv/bin/python -m exp.encoding.nomic_queue --prepare
 # When ready to start (detached; survives closing this terminal):
 bash scripts/run_nomic_dimensions.sh
 ```
@@ -153,9 +155,9 @@ hash-locked dependencies in the separate `.venv-qwen3`; do not upgrade `.venv`:
 bash scripts/setup_qwen3.sh
 
 # Audit every input length and smoke-test the real model (not a full encoding run).
-.venv-qwen3/bin/python -m src.encoders.qwen3_encoding --preflight
+.venv-qwen3/bin/python -m exp.encoding.qwen3_queue --preflight
 # Validate and save the seven-dimension plan, without inference.
-.venv-qwen3/bin/python -m src.encoders.qwen3_encoding --prepare
+.venv-qwen3/bin/python -m exp.encoding.qwen3_queue --prepare
 
 # When ready to start (detached tmux session; survives closing this terminal):
 bash scripts/run_qwen3_dimensions.sh
@@ -204,8 +206,8 @@ bash scripts/setup_embeddinggemma.sh
 
 # Bounded validation, followed by plan preparation; neither starts full encoding.
 HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false \
-  .venv-embeddinggemma/bin/python -m src.encoders.embeddinggemma_encoding --preflight
-.venv-embeddinggemma/bin/python -m src.encoders.embeddinggemma_encoding --prepare
+  .venv-embeddinggemma/bin/python -m exp.encoding.embeddinggemma_queue --preflight
+.venv-embeddinggemma/bin/python -m exp.encoding.embeddinggemma_queue --prepare
 
 # Only when ready: detached tmux worker, safe to close the terminal afterwards.
 bash scripts/run_embeddinggemma_dimensions.sh
@@ -256,7 +258,7 @@ The same decoder commands work with `--encoder-variant nomic`. `pair_index.csv` 
 To tune and repeat all four baseline combinations with the same budget:
 
 ```bash
-uv run python -m src.decoder_benchmark.decoder_experiment --run-id cv-g500-v1 --workers 4 --threads-per-worker 1
+uv run python -m exp.benchmarks.semantic_decoder.experiment --run-id cv-g500-v1 --workers 4 --threads-per-worker 1
 ```
 
 This runs 20 common hyperparameter candidates per combination, selects each by validation joint NLL, then trains five initialization seeds with the split held fixed. Seed 42 is declared in advance as the active model; all five are retained and summarized. Trials and final seeds live in `experiments/{run-id}/` under each model/report directory. The overall protocol, source snapshot, input hashes, status, and publication manifest are under `reports/talent/decoder_experiments/{run-id}/`. The previous active checkpoint and report are archived before the new verified files replace them. Repeating the command resumes verified completed trials; an interrupted trial restarts. Use a new run ID after code, inputs, or configuration change. Canonical active checkpoints and their reports are eligible for Git tracking; the four-case experiment tree, archives and logs remain ignored and need explicit transfer to another server.
@@ -272,7 +274,7 @@ the same encoder/decoder combination; different embedding dimensions never share
 that checkpoint. The state flow uses factual $S$ and $h_S$; distilled and direct
 flows expose the standalone inference interface $(Z,\delta)\mapsto\Delta(\mathcal Z)$.
 
-The established transformer stages and report format remain in `src/pipeline.py`; that file delegates only the three flow variants to `src/hz/flow_workflow.py`. Flow architectures and objectives are isolated in `src/hz/flow_intervention.py`, while flow evaluation adds paired-$Z'$ recovery and support diagnostics.
+`src/pipeline.py` dispatches each manipulator variant to its family's workflow: `src/latent_intervention/base/workflow.py` (the five transformer plans), `src/latent_intervention/flow/workflow.py` (the three flow variants) or `src/latent_intervention/oracle/workflow.py`. Flow architectures and objectives live in `src/latent_intervention/flow/` (one module per variant), while flow evaluation adds paired-$Z'$ recovery and support diagnostics.
 
 The active data supports the configured `do(X=3)` query; the deployable flows also
 train a no-op. Other schema-valid flow interventions are accepted for exploratory
@@ -299,7 +301,7 @@ embeddings only for official test units. Prepare the separate training targets:
 
 ```bash
 # Inspect inputs and save a plan only: no model inference or training.
-.venv/bin/python -m src.hz.oracle_encoding --prepare
+.venv/bin/python -m exp.encoding.oracle_targets --prepare
 
 # Only when ready: detached tmux encoding, using the existing pinned environment.
 bash scripts/run_oracle_targets.sh
@@ -348,7 +350,7 @@ unchanged. Preparation checks inputs and saves a manifest, but **does not encode
 train, evaluate on the test set, or launch tmux**:
 
 ```bash
-.venv/bin/python -m src.hz.hz_benchmark --prepare --run-id hz-gemma-v1
+.venv/bin/python -m exp.benchmarks.latent_intervention.run --prepare --run-id hz-gemma-v1
 ```
 
 Defaults: four CPU worker processes, one numerical thread each; 18 cases;
@@ -428,7 +430,7 @@ benchmark; it **never** launches their encoding implicitly. After explicitly
 running the separate oracle-target queue above, check and launch with:
 
 ```bash
-.venv/bin/python -m src.hz.hz_benchmark --check-ready --run-id hz-gemma-v1
+.venv/bin/python -m exp.benchmarks.latent_intervention.run --check-ready --run-id hz-gemma-v1
 bash scripts/run_hz_benchmark.sh hz-gemma-v1
 ```
 
@@ -459,9 +461,9 @@ sidecars, all completed training histories/evaluations, and the reproducibility
 bundle are Git-trackable. Trial/other-seed weights, logs, live progress, locks,
 and failures remain local. Nothing is automatically staged, committed, or pushed.
 The benchmark checkpoints include their constructor settings and provenance;
-reload them with `src.hz.hz_training.load_model(path)`, not the legacy pipeline loader.
-The modules `hz_benchmark_matrix`, `hz_training`/`hz_validation`, `hz_evaluation`,
-and `hz_report` separate planning, fitting, evaluation, and reporting; only small
+reload them with `exp.benchmarks.latent_intervention.training.load_model(path)`, not the legacy pipeline loader.
+The modules `benchmark_matrix`, `training`/`validation`, `evaluation`, and `report` in
+`src/latent_intervention/` separate planning, fitting, evaluation, and reporting; only small
 optional epoch-control hooks were added to the established trainers.
 
 ## Publish

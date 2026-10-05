@@ -12,24 +12,24 @@ import yaml
 
 from test_oracle_workflow import StubGemma, config as config
 from src import pipeline
-from src.hz import (
-    hz_benchmark as queue,
-    hz_benchmark_matrix as matrix,
-    hz_evaluation,
-    hz_pilot,
-    hz_training,
+from exp.benchmarks.latent_intervention import (
+    evaluation,
+    matrix,
+    pilot,
+    run as queue,
+    training,
 )
 from src.artifact_io import sha256_file, write_json
 from src.config import load_config
-from src.hz.hz_validation import ValidationControl
-from src.hz.oracle_targets import (
+from exp.benchmarks.latent_intervention.validation import ValidationControl
+from src.latent_intervention.oracle.targets import (
     encode_oracle_targets,
     load_oracle_targets,
     source_metadata,
 )
 from src.pair_encoding import load_latent_artifact
 from src.schema import load_schema
-from src.semantic_decoder import make_semantic_decoder
+from src.semantic_decoder.model import make_semantic_decoder
 
 
 @pytest.fixture
@@ -157,7 +157,7 @@ def test_default_matrix_budget_and_graph():
 def test_pilot_covers_all_families_and_preserves_validation_only_fit(study):
     plan, _, config = study
     plan["pilot_protocol"] = matrix.read_settings()["pilot"]
-    jobs = hz_pilot.jobs_for_pilot(plan)
+    jobs = pilot.jobs_for_pilot(plan)
     assert len(jobs) == 13  # eight other families and five pre-additive noise levels
     assert all(job["stage"] == "pilot" and job["seed"] == 42 for job in jobs)
     assert all(job["candidate"]["width_multiplier"] == 1 for job in jobs)
@@ -166,7 +166,7 @@ def test_pilot_covers_all_families_and_preserves_validation_only_fit(study):
     assert len(candidates) == 5
     columns, _ = load_schema(config["sim_config"])
     sigma = [
-        hz_training.model_kwargs(job["case"], job["candidate"], 42, columns, {"X": 3})[
+        training.model_kwargs(job["case"], job["candidate"], 42, columns, {"X": 3})[
             "noise_std"
         ]
         for job in candidates
@@ -188,9 +188,9 @@ def test_pilot_noise_report_uses_saved_fits_and_validation_only(study):
         noise_rms=[0.25, 0.5],
         compare_legacy_noise_std_one=False,
     )
-    jobs = hz_pilot.jobs_for_pilot(plan)
+    jobs = pilot.jobs_for_pilot(plan)
     reports = {
-        job["id"]: hz_training.fit(
+        job["id"]: training.fit(
             root,
             plan,
             job["case"],
@@ -202,14 +202,14 @@ def test_pilot_noise_report_uses_saved_fits_and_validation_only(study):
         )
         for job in jobs
     }
-    result = hz_pilot.analyze(root, plan, reports)
+    result = pilot.analyze(root, plan, reports)
     assert result["official_test_scoring"] is False
     assert result["completed_fits"] == 2
     assert result["selected_noise_rms"]["768"]["noise_rms"] in (0.25, 0.5)
     assert all(Path(row["training_report"]).exists() for row in result["rows"])
     assert len(result["noise_diagnostics"]) == 2
     assert all(row["test_targets_used"] is False for row in result["rows"])
-    hz_pilot.render(root, plan, result, "complete")
+    pilot.render(root, plan, result, "complete")
     assert "Noise calibration" in (root / "summary.md").read_text()
 
 
@@ -235,7 +235,7 @@ def test_all_nine_sizes_match_without_changing_the_seven_aligned_models(dimensio
         cases.append(case)
     plan = dict(cases=cases, settings=settings, intervention={"X": 3})
     rng_before = torch.random.get_rng_state()
-    sizes = hz_training.model_sizes(plan)
+    sizes = training.model_sizes(plan)
     assert torch.equal(rng_before, torch.random.get_rng_state())
     assert json.loads(json.dumps(sizes)) == sizes
     baseline = {
@@ -330,24 +330,24 @@ def test_each_family_fit_reload_evaluate_and_resume(study, variant, monkeypatch)
         encode_oracle_targets(config, encoder_factory=StubGemma)
         oracle_inputs = matrix.oracle_readiness(plan)
         monkeypatch.setattr(
-            hz_training,
+            training,
             "decoder_for",
             lambda *a: pytest.fail("oracle training must not load g"),
         )
         monkeypatch.setattr(
-            hz_training,
+            training,
             "load_symbolic_kernel",
             lambda *a: pytest.fail("oracle training must not load h_S"),
         )
     else:
         monkeypatch.setattr(
-            hz_training,
+            training,
             "load_oracle_targets",
             lambda *a: pytest.fail("non-oracle must never load true training Z'"),
         )
     # Poisoned official-test targets make accidental usage during training observable.
     monkeypatch.setattr(
-        hz_training,
+        training,
         "load_latent_artifact",
         lambda _: replace(
             original, z_prime=torch.full_like(original.z_prime, float("nan"))
@@ -355,10 +355,10 @@ def test_each_family_fit_reload_evaluate_and_resume(study, variant, monkeypatch)
     )
     if variant == "distilled_flow":
         teacher_case = next(c for c in plan["cases"] if c["variant"] == "state_flow")
-        teacher = hz_training.fit(
+        teacher = training.fit(
             root, plan, teacher_case, candidate, 42, "search", "teacher", []
         )
-    result = hz_training.fit(
+    result = training.fit(
         root, plan, case, candidate, 42, "search", "trial-000", oracle_inputs, teacher
     )
     assert result["test_targets_used"] is False
@@ -366,7 +366,7 @@ def test_each_family_fit_reload_evaluate_and_resume(study, variant, monkeypatch)
     assert result["training"]["best_epoch"] >= (2 if variant == "dist" else 1)
     assert set(result["split_ids"]["fit"]).isdisjoint(original.test_ids)
     assert set(result["split_ids"]["validation"]).isdisjoint(original.test_ids)
-    reloaded = hz_training.load_model(result["checkpoint"], result["signature"])
+    reloaded = training.load_model(result["checkpoint"], result["signature"])
     assert result["trainable_parameters"] == sum(
         p.numel() for p in reloaded.parameters() if p.requires_grad
     )
@@ -376,7 +376,7 @@ def test_each_family_fit_reload_evaluate_and_resume(study, variant, monkeypatch)
             for key, value in case["model_widths"]["1"].items()
         )
     assert (
-        hz_training.fit(
+        training.fit(
             root,
             plan,
             case,
@@ -391,7 +391,7 @@ def test_each_family_fit_reload_evaluate_and_resume(study, variant, monkeypatch)
     )
     # Require a real selection freeze before any test scoring.
     with pytest.raises(ValueError, match="frozen"):
-        hz_evaluation.evaluate(root, plan, case, result)
+        evaluation.evaluate(root, plan, case, result)
     write_json(
         root / "selection.json",
         dict(
@@ -399,15 +399,15 @@ def test_each_family_fit_reload_evaluate_and_resume(study, variant, monkeypatch)
             cases={case["case"]: dict(candidate=candidate)},
         ),
     )
-    evaluation = hz_evaluation.evaluate(root, plan, case, result)
-    assert evaluation["regimes"]["latent_only"]["all"]["units"] == 2
-    assert evaluation["regimes"]["latent_only"]["identity"]["units"] == 1
-    assert ("observed_state" in evaluation["regimes"]) == (variant == "state_flow")
-    assert hz_evaluation.evaluate(root, plan, case, result) == evaluation
+    scores = evaluation.evaluate(root, plan, case, result)
+    assert scores["regimes"]["latent_only"]["all"]["units"] == 2
+    assert scores["regimes"]["latent_only"]["identity"]["units"] == 1
+    assert ("observed_state" in scores["regimes"]) == (variant == "state_flow")
+    assert evaluation.evaluate(root, plan, case, result) == scores
     assert sha256_file(config["paths"]["decoder_model"]) == g_hash
     altered = dict(result, seed=123)
     with pytest.raises(ValueError, match="report checksum"):
-        hz_training.verify_fit(altered)
+        training.verify_fit(altered)
 
 
 def test_missing_oracle_blocks_launch_not_preparation(study, monkeypatch):
@@ -515,7 +515,7 @@ def test_spawned_queue_runs_all_nine_synthetic_cases_and_resumes(study, monkeypa
     assert len(published) == 9
     before = {r["checkpoint"]: sha256_file(r["checkpoint"]) for r in published}
     for row in published:
-        hz_training.load_model(row["checkpoint"], row["signature"])
+        training.load_model(row["checkpoint"], row["signature"])
     assert "Observed State" in (root / "summary.md").read_text()
     assert "privileged supervised reference" in (root / "summary.md").read_text()
     queue.run("test-run")
@@ -544,13 +544,13 @@ def test_common_metrics_have_known_scale_and_energy():
         intervention={},
         realized={"s": torch.zeros(3, dtype=torch.long)},
     )
-    point = hz_evaluation.per_unit_metrics(
+    point = evaluation.per_unit_metrics(
         z.unsqueeze(0), z, torch.ones_like(z), **kwargs
     )
     assert torch.allclose(point["energy_score"], torch.ones(3))
     assert torch.allclose(point["standardized_mean_mse"], torch.ones(3))
     assert torch.allclose(point["semantic_kl"], torch.zeros(3))
     pair = torch.stack([-torch.ones_like(z), torch.ones_like(z)])
-    mixed = hz_evaluation.per_unit_metrics(pair, z, z, **kwargs)
+    mixed = evaluation.per_unit_metrics(pair, z, z, **kwargs)
     assert torch.allclose(mixed["energy_score"], torch.zeros(3), atol=1e-6)
     assert torch.allclose(mixed["sample_spread"], torch.ones(3))

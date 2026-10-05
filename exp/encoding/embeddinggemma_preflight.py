@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer
 
 from src.config import EMBEDDINGGEMMA_PROMPT
-from src.encoders.embeddinggemma_encoder import (
+from src.encoder.embeddinggemma import (
     cached_snapshot,
     format_text,
     make_embeddinggemma_encoder,

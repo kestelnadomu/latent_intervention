@@ -6,8 +6,9 @@ from time import perf_counter
 import torch
 
 from src.artifact_io import write_json
-from src.hz.flow_intervention import multivariate_energy_distance, sample_counterfactual
-from src.latent_intervention import consistency_target, make_objective
+from src.latent_intervention.dispatch import sample_counterfactual
+from src.latent_intervention.flow import multivariate_energy_distance
+from src.latent_intervention.base import consistency_target, make_objective
 
 
 @torch.no_grad()

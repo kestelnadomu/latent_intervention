@@ -1,4 +1,4 @@
-# Preparation only: python -m src.hz.hz_benchmark --prepare
+# Preparation only: python -m exp.benchmarks.latent_intervention.run --prepare
 # No encoding, fitting, or evaluation happens until --run is explicitly used.
 dimensions: [256, 768]
 variants: [baseline, pre_additive, noise_token, dist, particles, state_flow, distilled_flow, direct_semantic_flow, oracle_regression]

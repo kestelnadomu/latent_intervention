@@ -15,7 +15,7 @@ import torch
 from torch import nn
 
 if TYPE_CHECKING:
-    from src.semantic_decoder import SemanticDecoderModel
+    from src.semantic_decoder.model import SemanticDecoderModel
 
 
 def _reset_trainable_modules(module: nn.Module) -> None:
@@ -56,7 +56,7 @@ def train_semantic_decoder(
     """
     # Local imports preserve the historical semantic_decoder training API without
     # an import-time cycle between the model definitions and their training loop.
-    from src.semantic_decoder import (
+    from src.semantic_decoder.model import (
         _SemanticDecoderBase,
         _positive_int,
         _nonnegative_int,

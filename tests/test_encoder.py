@@ -6,7 +6,9 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-import src.encoder as encoder_module
+import src.encoder as encoder_package
+import src.encoder.langvae as langvae_module
+import src.encoder.nomic as nomic_module
 
 
 def test_langvae_constructor_pins_base_model_snapshots(tmp_path, monkeypatch) -> None:
@@ -63,10 +65,10 @@ def test_langvae_constructor_pins_base_model_snapshots(tmp_path, monkeypatch) ->
         )
         return FakeModel()
 
-    monkeypatch.setattr(encoder_module, "snapshot_download", fake_snapshot)
-    monkeypatch.setattr(encoder_module.LangVAE, "load_from_folder", fake_load)
+    monkeypatch.setattr(langvae_module, "snapshot_download", fake_snapshot)
+    monkeypatch.setattr(langvae_module.LangVAE, "load_from_folder", fake_load)
 
-    encoder_module.TextEncoder(
+    langvae_module.TextEncoder(
         model_name="langvae-model",
         model_revision="langvae-revision",
         encoder_model_name="bert-model",
@@ -99,14 +101,14 @@ def test_encode_uses_decoder_tokenizer(monkeypatch) -> None:
         return SimpleNamespace(embedding=torch.zeros((x.shape[0], 128)))
 
     fake_encoder.tokenizer = encoder_tokenizer
-    text_encoder = encoder_module.TextEncoder.__new__(encoder_module.TextEncoder)
+    text_encoder = langvae_module.TextEncoder.__new__(langvae_module.TextEncoder)
     text_encoder.device = torch.device("cpu")
     text_encoder.max_len = 512
     text_encoder.model = SimpleNamespace(
         encoder=fake_encoder,
         decoder=SimpleNamespace(tokenizer=decoder_tokenizer),
     )
-    monkeypatch.setattr(encoder_module, "TokenizedDataSet", FakeDataSet)
+    monkeypatch.setattr(langvae_module, "TokenizedDataSet", FakeDataSet)
 
     text_encoder.encode(["example CV"], batch_size=1)
 
@@ -124,8 +126,8 @@ def test_make_encoder_selects_variant_and_keeps_legacy_default(monkeypatch) -> N
         created.append(("nomic", kwargs))
         return "nomic"
 
-    monkeypatch.setattr(encoder_module, "TextEncoder", fake_langvae)
-    monkeypatch.setattr(encoder_module, "NomicTextEncoder", fake_nomic)
+    monkeypatch.setattr(langvae_module, "TextEncoder", fake_langvae)
+    monkeypatch.setattr(nomic_module, "NomicTextEncoder", fake_nomic)
     config = {
         "model_name": "langvae-model",
         "model_revision": "langvae-revision",
@@ -138,13 +140,13 @@ def test_make_encoder_selects_variant_and_keeps_legacy_default(monkeypatch) -> N
         "max_len": 512,
     }
 
-    assert encoder_module.make_encoder(config) == "langvae"
+    assert encoder_package.make_encoder(config) == "langvae"
     config["variant"] = "nomic"
-    assert encoder_module.make_encoder(config) == "nomic"
-    assert encoder_module.make_encoder(config, variant="langvae") == "langvae"
+    assert encoder_package.make_encoder(config) == "nomic"
+    assert encoder_package.make_encoder(config, variant="langvae") == "langvae"
     assert created[1][1]["code_revision"] == "code-revision"
     with pytest.raises(ValueError, match="unknown encoder variant"):
-        encoder_module.make_encoder(config, variant="unknown")
+        encoder_package.make_encoder(config, variant="unknown")
 
 
 @pytest.mark.parametrize("dimension", [64, 128, 256, 512, 768])
@@ -189,10 +191,10 @@ def test_nomic_encoder_applies_documented_processing(monkeypatch, dimension) -> 
         snapshot_calls.append((repo_id, revision))
         return "/cache/pinned-nomic"
 
-    monkeypatch.setattr(encoder_module, "snapshot_download", fake_snapshot)
-    monkeypatch.setattr(encoder_module.AutoTokenizer, "from_pretrained", load_tokenizer)
-    monkeypatch.setattr(encoder_module.AutoModel, "from_pretrained", load_model)
-    encoder = encoder_module.NomicTextEncoder(
+    monkeypatch.setattr(nomic_module, "snapshot_download", fake_snapshot)
+    monkeypatch.setattr(nomic_module.AutoTokenizer, "from_pretrained", load_tokenizer)
+    monkeypatch.setattr(nomic_module.AutoModel, "from_pretrained", load_model)
+    encoder = nomic_module.NomicTextEncoder(
         model_name="nomic-model",
         model_revision="model-revision",
         code_revision="code-revision",

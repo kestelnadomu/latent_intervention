@@ -22,16 +22,16 @@ import yaml
 
 from src.artifact_io import atomic_output, sha256_file, write_json
 from src.config import CONFIG_PATH
-from src.decoder_benchmark.decoder_benchmark_evaluation import evaluate_case
-from src.decoder_benchmark.decoder_benchmark_matrix import (
+from exp.benchmarks.semantic_decoder.evaluation import evaluate_case
+from exp.benchmarks.semantic_decoder.matrix import (
     ROOT,
     annotate_result,
     case_name,
     discover,
     freeze_selection,
 )
-from src.decoder_benchmark.decoder_benchmark_report import render
-from src.decoder_benchmark.decoder_experiment import (
+from exp.benchmarks.semantic_decoder.report import render
+from exp.benchmarks.semantic_decoder.experiment import (
     now,
     provenance,
     publish_results,
@@ -88,7 +88,7 @@ def prepare(run_id, config_path=CONFIG_PATH, threads=1):
     signature["input_sha256"].update(
         {path: sha256_file(path) for path in sorted(extras)}
     )
-    for path in sorted(Path("src/encoders/langvae_ft").glob("*.py")):
+    for path in sorted(Path("exp/langvae_ft").glob("*.py")):
         signature["code_sha256"][str(path)] = sha256_file(path)
     for path in ("configs/langvae_ft_scope.json", "scripts/run_decoder_benchmark.sh"):
         signature["code_sha256"][path] = sha256_file(path)

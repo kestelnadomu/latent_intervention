@@ -1,6 +1,6 @@
 """Tune all four g baselines, repeat selected settings, and publish verified models.
 
-Run: python -m src.decoder_benchmark.decoder_experiment --run-id cv-g500-v1 --workers 4
+Run: python -m exp.benchmarks.semantic_decoder.experiment --run-id cv-g500-v1 --workers 4
 Repeat the same command to resume completed trials. Incomplete trials restart.
 """
 
@@ -34,7 +34,7 @@ from src import pipeline
 from src.artifact_io import copy_atomic, write_json
 from src.config import CONFIG_PATH, load_config
 from src.pair_encoding import sha256_file
-from src.semantic_decoder import joint_nll, load_semantic_decoder
+from src.semantic_decoder.model import joint_nll, load_semantic_decoder
 
 SEARCH_KEYS = ("lr", "weight_decay", "dropout", "hidden_dim")
 CASES = tuple(
@@ -346,7 +346,8 @@ def publish_results(results: list[dict[str, Any]], root: Path) -> list[dict[str,
 def provenance(configs: list[dict[str, Any]]) -> dict[str, Any]:
     code_paths = [
         Path("uv.lock"),
-        *sorted(Path("src").glob("*.py")),
+        *sorted(Path("src").rglob("*.py")),
+        *sorted(Path("exp").rglob("*.py")),
         Path("src/config.yaml"),
     ]
     inputs = sorted(

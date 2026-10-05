@@ -16,17 +16,17 @@ import torch
 
 from src import pipeline
 from src.artifact_io import save_torch, sha256_file, write_json
-from src.hz.flow_intervention import (
+from src.latent_intervention.dispatch import (
     make_latent_intervention,
     train_latent_intervention_model,
 )
-from src.hz.hz_benchmark_matrix import case_name, digest
-from src.hz.hz_validation import ValidationControl, validation_score
-from src.hz.oracle_regression import OracleRegression, train_oracle_regression
-from src.hz.oracle_targets import load_oracle_targets
+from exp.benchmarks.latent_intervention.matrix import case_name, digest
+from exp.benchmarks.latent_intervention.validation import ValidationControl, validation_score
+from src.latent_intervention.oracle.regression import OracleRegression, train_oracle_regression
+from src.latent_intervention.oracle.targets import load_oracle_targets
 from src.pair_encoding import load_latent_artifact
 from src.schema import ColumnSpec, load_schema
-from src.semantic_decoder import load_semantic_decoder
+from src.semantic_decoder.model import load_semantic_decoder
 from src.symbolic_intervention import load_symbolic_kernel
 
 

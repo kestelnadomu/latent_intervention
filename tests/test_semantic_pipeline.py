@@ -9,7 +9,8 @@ import pytest
 import torch
 
 from src import pipeline
-from src.hz import flow_workflow
+from src.latent_intervention.base import workflow as base_workflow
+from src.latent_intervention.flow import workflow as flow_workflow
 from src.schema import ColumnSpec
 
 
@@ -224,20 +225,20 @@ def test_manipulator_trains_on_official_train_and_evaluates_on_test(
     seen: dict[str, object] = {}
     decoder_loads: list[dict] = []
 
-    monkeypatch.setattr(pipeline, "load_latent_artifact", lambda _: artifact)
+    monkeypatch.setattr(base_workflow, "load_latent_artifact", lambda _: artifact)
     monkeypatch.setattr(
-        pipeline, "load_schema", lambda _: (decoder.columns, ColumnSpec("y", 2))
+        base_workflow, "load_schema", lambda _: (decoder.columns, ColumnSpec("y", 2))
     )
-    monkeypatch.setattr(pipeline, "load_intervention", lambda _: {"s": 1})
+    monkeypatch.setattr(base_workflow, "load_intervention", lambda _: {"s": 1})
 
     def load_decoder(*args, **kwargs):
         decoder_loads.append(kwargs)
         return decoder
 
-    monkeypatch.setattr(pipeline, "load_semantic_decoder", load_decoder)
+    monkeypatch.setattr(base_workflow, "load_semantic_decoder", load_decoder)
     monkeypatch.setattr(pipeline, "_aligned_targets", lambda *args: targets)
     monkeypatch.setattr(
-        pipeline,
+        base_workflow,
         "load_symbolic_kernel",
         lambda _: SimpleNamespace(columns=decoder.columns),
     )
@@ -254,12 +255,12 @@ def test_manipulator_trains_on_official_train_and_evaluates_on_test(
         seen["initialization_seed"] = torch.initial_seed()
         return Manipulator()
 
-    monkeypatch.setattr(pipeline, "LatentIntervention", make_manipulator)
+    monkeypatch.setattr(base_workflow, "LatentIntervention", make_manipulator)
 
     def train_manipulator(*, latents, **kwargs):
         seen["train"] = latents[:, 0].tolist()
 
-    monkeypatch.setattr(pipeline, "train_latent_intervention", train_manipulator)
+    monkeypatch.setattr(base_workflow, "train_latent_intervention", train_manipulator)
     pipeline.stage_train_manipulator(config)
     assert seen["train"] == [30.0, 10.0]
     assert seen["initialization_seed"] == config["seed"]
@@ -270,14 +271,14 @@ def test_manipulator_trains_on_official_train_and_evaluates_on_test(
             seen["evaluation_device"] = str(device)
             return Manipulator()
 
-    monkeypatch.setitem(pipeline.INTERVENTION_VARIANTS, "baseline", Loader)
+    monkeypatch.setitem(base_workflow.BASE_VARIANTS, "baseline", Loader)
     monkeypatch.setattr(
-        pipeline,
+        base_workflow,
         "accuracy",
         lambda decoder, z, targets: {"s": 1.0},
     )
     monkeypatch.setattr(
-        pipeline,
+        base_workflow,
         "calibration_metrics",
         lambda decoder, z, targets, n_bins: {
             "s": {"accuracy": 1.0, "ece": 0.0, "reliability": []}
@@ -308,12 +309,12 @@ def test_manipulator_metadata_rejects_changed_decoder(
     artifact = _artifact()
     Path(config["paths"]["decoder_model"]).write_bytes(b"first decoder")
     Path(config["paths"]["manipulator_model"]).write_bytes(b"manipulator")
-    pipeline._write_manipulator_info(config, artifact)
+    base_workflow._write_manipulator_info(config, artifact)
 
     Path(config["paths"]["decoder_model"]).write_bytes(b"changed decoder")
 
     try:
-        pipeline._validate_manipulator_info(config, artifact)
+        base_workflow._validate_manipulator_info(config, artifact)
     except ValueError as error:
         assert "retrain the manipulator" in str(error)
     else:
@@ -331,16 +332,16 @@ def test_manipulator_metadata_rejects_changed_model_or_counterfactuals(
     decoder_path.write_bytes(b"decoder")
     manipulator_path.write_bytes(b"first manipulator")
     counterfactual_path.write_text("id,s\n1,0\n", encoding="utf-8")
-    pipeline._write_manipulator_info(config, artifact)
+    base_workflow._write_manipulator_info(config, artifact)
 
     manipulator_path.write_bytes(b"changed manipulator")
     with pytest.raises(ValueError, match="retrain the manipulator"):
-        pipeline._validate_manipulator_info(config, artifact)
+        base_workflow._validate_manipulator_info(config, artifact)
 
     manipulator_path.write_bytes(b"first manipulator")
     counterfactual_path.write_text("id,s\n1,1\n", encoding="utf-8")
     with pytest.raises(ValueError, match="retrain the manipulator"):
-        pipeline._validate_manipulator_info(config, artifact)
+        base_workflow._validate_manipulator_info(config, artifact)
 
 
 @pytest.mark.parametrize(
@@ -364,7 +365,7 @@ def test_flow_variants_delegate_before_legacy_pipeline_work(
         lambda received: calls.append(("evaluate", received)),
     )
     monkeypatch.setattr(
-        pipeline,
+        base_workflow,
         "load_latent_artifact",
         lambda *_: pytest.fail("legacy pipeline work ran for a flow variant"),
     )
@@ -417,27 +418,27 @@ def test_legacy_evaluation_preserves_single_draw_or_deterministic_forward(
         def load(cls, path, device=None):
             return model
 
-    monkeypatch.setitem(pipeline.INTERVENTION_VARIANTS, variant, Loader)
+    monkeypatch.setitem(base_workflow.BASE_VARIANTS, variant, Loader)
     if variant == "pre_additive":
-        monkeypatch.setattr(pipeline, "LatentInterventionPreAdditive", Model)
+        monkeypatch.setattr(base_workflow, "LatentInterventionPreAdditive", Model)
     elif variant == "noise_token":
-        monkeypatch.setattr(pipeline, "LatentInterventionNoiseToken", Model)
+        monkeypatch.setattr(base_workflow, "LatentInterventionNoiseToken", Model)
 
-    monkeypatch.setattr(pipeline, "load_latent_artifact", lambda _: artifact)
+    monkeypatch.setattr(base_workflow, "load_latent_artifact", lambda _: artifact)
     monkeypatch.setattr(
-        pipeline, "load_schema", lambda _: (decoder.columns, ColumnSpec("y", 2))
+        base_workflow, "load_schema", lambda _: (decoder.columns, ColumnSpec("y", 2))
     )
-    monkeypatch.setattr(pipeline, "load_intervention", lambda _: {"s": 1})
-    monkeypatch.setattr(pipeline, "load_semantic_decoder", lambda *a, **k: decoder)
-    monkeypatch.setattr(pipeline, "_validate_manipulator_info", lambda *a: None)
+    monkeypatch.setattr(base_workflow, "load_intervention", lambda _: {"s": 1})
+    monkeypatch.setattr(base_workflow, "load_semantic_decoder", lambda *a, **k: decoder)
+    monkeypatch.setattr(base_workflow, "_validate_manipulator_info", lambda *a: None)
     monkeypatch.setattr(
         pipeline,
         "_aligned_targets",
         lambda *a: {"s": torch.tensor([0, 1, 1, 0])},
     )
-    monkeypatch.setattr(pipeline, "accuracy", lambda *a, **k: {"s": 1.0})
+    monkeypatch.setattr(base_workflow, "accuracy", lambda *a, **k: {"s": 1.0})
     monkeypatch.setattr(
-        pipeline,
+        base_workflow,
         "calibration_metrics",
         lambda *a, **k: {"s": {"accuracy": 1.0, "ece": 0.0, "reliability": []}},
     )

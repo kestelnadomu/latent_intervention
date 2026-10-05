@@ -13,7 +13,7 @@ import pandas as pd
 import torch
 
 from src.artifact_io import sha256_file as sha256_file
-from src.encoder_protocols import (
+from src.encoder import (
     encoder_dimension,
     embedding_encoder_info,
     get_encoder_factory,

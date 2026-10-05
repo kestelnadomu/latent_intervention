@@ -12,13 +12,15 @@ import torch
 import torch.nn.functional as F
 
 from src import pipeline
-from src.hz import oracle_encoding, oracle_targets, oracle_workflow
+from exp.encoding import oracle_targets as oracle_encoding
+from src.latent_intervention.oracle import targets as oracle_targets
+from src.latent_intervention.oracle import workflow as oracle_workflow
 from src.artifact_io import save_torch, sha256_file, write_json
 from src.config import load_config
-from src.hz.oracle_regression import ORACLE_VARIANT
+from src.latent_intervention.oracle.regression import ORACLE_VARIANT
 from src.pair_encoding import encode_pairs, load_latent_artifact
 from src.schema import load_schema
-from src.semantic_decoder import make_semantic_decoder
+from src.semantic_decoder.model import make_semantic_decoder
 
 
 class StubGemma:
@@ -207,7 +209,7 @@ def test_training_needs_no_g_or_hs_and_never_uses_test_targets(config, monkeypat
     # Neither dependency even needs to exist for ordinary paired MSE fitting.
     assert not Path(config["paths"]["decoder_model"]).exists()
     monkeypatch.setattr(
-        "src.semantic_decoder.load_semantic_decoder",
+        "src.semantic_decoder.model.load_semantic_decoder",
         lambda *a, **k: pytest.fail("g must not be loaded for oracle training"),
     )
     monkeypatch.setattr(

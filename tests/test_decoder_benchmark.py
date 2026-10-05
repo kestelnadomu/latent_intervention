@@ -13,18 +13,18 @@ import yaml
 from src import pipeline
 from src.artifact_io import write_json
 from src.config import CONFIG_PATH, load_config, resolve_paths
-from src.decoder_benchmark.decoder_benchmark_evaluation import distribution_metrics, evaluate_case
-from src.decoder_benchmark.decoder_benchmark_matrix import (
+from exp.benchmarks.semantic_decoder.evaluation import distribution_metrics, evaluate_case
+from exp.benchmarks.semantic_decoder.matrix import (
     annotate_result,
     case_name,
     discover,
     encoding_config,
     freeze_selection,
 )
-from src.decoder_benchmark.decoder_benchmark_report import render
-from src.decoder_benchmark.decoder_experiment import publish_results, run_case, verify_run
+from exp.benchmarks.semantic_decoder.report import render
+from exp.benchmarks.semantic_decoder.experiment import publish_results, run_case, verify_run
 from src.schema import ColumnSpec
-from src.semantic_decoder import joint_nll, make_semantic_decoder
+from src.semantic_decoder.model import joint_nll, make_semantic_decoder
 
 
 @pytest.mark.parametrize(
@@ -43,7 +43,7 @@ def test_configuration_namespaces_and_dimensions(tag, dimension):
     raw = yaml.safe_load(CONFIG_PATH.read_text())
     before = copy.deepcopy(raw)
     template = encoding_config(raw, Path(tag))
-    from src.encoder_protocols import encoder_dimension
+    from src.encoder import encoder_dimension
 
     assert encoder_dimension(template["encoder"]) == dimension
     assert "{decoder}" in template["paths"]["decoder_model"]
@@ -112,7 +112,7 @@ def test_report_nll_matches_training_scale(variant):
 
 
 def test_discovery_rejects_mismatched_source_data(tmp_path, monkeypatch):
-    import src.decoder_benchmark.decoder_benchmark_matrix as matrix
+    import exp.benchmarks.semantic_decoder.matrix as matrix
 
     latent_root = tmp_path / "latents"
     raw = yaml.safe_load(CONFIG_PATH.read_text())

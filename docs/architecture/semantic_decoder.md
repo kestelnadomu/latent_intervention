@@ -4,10 +4,10 @@ $$g(\mathbf s \mid z): \mathcal Z \to \Delta(\mathcal S)$$
 
 $g$ maps a frozen latent to a **distribution** over structured states, not a point estimate.
 The consistency constraint $h_S\circ g = g\circ h_Z$ compares two such distributions.
-Code: `src/semantic_decoder.py`; select a variant with `semantic_decoder.variant` in `src/config.yaml`.
-Optimization/validation selection lives in `src/decoder_training.py`; the original
-training import remains available from `semantic_decoder.py`. Per-run checkpoint
-and report bookkeeping lives in `src/decoder_reporting.py`.
+Code: `src/semantic_decoder/model.py`; select a variant with `semantic_decoder.variant` in `src/config.yaml`.
+Optimization/validation selection lives in `src/semantic_decoder/training.py`; the original
+training import remains available from `model.py`. Per-run checkpoint
+and report bookkeeping lives in `src/semantic_decoder/reporting.py`.
 
 **Notation.**
 
@@ -83,7 +83,7 @@ instruction to re-encode or retrain. The existing `encode`, `train-decoder`,
 
 ### Repeated tuning experiment
 
-`python -m src.decoder_benchmark.decoder_experiment --run-id cv-g500-v1` runs a separate orchestration layer:
+`python -m exp.benchmarks.semantic_decoder.experiment --run-id cv-g500-v1` runs a separate orchestration layer:
 
 1. Evaluate 20 shared configurations (the original settings plus 19 seeded random samples)
    for each encoder/decoder pair. Search learning rate, Adam weight decay, dropout, and width.

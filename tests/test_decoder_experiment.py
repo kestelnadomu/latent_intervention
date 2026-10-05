@@ -11,7 +11,7 @@ import torch
 from src import pipeline
 from src.artifact_io import write_json
 from src.config import load_config
-from src.decoder_benchmark.decoder_experiment import (
+from exp.benchmarks.semantic_decoder.experiment import (
     candidate_settings,
     publish_results,
     run_case,
