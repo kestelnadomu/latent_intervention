@@ -9,12 +9,12 @@ import yaml
 
 from src import pipeline
 from src.config import CONFIG_PATH, encoder_tag, resolve_paths
-from src.decoder_experiment import candidate_settings
+from src.decoder_benchmark.decoder_experiment import candidate_settings
 from src.encoder_protocols import configure_encoder
-from src.langvae_ft.artifacts import inference_config, read_checkpoint
+from src.encoders.langvae_ft.artifacts import inference_config, read_checkpoint
 from src.pair_encoding import load_latent_artifact
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 DECODERS = ("independent", "autoregressive")
 
 

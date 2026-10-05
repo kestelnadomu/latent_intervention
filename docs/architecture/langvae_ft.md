@@ -2,7 +2,7 @@
 
 This is the third encoder baseline, alongside unchanged `langvae` and `nomic`.
 It is opt-in and does not change the default pipeline, existing latents, semantic
-decoders `g`, or intervention models. The implementation is in `src/langvae_ft/`;
+decoders `g`, or intervention models. The implementation is in `src/encoders/langvae_ft/`;
 it imports none of the earlier V1/V2/V3 training modules.
 
 ## What is fine-tuned
@@ -87,8 +87,8 @@ From the repository root, use the tested isolated Python 3.12 environment:
 export HF_HOME="$PWD/models/hf_cache"
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
-environments/langvae-cu124/.venv/bin/python -m src.langvae_ft smoke --device cuda:0
-environments/langvae-cu124/.venv/bin/python -u -m src.langvae_ft train --device cuda:0
+environments/langvae-cu124/.venv/bin/python -m src.encoders.langvae_ft smoke --device cuda:0
+environments/langvae-cu124/.venv/bin/python -u -m src.encoders.langvae_ft train --device cuda:0
 ```
 
 These are separate commands: `smoke` runs only two updates on four CVs and
@@ -110,7 +110,7 @@ latents are generated. Resume an interrupted run with the **same** recipe,
 source, environment and device setting:
 
 ```sh
-environments/langvae-cu124/.venv/bin/python -u -m src.langvae_ft train \
+environments/langvae-cu124/.venv/bin/python -u -m src.encoders.langvae_ft train \
   --device cuda:0 --resume models/langvae_ft/RUN_ID
 ```
 
@@ -145,8 +145,8 @@ On the destination, keep the checkpoint immutable and write a full opt-in
 pipeline YAML **outside** that directory:
 
 ```sh
-python -m src.langvae_ft verify --checkpoint models/langvae_ft/RUN_ID/CHECKPOINT
-python -m src.langvae_ft configure \
+python -m src.encoders.langvae_ft verify --checkpoint models/langvae_ft/RUN_ID/CHECKPOINT
+python -m src.encoders.langvae_ft configure \
   --checkpoint models/langvae_ft/RUN_ID/CHECKPOINT \
   --output models/langvae_ft/RUN_ID/encoding-destination.yaml
 python -m src.pipeline encode \

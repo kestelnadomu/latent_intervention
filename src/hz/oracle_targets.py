@@ -16,7 +16,7 @@ import torch.nn.functional as F
 
 from src.artifact_io import save_torch, sha256_file, write_json
 from src.encoder_protocols import get_encoder_factory
-from src.oracle_regression import ORACLE_VARIANT
+from src.hz.oracle_regression import ORACLE_VARIANT
 from src.pair_encoding import (
     _input_hashes,
     _integer_ids,
@@ -139,7 +139,7 @@ def load_oracle_targets(config, artifact=None):
     path = target_path(config)
     if not path.is_file() or not path.with_suffix(".info.json").is_file():
         raise ValueError(
-            "oracle training targets are missing; run python -m src.oracle_encoding --run first"
+            "oracle training targets are missing; run python -m src.hz.oracle_encoding --run first"
         )
     info = json.loads(path.with_suffix(".info.json").read_text())
     if not isinstance(info, dict):
@@ -252,7 +252,7 @@ def encode_oracle_targets(config, *, encoder_factory=None):
 
 def derive_oracle_targets(config, source_config):
     """Reuse the pinned 768-D EmbeddingGemma pass for the smaller target space."""
-    from src.nomic_encoding import compare_projection
+    from src.encoders.nomic_encoding import compare_projection
 
     source = load_latent_artifact(source_config)
     artifact = load_latent_artifact(config)

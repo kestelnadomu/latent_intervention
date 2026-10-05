@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from src import flow_workflow, pipeline
+from src import pipeline
+from src.hz import flow_workflow
 from src.config import load_config
 
 VARIANTS = (

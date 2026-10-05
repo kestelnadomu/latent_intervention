@@ -146,8 +146,8 @@ FT_CHECKPOINT=models/langvae_ft/20260928T075426Z-train-c8d72b43/checkpoint-024-9
 FT_CONFIG=models/langvae_ft/encoding.yaml
 export HF_HOME="$PWD/models/hf_cache"
 
-"$FT_PYTHON" -m src.langvae_ft verify --checkpoint "$FT_CHECKPOINT" --device cpu &&
-"$FT_PYTHON" -m src.langvae_ft configure --checkpoint "$FT_CHECKPOINT" --output "$FT_CONFIG" &&
+"$FT_PYTHON" -m src.encoders.langvae_ft verify --checkpoint "$FT_CHECKPOINT" --device cpu &&
+"$FT_PYTHON" -m src.encoders.langvae_ft configure --checkpoint "$FT_CHECKPOINT" --output "$FT_CONFIG" &&
 "$FT_PYTHON" -m src.pipeline encode --config "$FT_CONFIG"
 ```
 

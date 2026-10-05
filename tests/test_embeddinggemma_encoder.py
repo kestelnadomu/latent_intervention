@@ -4,7 +4,7 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-import src.embeddinggemma_encoder as module
+import src.encoders.embeddinggemma_encoder as module
 from src.config import (
     EMBEDDINGGEMMA_DIMENSIONS,
     EMBEDDINGGEMMA_PROMPT,

@@ -9,7 +9,7 @@ import torch
 
 from src import pipeline
 from src.artifact_io import sha256_file, write_json
-from src.decoder_experiment import verify_run
+from src.decoder_benchmark.decoder_experiment import verify_run
 from src.schema import flat_state_index
 from src.semantic_decoder import calibration_metrics, load_semantic_decoder
 

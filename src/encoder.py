@@ -257,11 +257,11 @@ def make_encoder(config: dict[str, Any], variant: str | None = None):
     """Construct the configured encoder; ``variant`` optionally overrides config."""
     variant = variant or config.get("variant", "langvae")
     if variant == "qwen3":
-        from src.qwen3_encoder import make_qwen3_encoder
+        from src.encoders.qwen3_encoder import make_qwen3_encoder
 
         return make_qwen3_encoder(config)
     if variant == "embeddinggemma":
-        from src.embeddinggemma_encoder import make_embeddinggemma_encoder
+        from src.encoders.embeddinggemma_encoder import make_embeddinggemma_encoder
 
         return make_embeddinggemma_encoder(config)
     common = {

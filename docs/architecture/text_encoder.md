@@ -15,7 +15,7 @@ $f$ maps a CV text to a fixed latent. It is **frozen** and deterministic, so $g$
 trained on a fixed set of latents and $h_Z(f(x))$ is well defined.
 Code: `src/encoder.py`, called by `src/pair_encoding.py` (`pipeline encode`); select a variant
 with `--encoder-variant langvae|nomic|qwen3|embeddinggemma` (or `encoder.variant` in `src/config.yaml`).
-Qwen's implementation is in `src/qwen3_encoder.py`; its encoding queue uses an
+Qwen's implementation is in `src/encoders/qwen3_encoder.py`; its encoding queue uses an
 isolated environment to avoid changing LangVAE dependencies.
 Shared width/protocol validation and metadata live in `src/encoder_protocols.py`;
 `src/latent_writer.py` publishes the same canonical paired artifacts atomically.
@@ -81,13 +81,13 @@ $$\mathcal D_Z = \{(\mathrm{id}, f(x))\} \cup \{(\mathrm{id}, f(x'))\ :\ \mathrm
 * **Dimension consistency.** $g$ and $h_Z$ obtain their input width from the artifact. Their
   internal hidden widths are separate hyperparameters. Existing 128-D checkpoints cannot be
   reused with another width; penalty scales must be considered when comparing dimensions.
-* **Dimension queue.** `python -m src.nomic_encoding --prepare` validates the plan without
+* **Dimension queue.** `python -m src.encoders.nomic_encoding --prepare` validates the plan without
   inference. `bash scripts/run_nomic_dimensions.sh` launches the serial queue in tmux. One
   768-D pass supplies all smaller outputs via prefix slicing and L2 renormalization (never
   another layer norm on the prefix). Existing artifacts are verified and preserved. See README
   for logs, resumability, and the relocation of the old `nomic/` directory to `nomic_128/`.
   Qwen uses the same atomic publication and verification machinery through
-  `src.qwen3_encoding`, with a real-model preflight and one 1024-D pass.
+  `src.encoders.qwen3_encoding`, with a real-model preflight and one 1024-D pass.
 
 ---
 
@@ -304,8 +304,8 @@ batch-size consistency, agreement with the official named classification prompt,
 and direct-versus-derived dimensions. One full native-width run supplies all four
 artifacts using the shared atomic dimension queue.
 
-Use `src/embeddinggemma_encoder.py`, `src/embeddinggemma_preflight.py`, and
-`src/embeddinggemma_encoding.py`; the README has setup and detached launch commands.
+Use `src/encoders/embeddinggemma_encoder.py`, `src/encoders/embeddinggemma_preflight.py`, and
+`src/encoders/embeddinggemma_encoding.py`; the README has setup and detached launch commands.
 The pinned revision is `57c266a740f537b4dc058e1b0cda161fd15afa75`. Cached weights and
 all source/model hashes are kept separate from credentials; access approval is
 performed by the user, not automated. Setup/preflight does not run the full corpus.

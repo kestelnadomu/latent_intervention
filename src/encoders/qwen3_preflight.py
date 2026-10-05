@@ -8,7 +8,7 @@ import torch.nn.functional as F
 from transformers import AutoTokenizer
 
 from src.pair_encoding import _input_hashes, _load_csv, _load_pair_index
-from src.qwen3_encoder import cached_snapshot, format_text, make_qwen3_encoder
+from src.encoders.qwen3_encoder import cached_snapshot, format_text, make_qwen3_encoder
 
 
 def run_preflight(configs: dict[int, dict]) -> dict:

@@ -8,7 +8,8 @@ import pandas as pd
 import pytest
 import torch
 
-from src import flow_workflow, pipeline
+from src import pipeline
+from src.hz import flow_workflow
 from src.schema import ColumnSpec
 
 

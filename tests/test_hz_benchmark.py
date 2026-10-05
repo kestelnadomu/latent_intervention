@@ -11,18 +11,18 @@ import torch
 import yaml
 
 from test_oracle_workflow import StubGemma, config as config
-from src import (
+from src import pipeline
+from src.hz import (
     hz_benchmark as queue,
     hz_benchmark_matrix as matrix,
     hz_evaluation,
     hz_pilot,
     hz_training,
-    pipeline,
 )
 from src.artifact_io import sha256_file, write_json
 from src.config import load_config
-from src.hz_validation import ValidationControl
-from src.oracle_targets import (
+from src.hz.hz_validation import ValidationControl
+from src.hz.oracle_targets import (
     encode_oracle_targets,
     load_oracle_targets,
     source_metadata,

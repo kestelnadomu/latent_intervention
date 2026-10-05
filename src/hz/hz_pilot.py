@@ -21,14 +21,14 @@ import torch
 from src import pipeline
 from src.artifact_io import atomic_output, write_json
 from src.config import CONFIG_PATH
-from src.hz_benchmark import (
+from src.hz.hz_benchmark import (
     freeze_preparation,
     job_id,
     now,
     preflight,
     run_jobs,
 )
-from src.hz_benchmark_matrix import (
+from src.hz.hz_benchmark_matrix import (
     PROTOCOL,
     ROOT,
     assert_unchanged,
@@ -38,8 +38,8 @@ from src.hz_benchmark_matrix import (
     read_settings,
     run_root,
 )
-from src.hz_training import decoder_for, job_paths, load_model, model_sizes, verify_fit
-from src.flow_intervention import sample_counterfactual
+from src.hz.hz_training import decoder_for, job_paths, load_model, model_sizes, verify_fit
+from src.hz.flow_intervention import sample_counterfactual
 from src.latent_intervention import consistency_target
 from src.pair_encoding import load_latent_artifact
 from src.symbolic_intervention import load_symbolic_kernel

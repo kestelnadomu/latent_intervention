@@ -9,11 +9,11 @@ import torch.nn.functional as F
 
 from src import pipeline
 from src.artifact_io import sha256_file, write_json
-from src.flow_intervention import sample_counterfactual
-from src.hz_benchmark_matrix import digest
-from src.hz_training import decoder_for, load_model, verify_fit
+from src.hz.flow_intervention import sample_counterfactual
+from src.hz.hz_benchmark_matrix import digest
+from src.hz.hz_training import decoder_for, load_model, verify_fit
 from src.latent_intervention import consistency_target
-from src.oracle_regression import OracleRegression
+from src.hz.oracle_regression import OracleRegression
 from src.pair_encoding import load_latent_artifact
 from src.schema import flat_state_index, unflatten_state_index
 from src.symbolic_intervention import load_symbolic_kernel

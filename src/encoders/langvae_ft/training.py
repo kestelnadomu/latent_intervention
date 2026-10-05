@@ -417,7 +417,7 @@ def fit(config_path, *, stage="train", device_name=None, resume=None):
         command = [
             sys.executable,
             "-m",
-            "src.langvae_ft",
+            "src.encoders.langvae_ft",
             "verify",
             "--checkpoint",
             str(selected),

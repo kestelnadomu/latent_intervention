@@ -15,13 +15,13 @@ import yaml
 from src import pipeline
 from src.artifact_io import sha256_file
 from src.config import CONFIG_PATH, load_config
-from src.oracle_targets import load_oracle_targets, source_metadata, training_texts
+from src.hz.oracle_targets import load_oracle_targets, source_metadata, training_texts
 from src.pair_encoding import load_latent_artifact
 from src.schema import load_intervention, load_schema
 from src.semantic_decoder import load_semantic_decoder
 from src.symbolic_intervention import load_symbolic_kernel
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = Path(__file__).resolve().parents[2]
 PROTOCOL = ROOT / "configs/hz_benchmark.yaml"
 REPORTS = ROOT / "reports/talent/hz_benchmarks"
 VARIANTS = (

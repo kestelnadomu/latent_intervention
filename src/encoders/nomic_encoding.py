@@ -1,7 +1,7 @@
 """Serial, resumable Matryoshka dimension queues using one full-width pass.
 
-python -m src.nomic_encoding --prepare
-python -m src.nomic_encoding --run
+python -m src.encoders.nomic_encoding --prepare
+python -m src.encoders.nomic_encoding --run
 
 Completed stages resume after validation. An interrupted transformer pass restarts;
 partially written staging directories are retained, never silently overwritten.
@@ -183,14 +183,14 @@ def protocol(configs: dict[int, dict], threads: int) -> dict:
     is_gemma = base["encoder"]["variant"] == "embeddinggemma"
     extra = {}
     if is_qwen3:
-        from src.qwen3_encoder import MODEL_FILES, cached_snapshot
+        from src.encoders.qwen3_encoder import MODEL_FILES, cached_snapshot
 
         snapshot = Path(cached_snapshot(base["encoder"]))
         extra["model_files_sha256"] = {
             name: sha256_file(snapshot / name) for name in MODEL_FILES
         }
     if is_gemma:
-        from src.embeddinggemma_encoder import MODEL_FILES, cached_snapshot
+        from src.encoders.embeddinggemma_encoder import MODEL_FILES, cached_snapshot
 
         snapshot = Path(cached_snapshot(base["encoder"]))
         extra["model_files_sha256"] = {
@@ -225,9 +225,9 @@ def protocol(configs: dict[int, dict], threads: int) -> dict:
                 Path("uv.lock"),
                 *(
                     [
-                        Path("src/qwen3_encoder.py"),
-                        Path("src/qwen3_encoding.py"),
-                        Path("src/qwen3_preflight.py"),
+                        Path("src/encoders/qwen3_encoder.py"),
+                        Path("src/encoders/qwen3_encoding.py"),
+                        Path("src/encoders/qwen3_preflight.py"),
                         Path("requirements/qwen3.lock"),
                     ]
                     if is_qwen3
@@ -235,7 +235,7 @@ def protocol(configs: dict[int, dict], threads: int) -> dict:
                 ),
                 *(
                     [
-                        Path(f"src/embeddinggemma_{part}.py")
+                        Path(f"src/encoders/embeddinggemma_{part}.py")
                         for part in ("encoder", "encoding", "preflight", "setup")
                     ]
                     + [
@@ -414,9 +414,9 @@ def main(*, variant: str = "nomic") -> None:
             preflight_path = root / "preflight.json"
             if getattr(args, "preflight", False):
                 if variant == "qwen3":
-                    from src.qwen3_preflight import run_preflight
+                    from src.encoders.qwen3_preflight import run_preflight
                 else:
-                    from src.embeddinggemma_preflight import run_preflight
+                    from src.encoders.embeddinggemma_preflight import run_preflight
 
                 report = run_preflight(configs)
                 report["protocol_signature"] = signature

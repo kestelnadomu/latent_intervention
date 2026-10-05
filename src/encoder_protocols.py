@@ -236,11 +236,11 @@ def validate_encoding_metadata(
 def get_encoder_factory(config: dict[str, Any]):
     """Lazy dispatch: isolated embedding environments never import LangVAE."""
     if config.get("variant") == "qwen3":
-        from src.qwen3_encoder import make_qwen3_encoder
+        from src.encoders.qwen3_encoder import make_qwen3_encoder
 
         return make_qwen3_encoder
     if config.get("variant") == "embeddinggemma":
-        from src.embeddinggemma_encoder import make_embeddinggemma_encoder
+        from src.encoders.embeddinggemma_encoder import make_embeddinggemma_encoder
 
         return make_embeddinggemma_encoder
     from src.encoder import make_encoder

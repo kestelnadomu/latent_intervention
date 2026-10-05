@@ -38,7 +38,7 @@ scripts are dimension plumbing, small delegation calls and required atomic I/O.
 
 ## Verification without repeating expensive work
 
-Before editing, [artifact_audit.py](../src/artifact_audit.py) recorded a reference at
+Before editing, [artifact_audit.py](../tools/artifact_audit.py) recorded a reference at
 `reports/talent/refactor/before.json`. The audit checks:
 
 1. All 17 completed latent spaces: file and sidecar hashes, resolved configurations,
@@ -52,7 +52,7 @@ Before editing, [artifact_audit.py](../src/artifact_audit.py) recorded a referen
 Repeat the comparison locally with:
 
 ```bash
-.venv/bin/python -m src.artifact_audit --compare reports/talent/refactor/before.json
+.venv/bin/python -m tools.artifact_audit --compare reports/talent/refactor/before.json
 .venv/bin/python -m pytest -q
 ```
 

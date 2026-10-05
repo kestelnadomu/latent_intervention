@@ -13,16 +13,16 @@ import yaml
 from src import pipeline
 from src.artifact_io import write_json
 from src.config import CONFIG_PATH, load_config, resolve_paths
-from src.decoder_benchmark_evaluation import distribution_metrics, evaluate_case
-from src.decoder_benchmark_matrix import (
+from src.decoder_benchmark.decoder_benchmark_evaluation import distribution_metrics, evaluate_case
+from src.decoder_benchmark.decoder_benchmark_matrix import (
     annotate_result,
     case_name,
     discover,
     encoding_config,
     freeze_selection,
 )
-from src.decoder_benchmark_report import render
-from src.decoder_experiment import publish_results, run_case, verify_run
+from src.decoder_benchmark.decoder_benchmark_report import render
+from src.decoder_benchmark.decoder_experiment import publish_results, run_case, verify_run
 from src.schema import ColumnSpec
 from src.semantic_decoder import joint_nll, make_semantic_decoder
 
@@ -112,7 +112,7 @@ def test_report_nll_matches_training_scale(variant):
 
 
 def test_discovery_rejects_mismatched_source_data(tmp_path, monkeypatch):
-    import src.decoder_benchmark_matrix as matrix
+    import src.decoder_benchmark.decoder_benchmark_matrix as matrix
 
     latent_root = tmp_path / "latents"
     raw = yaml.safe_load(CONFIG_PATH.read_text())

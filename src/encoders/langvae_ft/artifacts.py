@@ -15,7 +15,7 @@ from . import ARCHITECTURE, TAG
 from .data import file_hash
 from .model import load_native
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = Path(__file__).resolve().parents[3]
 
 
 def atomic_json(path, value):
@@ -35,7 +35,7 @@ def atomic_torch(path, value):
 
 
 def source_hashes():
-    files = sorted((ROOT / "src/langvae_ft").glob("*.py"))
+    files = sorted((ROOT / "src/encoders/langvae_ft").glob("*.py"))
     files += [ROOT / "src/encoder.py", ROOT / "src/config.py"]
     return {str(p.relative_to(ROOT)): file_hash(p) for p in files}
 

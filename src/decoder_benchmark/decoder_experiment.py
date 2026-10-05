@@ -1,6 +1,6 @@
 """Tune all four g baselines, repeat selected settings, and publish verified models.
 
-Run: python -m src.decoder_experiment --run-id cv-g500-v1 --workers 4
+Run: python -m src.decoder_benchmark.decoder_experiment --run-id cv-g500-v1 --workers 4
 Repeat the same command to resume completed trials. Incomplete trials restart.
 """
 

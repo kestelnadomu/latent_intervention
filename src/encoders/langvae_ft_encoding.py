@@ -21,7 +21,7 @@ import torch
 from src.artifact_io import sha256_file, write_json
 from src.config import load_config
 from src.encoder import make_encoder
-from src.langvae_ft.artifacts import ROOT, packages, read_checkpoint, verify_checkpoint
+from src.encoders.langvae_ft.artifacts import ROOT, packages, read_checkpoint, verify_checkpoint
 from src.pair_encoding import encode_pairs, load_latent_artifact
 
 

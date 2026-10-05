@@ -1,4 +1,4 @@
-"""python -m src.langvae_ft {smoke,train,verify,configure}; never encodes pairs."""
+"""python -m src.encoders.langvae_ft {smoke,train,verify,configure}; never encodes pairs."""
 
 import argparse
 import json

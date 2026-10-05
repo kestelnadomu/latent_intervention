@@ -83,7 +83,7 @@ instruction to re-encode or retrain. The existing `encode`, `train-decoder`,
 
 ### Repeated tuning experiment
 
-`python -m src.decoder_experiment --run-id cv-g500-v1` runs a separate orchestration layer:
+`python -m src.decoder_benchmark.decoder_experiment --run-id cv-g500-v1` runs a separate orchestration layer:
 
 1. Evaluate 20 shared configurations (the original settings plus 19 seeded random samples)
    for each encoder/decoder pair. Search learning rate, Adam weight decay, dropout, and width.

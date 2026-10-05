@@ -17,11 +17,11 @@ if tmux has-session -t "=$benchmark_session" 2>/dev/null; then
     exit 1
 fi
 cd -- "$benchmark_repo"
-"$benchmark_python" -m src.decoder_benchmark --prepare --run-id "$benchmark_run_id"
+"$benchmark_python" -m src.decoder_benchmark.decoder_benchmark --prepare --run-id "$benchmark_run_id"
 printf -v benchmark_command '%q ' env HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
     TOKENIZERS_PARALLELISM=false OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 \
     OPENBLAS_NUM_THREADS=1 NUMEXPR_NUM_THREADS=1 \
-    "$benchmark_python" -u -m src.decoder_benchmark --run --run-id "$benchmark_run_id" \
+    "$benchmark_python" -u -m src.decoder_benchmark.decoder_benchmark --run --run-id "$benchmark_run_id" \
     --workers 4 --threads-per-worker 1
 printf -v benchmark_log '%q' "$benchmark_report/run.log"
 benchmark_command+=" >> $benchmark_log 2>&1"

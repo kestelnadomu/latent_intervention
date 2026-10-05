@@ -2,7 +2,7 @@
 
 The main pipeline delegates flow variants to this module so its established
 transformer training and evaluation paths can remain unchanged.  Flow model
-definitions and objectives stay in :mod:`src.flow_intervention`; this module owns
+definitions and objectives stay in :mod:`src.hz.flow_intervention`; this module owns
 only data alignment, artifact provenance, configured training, and reporting.
 """
 
@@ -17,7 +17,7 @@ import pandas as pd
 import torch
 import torch.nn.functional as F
 
-from src.flow_intervention import (
+from src.hz.flow_intervention import (
     FLOW_VARIANTS,
     load_latent_intervention,
     make_latent_intervention,

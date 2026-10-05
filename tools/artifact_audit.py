@@ -1,7 +1,7 @@
 """Snapshot/compare existing results across a refactor, without encoder inference.
 
-python -m src.artifact_audit --snapshot reports/talent/refactor/before.json
-python -m src.artifact_audit --compare reports/talent/refactor/before.json
+python -m tools.artifact_audit --snapshot reports/talent/refactor/before.json
+python -m tools.artifact_audit --compare reports/talent/refactor/before.json
 
 Only an explicitly requested new snapshot is written. Production artifacts are read-only.
 The small synthetic training check creates no model files and tests both g optimizers.
@@ -18,7 +18,7 @@ import torch
 
 from src.artifact_io import write_json
 from src.config import load_config
-from src.nomic_encoding import (
+from src.encoders.nomic_encoding import (
     DIMENSIONS,
     compare_projection,
     dimension_configs,

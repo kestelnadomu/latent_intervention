@@ -9,13 +9,13 @@ from pathlib import Path
 import torch
 
 from src.artifact_io import sha256_file, write_json
-from src.oracle_regression import (
+from src.hz.oracle_regression import (
     ORACLE_VARIANT,
     OracleRegression,
     regression_metrics,
     train_oracle_regression,
 )
-from src.oracle_targets import load_oracle_targets, require_oracle, source_metadata
+from src.hz.oracle_targets import load_oracle_targets, require_oracle, source_metadata
 from src.pair_encoding import load_latent_artifact
 from src.schema import load_intervention, load_schema
 
@@ -195,7 +195,7 @@ def train_oracle_manipulator(config):
 
 def evaluate_oracle_manipulator(config):
     """Held-out evaluation; does not need or load privileged training-target files."""
-    from src.flow_workflow import _evaluate_samples
+    from src.hz.flow_workflow import _evaluate_samples
     from src.pipeline import (
         _aligned_targets,
         _decoder_metadata,

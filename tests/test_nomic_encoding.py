@@ -11,7 +11,7 @@ import torch.nn.functional as F
 import yaml
 
 from src.config import NOMIC_DIMENSIONS
-from src.nomic_encoding import (
+from src.encoders.nomic_encoding import (
     dimension_configs,
     inspect_queue,
     run_queue,
@@ -194,7 +194,7 @@ def test_gemma_artifact_rejects_changed_or_missing_protocol(tmp_path, key):
 def test_embedding_cli_preflight_gate(
     tmp_path, monkeypatch, mode, preflight_state, variant
 ):
-    import src.nomic_encoding as queue
+    import src.encoders.nomic_encoding as queue
 
     configs = make_configs(tmp_path, variant=variant)
     signature = {"protocol_test_version": 1}

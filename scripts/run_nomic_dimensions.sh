@@ -19,9 +19,9 @@ if tmux has-session -t "=$queue_session" 2>/dev/null; then
 fi
 cd -- "$queue_repo"
 # Read-only with respect to latents; checks the saved protocol and existing files.
-"$queue_python" -m src.nomic_encoding --prepare --run-id "$queue_run_id" --threads 4
+"$queue_python" -m src.encoders.nomic_encoding --prepare --run-id "$queue_run_id" --threads 4
 printf -v queue_command '%q ' env HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 \
-    "$queue_python" -u -m src.nomic_encoding --run --run-id "$queue_run_id" --threads 4
+    "$queue_python" -u -m src.encoders.nomic_encoding --run --run-id "$queue_run_id" --threads 4
 printf -v queue_launcher_log '%q' "$queue_report_dir/launcher.log"
 queue_command+=" >> $queue_launcher_log 2>&1"
 tmux new-session -d -s "$queue_session" -c "$queue_repo" "$queue_command"

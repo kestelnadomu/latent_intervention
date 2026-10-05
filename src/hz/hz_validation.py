@@ -6,7 +6,7 @@ from time import perf_counter
 import torch
 
 from src.artifact_io import write_json
-from src.flow_intervention import multivariate_energy_distance, sample_counterfactual
+from src.hz.flow_intervention import multivariate_energy_distance, sample_counterfactual
 from src.latent_intervention import consistency_target, make_objective
 
 

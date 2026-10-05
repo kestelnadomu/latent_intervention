@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from src.flow_intervention import (
+from src.hz.flow_intervention import (
     DirectSemanticFlowIntervention,
     DistilledFlowIntervention,
     StateConditionalFlow,

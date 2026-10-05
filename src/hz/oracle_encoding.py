@@ -18,8 +18,8 @@ import torch
 
 from src.artifact_io import sha256_file, write_json
 from src.config import CONFIG_PATH, load_config
-from src.oracle_regression import ORACLE_VARIANT
-from src.oracle_targets import (
+from src.hz.oracle_regression import ORACLE_VARIANT
+from src.hz.oracle_targets import (
     derive_oracle_targets,
     encode_oracle_targets,
     load_oracle_targets,
@@ -43,7 +43,7 @@ def configurations(config_path=CONFIG_PATH):
 
 
 def build_plan(configs):
-    from src.nomic_encoding import compare_projection
+    from src.encoders.nomic_encoding import compare_projection
 
     artifacts = {dim: load_latent_artifact(config) for dim, config in configs.items()}
     compare_projection(artifacts[768], artifacts[256])
@@ -60,16 +60,16 @@ def build_plan(configs):
             }
         )
     files = [
-        "src/oracle_encoding.py",
-        "src/oracle_targets.py",
-        "src/oracle_regression.py",
+        "src/hz/oracle_encoding.py",
+        "src/hz/oracle_targets.py",
+        "src/hz/oracle_regression.py",
         "src/pair_encoding.py",
         "src/latent_writer.py",
         "src/artifact_io.py",
         "src/encoder_protocols.py",
         "src/config.py",
-        "src/embeddinggemma_encoder.py",
-        "src/nomic_encoding.py",
+        "src/encoders/embeddinggemma_encoder.py",
+        "src/encoders/nomic_encoding.py",
     ]
     return {
         "format_version": 1,

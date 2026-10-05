@@ -30,7 +30,7 @@ flowchart TB
     PROTO[src/encoder_protocols.py<br/>valid dimensions and pinned protocols]
     GEN[exp/sim/run.py<br/>data-generation stages]
     PIPE[src/pipeline.py<br/>encode / train / evaluate]
-    BENCH[src/decoder_benchmark.py<br/>src/hz_benchmark.py]
+    BENCH[src/decoder_benchmark/decoder_benchmark.py<br/>src/hz/hz_benchmark.py]
 
     SIMCFG --> SCHEMA --> GEN
     SIMCFG --> LOAD
@@ -44,7 +44,7 @@ flowchart TB
 | encoder specs | `src/config.yaml` / CLI | `src/encoder_protocols.py` |
 | locations info of all objects created during training | `src/config.yaml:paths` | `src/config.py`, `src/latent_writer.py` |
 | \(g\) architecture and training procedure | `src/config.yaml:semantic_decoder` | `src/semantic_decoder.py`, `src/decoder_training.py` |
-| \(h_Z\) benchmark matrix | `configs/hz_benchmark.yaml` | `src/hz_benchmark*.py` |
+| \(h_Z\) benchmark matrix | `configs/hz_benchmark.yaml` | `src/hz/hz_benchmark*.py` |
 
 ## 3. DAG
 
@@ -153,6 +153,6 @@ sequenceDiagram
 |---|---|
 | generate or validate the corpus | `python -m exp.sim.run <stage>` |
 | run one pipeline stage | `python -m src.pipeline <stage> ...` |
-| build the all-encoder \(g\) matrix | `python -m src.decoder_benchmark` |
-| prepare/run/resume the \(h_Z\) matrix | `python -m src.hz_benchmark` |
-| audit artifact compatibility | `src/artifact_audit.py` |
+| build the all-encoder \(g\) matrix | `python -m src.decoder_benchmark.decoder_benchmark` |
+| prepare/run/resume the \(h_Z\) matrix | `python -m src.hz.hz_benchmark` |
+| audit artifact compatibility | `tools/artifact_audit.py` |

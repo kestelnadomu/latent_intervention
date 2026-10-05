@@ -125,7 +125,7 @@ def render(root, plan, evaluations, status):
         "`fits/<case>/{search,final}/<trial-or-seed>/training.json` holds every epoch and best-epoch decision; "
         "`evaluation/<case>/seed-*.json` holds all metrics, identity/nonidentity subsets and no-edit references. "
         "`published.json` points to predeclared deployment-seed checkpoints under "
-        "`models/talent/<case>/benchmarks/<run>/selected/`. Load these with `src.hz_training.load_model`. "
+        "`models/talent/<case>/benchmarks/<run>/selected/`. Load these with `src.hz.hz_training.load_model`. "
         "Selected weights plus all completed reports/histories are Git-trackable; trial/nondeployment weights, logs and live progress remain local.",
         "",
     ]

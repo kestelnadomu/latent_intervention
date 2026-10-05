@@ -6,10 +6,10 @@ The original semantic variants freeze $f$, $g$, and $h_S$, then train $h_Z$ so t
 paths from $z$ to counterfactual states agree: $h_S\circ g = g\circ h_Z$. The flow variants
 below instead use factual likelihood, teacher distillation, or this semantic objective explicitly.
 Existing models live in `src/latent_intervention.py`, flow models in
-`src/flow_intervention.py`, and their pipeline adapter in `src/flow_workflow.py`.
-The separate oracle-supervised reference lives in `src/oracle_regression.py`
-and `src/oracle_workflow.py`; its privileged training targets are isolated by
-`src/oracle_targets.py` and prepared by `src/oracle_encoding.py`.
+`src/hz/flow_intervention.py`, and their pipeline adapter in `src/hz/flow_workflow.py`.
+The separate oracle-supervised reference lives in `src/hz/oracle_regression.py`
+and `src/hz/oracle_workflow.py`; its privileged training targets are isolated by
+`src/hz/oracle_targets.py` and prepared by `src/hz/oracle_encoding.py`.
 Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 
 **Notation.**
@@ -402,7 +402,7 @@ The five existing transformer variants retain their established one-output pipel
 A and B use one seeded draw, while 0, C, and D use their deterministic `forward` result. Their
 report continues to contain semantic consistency and latent-shift metrics.
 
-For the three flow variants, `src/flow_workflow.py` uses only official-test IDs and draws a
+For the three flow variants, `src/hz/flow_workflow.py` uses only official-test IDs and draws a
 seeded sample set. Held-out encoded $Z'$ is never exposed during training. The flow report
 includes:
 

@@ -11,10 +11,11 @@ import pytest
 import torch
 import torch.nn.functional as F
 
-from src import oracle_encoding, oracle_targets, oracle_workflow, pipeline
+from src import pipeline
+from src.hz import oracle_encoding, oracle_targets, oracle_workflow
 from src.artifact_io import save_torch, sha256_file, write_json
 from src.config import load_config
-from src.oracle_regression import ORACLE_VARIANT
+from src.hz.oracle_regression import ORACLE_VARIANT
 from src.pair_encoding import encode_pairs, load_latent_artifact
 from src.schema import load_schema
 from src.semantic_decoder import make_semantic_decoder
