@@ -5,7 +5,9 @@ The canonical Standard Fairness Model of Plecko & Bareinboim (X protected
 attribute, Z confounder, W mediators, Y outcome), instantiated for CV screening
 and extended by a measurement model for the latent confounder. This is the
 single place the numbers live; the schema (names and cardinalities) is data in
-``exp/sim/config.yaml`` and read via ``src.schema.load_schema``.
+``exp/sim_talent/config.yaml`` and read via ``src.schema.load_schema``. The generic
+engine and pipeline stages live in ``exp/sim/``; ``exp.sim_talent.talent_sfm`` remains an
+alias of this module, because the hash-guarded config points there.
 
 Nodes:
 - roots X (country of origin, 4 regions ordinal by simulated access gap) and
@@ -34,6 +36,7 @@ from exp.sim.symbolic import SymbolicIntervention
 from src.schema import ColumnSpec, load_schema
 
 ROOT_NODES = ("X", "T")
+CONFIG_PATH = Path(__file__).parent / "config.yaml"
 
 # eps_i ~ Normal(mu_i, sigma_i) per non-root node, added inside the linear mechanism.
 NOISE_PARAMS: dict[str, tuple[float, float]] = {
@@ -82,7 +85,7 @@ _NOISE: dict[str, NoiseSampler] = {
 def _as_config(sim_config: dict[str, Any] | str | Path | None) -> dict[str, Any]:
     if isinstance(sim_config, dict):
         return sim_config
-    from exp.sim.helpers import CONFIG_PATH, load_sim_config
+    from exp.sim.helpers import load_sim_config
 
     return load_sim_config(sim_config if sim_config is not None else CONFIG_PATH)
 

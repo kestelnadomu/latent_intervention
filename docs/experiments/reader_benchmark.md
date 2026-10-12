@@ -23,7 +23,7 @@ The autoregressive head of v1 is dropped: it showed no benefit in `g-all-encoder
 
 Does $\psi$ read the **meaning** of a level, or the **wording** the codebook gave it? All
 texts come from one LLM, one prompt and one codebook
-([exp/sim/codebook.yaml](../../exp/sim/codebook.yaml)). Each $\texttt D$ and $\texttt U$ level
+([exp/sim_talent/codebook.yaml](../../exp/sim_talent/codebook.yaml)). Each $\texttt D$ and $\texttt U$ level
 is one fixed phrase, and each evidence level of the talent proxies and of $\texttt M$ is one
 fixed guidance sentence, which the LLM paraphrases closely. A reader can score well by
 looking up that wording. Templates and personas are drawn independently of the state, so

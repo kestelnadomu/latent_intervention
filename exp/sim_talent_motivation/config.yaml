@@ -1,9 +1,9 @@
 # Data generation pipeline configuration — talent-motivation experiment, a sibling of the
-# talent SFM (exp/sim/config.yaml). Run any stage with:
-#   uv run python -m exp.sim.run <stage> --config exp/sim/config_talent_motivation.yaml
+# talent SFM (exp/sim_talent/config.yaml). Run any stage with:
+#   uv run python -m exp.sim.run <stage> --config exp/sim_talent_motivation/config.yaml
 # The talent SFM extended by motivation M: a root with the marginal of T, a parent of Y
 # with the weight of T, verbalized through evidence guidance and outside the structured
-# state S (exp/sim/talent_motivation.py; design: docs/experiments/data_sim.md).
+# state S (exp/sim_talent_motivation/talent_motivation.py; design: docs/experiments/data_sim.md).
 # Text generation keeps the talent SFM's recipe; template and persona pools are shared.
 # Sampling params (model, max_tokens, temperature) live in the prompt YAMLs' metadata;
 # for Azure, `model` there must be the deployment name.
@@ -14,21 +14,39 @@ llm:
   base_url: https://soda-counterfactual-cv.services.ai.azure.com/openai/v1
   api_key_env: AZURE_OPENAI_API_KEY   # env var holding the key (never put the key itself here)
 
-# 2,800 training pool + 200 dev + 1,000 evaluation units (docs/experiments/data_sim.md).
+# 2,800 training pool + 200 dev + 1,000 evaluation units (see design.partition).
 n: 4000
 seed: 1
 
-# Persisted unit split. The test units are the evaluation units (1,000 of 4,000).
-# The training pool / dev partition and the label roles L and P are not yet materialized.
+# Persisted unit split. The test units are the evaluation units (1,000 of 4,000); the
+# remaining 3,000 are split into dev and the training pool by design.partition below.
 split:
   seed: 42
   test_fraction: 0.25
 
-# do() intervention for the counterfactual dataset, e.g. do(X=3): country of
-# origin in region 3 (see the codebook). The current pipeline renders one fixed
-# query; per-unit interventions and path-specific targets are not yet implemented.
+# Reference do() query for src/ (load_intervention). Texts follow the per-unit design below,
+# not this fixed query.
 intervention:
   X: 3
+
+# Per-unit counterfactual design (exp/sim/design.py; docs/experiments/data_sim.md). The
+# simulate stage writes interventions.csv, sim_data_counterfactual_states.csv (every unit
+# under every do(X=k) and target) and partition.csv; sim_data_counterfactual.csv holds the
+# state under each unit's drawn intervention and the text target.
+design:
+  interventions: per_unit   # one non-identity do(X = k) per unit, drawn per unit
+  node: X
+  targets:                  # name -> blocked edges {child: [parent, ...]}; {} = total effect
+    total: {}
+    ps_D: {D: [X]}          # X -> D blocked: D keeps its factual value
+    ps_DU: {D: [X], U: [X]} # both mediator paths blocked: direct effect only
+  text_target: total        # the one counterfactual rendered as text (evaluation units)
+  partition:
+    dev: 200                # of the 3,000 non-evaluation units; the other 2,800 form the pool
+    L: 1000                 # reader labels (nested: a budget m is L_rank <= m)
+    P: 1000                 # evaluation-reader labels, disjoint from L
+    folds: 5                # cross-fitting folds over the pool
+    floor_fraction: 0.2     # evaluation units that get a noise-floor text
 
 # Structured-state schema S: column -> cardinality (values 0..card-1), listed in
 # topological / autoregressive-decoding order. Read by src/schema.py; the generic
@@ -51,8 +69,8 @@ schema:
 # Dotted "module:attribute" pointers to the concrete experiment objects. src/
 # imports these via src/schema.py::load_object rather than importing exp/sim/ directly.
 objects:
-  scm: exp.sim.talent_motivation:build_scm
-  symbolic_kernel: exp.sim.talent_motivation:build_symbolic_kernel
+  scm: exp.sim_talent_motivation.talent_motivation:build_scm
+  symbolic_kernel: exp.sim_talent_motivation.talent_motivation:build_symbolic_kernel
 
 paths:
   sim_dir: data/sim_talent_motivation                    # sim_data_{factual,counterfactual,epsilon}.csv
@@ -60,14 +78,14 @@ paths:
   personas: data/text/personas.csv                       # shared persona pool (tracked: costs API credits)
   texts: data/text_talent_motivation/cv_factual.csv      # generated CV statements (tracked: costs API credits)
   texts_counterfactual: data/text_talent_motivation/cv_counterfactual.csv  # test IDs only; see generation below
-  pair_index: data/sim_talent_motivation/pair_index.csv  # id, split, is_identity
+  pair_index: data/sim_talent_motivation/pair_index.csv  # id, split (test = evaluation units), is_identity
   render_plan: data/sim_talent_motivation/render_plan.csv  # shared template/persona/quantiles
 
-codebook: exp/sim/codebook_talent_motivation.yaml
+codebook: exp/sim_talent_motivation/codebook.yaml
 prompts:
   templates: exp/sim/prompts/template_generation.yaml
   personas: exp/sim/prompts/persona_generation.yaml
-  cv: exp/sim/prompts/cv_generation_talent_motivation.yaml
+  cv: exp/sim_talent_motivation/prompts/cv_generation.yaml
 pools:
   seed_statements: exp/sim/seed_statements.yaml
   job_titles: exp/sim/job_titles.yaml

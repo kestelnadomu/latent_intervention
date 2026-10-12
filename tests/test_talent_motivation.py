@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from exp.sim import talent_motivation as tm
-from exp.sim import talent_sfm
+from exp.sim_talent_motivation import talent_motivation as tm
+from exp.sim_talent import talent_sfm
 from exp.sim.helpers import load_sim_config
 from exp.sim.render import load_render_spec
 from src.schema import load_intervention

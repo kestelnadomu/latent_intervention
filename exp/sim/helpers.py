@@ -22,7 +22,7 @@ import yaml
 from exp.sim.generate_text import DEFAULT_BASE_URL, GenerationResult
 from exp.sim.pairing import checked_ids
 
-CONFIG_PATH = Path(__file__).parent / "config.yaml"
+CONFIG_PATH = Path(__file__).parent.parent / "sim_talent" / "config.yaml"  # default experiment
 
 
 def load_sim_config(path: str | Path = CONFIG_PATH) -> dict[str, Any]:
@@ -152,7 +152,7 @@ def resolve_llm(config: Mapping[str, Any]) -> tuple[str, str | None]:
     llm = config.get("llm", {})
     base_url = llm.get("base_url", DEFAULT_BASE_URL)
     if "<resource-name>" in base_url:
-        raise ValueError("Fill in llm.base_url in exp/sim/config.yaml")
+        raise ValueError("Fill in llm.base_url in the sim config")
     env_name = llm.get("api_key_env")
     api_key = os.getenv(env_name) if env_name else None
     if env_name and not api_key:

@@ -1,7 +1,7 @@
 """
 The talent-motivation experiment: the talent SFM extended by motivation M.
 
-A sibling of ``exp/sim/talent_sfm.py`` (design: ``docs/experiments/data_sim.md``).
+A sibling of ``exp/sim_talent/talent_sfm.py`` (design: ``docs/experiments/data_sim.md``).
 Everything of the talent SFM is reused unchanged; the extension adds
 
 - M (motivation, 3 tiers): a root with the same marginal as T, independent of
@@ -13,7 +13,7 @@ Everything of the talent SFM is reused unchanged; the extension adds
 
 S = {X, T, D, U} as before, so the symbolic kernel is the talent SFM's. M is a
 non-descendant of X: do(X) leaves it unchanged. The builders default to
-``exp/sim/config_talent_motivation.yaml``.
+``exp/sim_talent_motivation/config.yaml``.
 """
 
 from __future__ import annotations
@@ -24,12 +24,12 @@ from typing import Any
 import numpy as np
 import pandas as pd
 
-from exp.sim import talent_sfm as base
+from exp.sim_talent import talent_sfm as base
 from exp.sim.scm import SCM, LinearMechanism, NoiseSampler, linear_mechanism
 from exp.sim.symbolic import SymbolicIntervention
 from src.schema import ColumnSpec, load_schema
 
-CONFIG_PATH = Path(__file__).parent / "config_talent_motivation.yaml"
+CONFIG_PATH = Path(__file__).parent / "config.yaml"
 
 T_PRIOR: tuple[float, ...] = (0.25, 0.50, 0.25)
 M_PRIOR: tuple[float, ...] = (0.25, 0.50, 0.25)

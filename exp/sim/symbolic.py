@@ -5,7 +5,7 @@ rounded-and-clipped SCM.
 Generic over the SCM: the graph, mechanism weights and noise parameters are all
 passed in (use :meth:`SymbolicIntervention.from_scm` with a known SCM, or
 :meth:`SymbolicIntervention.fit` to estimate the noise from a factual sample).
-The concrete kernels are assembled in ``exp/sim/talent_sfm.py`` (active) and
+The concrete kernels are assembled in ``exp/sim_talent/talent_sfm.py`` (active) and
 ``exp/sim/cv_screening.py`` (archived).
 
 For each non-root node ``s_i = clip_round(m_i(pa_i) + eps_i)`` with
@@ -264,7 +264,7 @@ class SymbolicIntervention:
 
 if __name__ == "__main__":
     # Smoke test: closed-form h_S vs. empirical transition counts from the SCM and
-    # kernel of the active experiment, resolved through exp/sim/config.yaml.
+    # kernel of the active experiment, resolved through exp/sim_talent/config.yaml.
     from src.schema import load_config_object, load_intervention
 
     h_s = load_config_object("symbolic_kernel")()

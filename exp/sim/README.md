@@ -1,13 +1,29 @@
-# `exp/sim` — the talent SFM experiment
+# `exp/sim` — data generation, and the talent SFM experiment
 
-Everything experiment-specific lives here: the concrete SCM, the codebook and
-prompts that verbalize a structured state into a CV, and the stage runner that
-produces the paired data. The generic framework in `src/` reaches this folder
-only through a sim config (default `exp/sim/config.yaml`, selected by
+**Layout.** `exp/sim/` holds the generic engine and stages (SCM engine, symbolic
+kernel, per-unit design, rendering, the stage runner), the shared pool prompts and
+inputs, and the archived CV-screening experiment. Each active experiment has its own
+directory with `config.yaml`, `codebook.yaml`, `prompts/cv_generation.yaml` and its
+SCM module:
+
+- `exp/sim_talent/` — the talent SFM described below (`talent_sfm.py`);
+- `exp/sim_talent_motivation/` — its sibling with motivation M (`talent_motivation.py`;
+  design in `docs/experiments/data_sim.md`).
+
+`exp/sim/config.yaml`, `exp/sim/codebook.yaml` and `exp/sim/prompts/cv_generation.yaml`
+are symlinks into `exp/sim_talent/`, and `exp/sim/talent_sfm.py` aliases
+`exp.sim_talent.talent_sfm`: trained decoders hash the talent config's bytes, and
+`src/config.yaml` and frozen benchmark protocols still use the old paths. Do not edit
+the talent config, codebook or prompt bytes, and do not remove these shims.
+
+The experiment directories hold everything experiment-specific: the concrete SCM, the
+codebook and prompts that verbalize a structured state into a CV. The stage runner
+here produces the paired data for whichever config it is given. The generic framework in `src/` reaches this folder
+only through a sim config (default `exp/sim_talent/config.yaml`, selected by
 `sim_config` in `src/config.yaml`, read via `src/schema.py`), never by importing
 it directly.
 
-**Active experiment — talent SFM** (`config.yaml`, `talent_sfm.py`). This is the
+**Active experiment — talent SFM** (`exp/sim_talent/`: `config.yaml`, `talent_sfm.py`). This is the
 standard fairness model of Plecko & Bareinboim:
 
 - **X**: country of origin. 4 regions, and a concrete country is sampled per region.
@@ -77,7 +93,7 @@ weights from `talent_sfm.py`; X and T are independent roots.
 
 The text generation keeps the LIBERTy App. D.3 recipe and adds an evidence block:
 the proxies are written "show, don't tell", at their exact level.
-Run `uv run python -m exp.sim.talent_sfm` for the proxy correlations, Cronbach's
+Run `uv run python -m exp.sim_talent.talent_sfm` for the proxy correlations, Cronbach's
 α and the Bayes-optimal T accuracy, which is the ceiling for the decoder's T head.
 
 **Archived experiment — LIBERTy CV screening** (`config_cv_screening.yaml`,
@@ -119,7 +135,7 @@ Smoke tests that need no API key or generated data:
 
 ```bash
 uv run python -m exp.sim.scm            # generic SCM engine on random tensors
-uv run python -m exp.sim.talent_sfm     # the active talent SFM: proxy validity, do(X) invariance
+uv run python -m exp.sim_talent.talent_sfm     # the active talent SFM: proxy validity, do(X) invariance
 uv run python -m exp.sim.cv_screening   # the archived Table 9 equations
 uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the active config
 ```
@@ -142,7 +158,8 @@ uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the acti
 | File | Role |
 | --- | --- |
 | `helpers.py` | Config loading, digests, and the resumable billed-output core (see below). No experiment knowledge. |
-| `paired_data.py` | Structured S/S': `simulation_record`, `load_pair_inputs`, and the fixed-do()-query check. |
+| `paired_data.py` | Structured S/S': `simulation_record`, `load_pair_inputs`, and the query check (fixed do(), or per-unit with a `design:` block). |
+| `design.py` | Opt-in per-unit design: drawn interventions, counterfactual states for every do() value and target (blocked edges), and the pool/dev/evaluation partition with label roles. |
 | `render.py` | `RenderContext` — codebook spec, pools, render plan and S/S' bundled — plus `validate_grounding`. |
 | `pairing.py` | Pure functions: the seeded split, the render plan, bin materialization, `PairingError`. |
 | `generate_text.py` | LLM plumbing. `generate_text_result` against any OpenAI-compatible endpoint. |
@@ -151,10 +168,11 @@ uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the acti
 
 | File | Role |
 | --- | --- |
-| `config.yaml` | Talent SFM: n, seed, split, the do() query, the schema (incl. `auxiliary`), object pointers, paths, prompts, billing caps. |
-| `talent_sfm.py` | **The only place the talent-SFM numbers live.** `build_scm()`, `build_symbolic_kernel()`, `talent_posterior_accuracy()`. |
-| `codebook.yaml` | Talent SFM level semantics: phrases, labels, `hidden` (T), `bins` (P), `choices` (countries per region), `evidence` (L, H, A guidance), `forbidden_terms`. |
-| `prompts/cv_generation.yaml` | Talent SFM CV prompt: Box D.14 plus the show-don't-tell evidence block. |
+| `exp/sim_talent/config.yaml` | Talent SFM: n, seed, split, the do() query, the schema (incl. `auxiliary`), object pointers, paths, prompts, billing caps. |
+| `exp/sim_talent/talent_sfm.py` | **The only place the talent-SFM numbers live.** `build_scm()`, `build_symbolic_kernel()`, `talent_posterior_accuracy()`. |
+| `exp/sim_talent/codebook.yaml` | Talent SFM level semantics: phrases, labels, `hidden` (T), `bins` (P), `choices` (countries per region), `evidence` (L, H, A guidance), `forbidden_terms`. |
+| `exp/sim_talent/prompts/cv_generation.yaml` | Talent SFM CV prompt: Box D.14 plus the show-don't-tell evidence block. |
+| `exp/sim_talent_motivation/` | The motivation sibling: the same four files, `talent_motivation.py` instead of `talent_sfm.py`, plus an opt-in `design:` block (per-unit interventions, path-specific targets, partitions; `design.py`). |
 | `prompts/{template,persona}_generation.yaml` | LIBERTy boxes D.12 and D.13; the pools they produced are shared by both experiments. |
 | `*_cv_screening.*`, `cv_screening.py` | The archived LIBERTy Table 9 experiment (config, codebook, CV prompt, SCM). |
 | `seed_statements.yaml`, `job_titles.yaml` | Curated inputs the two pool stages draw from. |

@@ -37,7 +37,7 @@ Requires Python ≥ 3.12 and [uv](https://docs.astral.sh/uv/). Run all commands 
 uv sync --extra dev --frozen
 ```
 
-All billed stages—templates, personas, and CVs—use the single endpoint in `exp/sim/config.yaml`. The default configuration targets Azure OpenAI and reads `AZURE_OPENAI_API_KEY`. The key must grant access to that endpoint and to the deployment named `gpt-5.4` in `exp/sim/prompts/*.yaml`.
+All billed stages—templates, personas, and CVs—use the single endpoint in `exp/sim_talent/config.yaml`. The default configuration targets Azure OpenAI and reads `AZURE_OPENAI_API_KEY`. The key must grant access to that endpoint and to the deployment named `gpt-5.4` in `exp/sim/prompts/*.yaml`.
 
 Provide the key locally, never in a committed file. Either create an ignored root `.env` file:
 
@@ -69,7 +69,7 @@ The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test 
 
 By default (`generation.include_train_counterfactual_texts: true` or omitted), `X'` is created for every unit; setting the option to `false` creates `X'` for test units only. Selected identity units copy `X'=X` without another LLM call, and identity test units use `Z'=Z` without another encoding. Nonidentity worlds reuse the same template, persona, and bin quantiles. Training `X'` is available for future work but does not enter the current training losses; `Z'` and counterfactual recovery evaluation remain test-only.
 
-Data generation is configured by `exp/sim/config.yaml`. Every billed stage appends successful rows and resumes from missing IDs. Each active billed output CSV must remain together and be committed with its `*.generation.json` information file; the dated template CSV is only a legacy archive. `generation.limit` controls how many IDs are sent to the API per invocation; free identity copies do not count. Each selected ID permits at most `generation.max_attempts` API calls. Set `generation.limit: 1` for a small billed smoke test of at most three calls, inspect the result, then restore `null` and rerun the same stage to completion before advancing.
+Data generation is configured by `exp/sim_talent/config.yaml`. Every billed stage appends successful rows and resumes from missing IDs. Each active billed output CSV must remain together and be committed with its `*.generation.json` information file; the dated template CSV is only a legacy archive. `generation.limit` controls how many IDs are sent to the API per invocation; free identity copies do not count. Each selected ID permits at most `generation.max_attempts` API calls. Set `generation.limit: 1` for a small billed smoke test of at most three calls, inspect the result, then restore `null` and rerun the same stage to completion before advancing.
 
 For a complete fresh run, execute these stages in order:
 
@@ -281,7 +281,7 @@ train a no-op. Other schema-valid flow interventions are accepted for explorator
 inference with a warning, but are outside training support. Downstream stages read
 the existing 5,000-unit dataset and its official split; they do not regenerate the
 data, re-encode CVs, or retrain the frozen semantic decoder. The small generation
-example in `exp/sim/config.yaml` is not the size of those stored artifacts.
+example in `exp/sim_talent/config.yaml` is not the size of those stored artifacts.
 
 The separate `langvae_ft` baseline uses native LangVAE fine-tuned on CV passages,
 with unchanged architecture. See the [checkpoint and downstream handoff](docs/experiments/langvae_ft_handoff.md)

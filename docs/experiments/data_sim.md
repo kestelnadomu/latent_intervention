@@ -1,10 +1,10 @@
 # Data simulation: DAG, counterfactuals and texts
 
 Status: the base talent SFM is implemented in
-[exp/sim/talent_sfm.py](../../exp/sim/talent_sfm.py) and
-[exp/sim/config.yaml](../../exp/sim/config.yaml). The $\texttt M$ extension is implemented as
-the sibling experiment [exp/sim/talent_motivation.py](../../exp/sim/talent_motivation.py) with
-[config_talent_motivation.yaml](../../exp/sim/config_talent_motivation.yaml). Per-unit
+[exp/sim_talent/talent_sfm.py](../../exp/sim_talent/talent_sfm.py) and
+[exp/sim_talent/config.yaml](../../exp/sim_talent/config.yaml). The $\texttt M$ extension is implemented as
+the sibling experiment [exp/sim_talent_motivation/talent_motivation.py](../../exp/sim_talent_motivation/talent_motivation.py) with
+[config.yaml](../../exp/sim_talent_motivation/config.yaml). Per-unit
 interventions, path-specific targets, partitions, noise-floor texts and verbalization sets are
 still design ([Required changes](#required-changes)). This doc is the data reference for the
 [wrong-symbolic-model experiment](wrong_symbolic_model.md) and its
@@ -189,7 +189,7 @@ Orange = billed LLM calls.
   generator `default_rng([seed, namespace, id])`. Resumed runs therefore reproduce the same
   pairing. A counterfactual text reuses the factual row's plan, so $x$ and $x'$ differ only in
   the state.
-- **Codebook channels** ([exp/sim/codebook.yaml](../../exp/sim/codebook.yaml)):
+- **Codebook channels** ([exp/sim_talent/codebook.yaml](../../exp/sim_talent/codebook.yaml)):
 
   | Channel | Used for | Example |
   |---|---|---|
@@ -200,7 +200,7 @@ Orange = billed LLM calls.
   | `hidden` | decoded, never verbalized | $\texttt T$ |
   | `forbidden_terms` | evaluative trait words the text must not use | "talented", "gifted", … |
 
-- **Prompt** ([exp/sim/prompts/cv_generation.yaml](../../exp/sim/prompts/cv_generation.yaml)):
+- **Prompt** ([exp/sim_talent/prompts/cv_generation.yaml](../../exp/sim_talent/prompts/cv_generation.yaml)):
   280–320 words in 2–3 paragraphs, one episode per evidence item, strength kept exactly at the
   given level, no reference of the episodes to the country. Temperature 0.
 - **Length budget.** At most 500 GPT-2 tokens (`text_length:`), the tokenizer LangVAE uses.
@@ -377,12 +377,12 @@ becomes a headline claim.
 
 ## Required changes
 
-1. **Sibling config — done.** `exp/sim/config_talent_motivation.yaml` with its own codebook
-   (`codebook_talent_motivation.yaml`), prompt (`prompts/cv_generation_talent_motivation.yaml`,
+1. **Sibling config — done.** `exp/sim_talent_motivation/config.yaml` with its own codebook
+   (`exp/sim_talent_motivation/codebook.yaml`), prompt (`prompts/cv_generation.yaml` there,
    a copy of the talent prompt) and data directories (`data/{sim,text}_talent_motivation/`);
-   template and persona pools are shared. `exp/sim/config.yaml` is untouched (its byte hash
+   template and persona pools are shared. `exp/sim_talent/config.yaml` is untouched (its byte hash
    guards every trained $\psi$ checkpoint).
-2. **SCM — done.** `exp/sim/talent_motivation.py` extends `talent_sfm.py` without changing it:
+2. **SCM — done.** `exp/sim_talent_motivation/talent_motivation.py` extends `talent_sfm.py` without changing it:
    $\texttt M$ as a root (last in `schema.auxiliary`, so $\texttt X$–$\texttt A$ equal the
    talent SFM's per seed), $\beta_{YM} = 0.40$, $\mu_Y = -0.40$, `outcome_posterior` and the
    BOP information sets with $\texttt M$. Tests: `tests/test_talent_motivation.py`.
@@ -391,11 +391,21 @@ becomes a headline claim.
    Still open: the verbalization-set dimension (`columns` for $\texttt D$/$\texttt U$,
    `evidence` for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$), recorded in the render
    plan.
-4. **Counterfactual data.** Counterfactual states keyed by (id, $\delta$, target) for all units;
-   counterfactual texts only for evaluation IDs, one per ID with the drawn $\delta$ recorded. `SCM.simulate` needs a blocked-edge option and must stay free of node
-   names. Pair validation assumes one fixed query today.
-5. **Partitions and label roles.** Training pool with nested $L$ and disjoint $P$, dev,
-   evaluation units; cross-fitted pseudo-labels; the label flag for $\rho$ per condition.
+4. **Counterfactual data — simulation done.** `SCM.generate` evaluates the model for stored
+   noise with blocked edges (generic, no node names). The opt-in `design:` block
+   ([exp/sim/design.py](../../exp/sim/design.py)) makes `simulate` write
+   `interventions.csv` (one non-identity $do(\texttt X = k)$ per unit),
+   `sim_data_counterfactual_states.csv` (every unit × $k$ × target) and a
+   `sim_data_counterfactual.csv` with each unit's drawn total-target state. `load_pair_inputs`
+   checks the per-unit query and re-derives the design files, and the counterfactual-text digest
+   includes the drawn interventions. Configs without `design:` are unchanged. Tests:
+   `tests/test_design.py`. Still open: the counterfactual-text stage generating only for the
+   evaluation units under their drawn $k$ (it already generates for test units only, since
+   `include_train_counterfactual_texts: false`; the remaining check is a pilot).
+5. **Partitions and label roles — partition done.** `partition.csv` (`id, partition, L_rank,
+   in_P, fold, floor`): pool 2,800 / dev 200 / evaluation 1,000, nested $L$ ranks, disjoint $P$,
+   5 cross-fitting folds (every $L$ prefix spans all folds), 200 floor units. Still open: the
+   cross-fitted pseudo-labels and the label flag for $\rho$ (pipeline side, `src/`).
 6. **Noise-floor texts.** The within-region swap as an evaluation-only stage on a seeded subset,
    using the next `choices` option at the same level.
 7. **Re-rendering** given IDs with another verbalization set and an otherwise identical render

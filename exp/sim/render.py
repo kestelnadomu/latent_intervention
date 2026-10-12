@@ -17,6 +17,7 @@ from typing import Any
 import pandas as pd
 
 from exp.sim.generate_text import DEFAULT_BASE_URL, GenerationResult, load_codebook_spec
+from exp.sim.design import design_paths, load_design
 from exp.sim.helpers import (
     include_train_counterfactual_texts,
     input_digest,
@@ -137,6 +138,9 @@ def generation_digest(config: Mapping[str, Any], counterfactual: bool) -> str:
         files["pair_index"] = Path(config["paths"]["pair_index"])
         files["factual_text"] = Path(config["paths"]["texts"])
         settings["intervention"] = config["intervention"]
+        if load_design(config) is not None:  # per-unit queries: the drawn values decide X'
+            files["interventions"] = design_paths(config)["interventions"]
+            settings["design"] = config["design"]
     return input_digest(settings, files)
 
 

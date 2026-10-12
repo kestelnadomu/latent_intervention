@@ -45,7 +45,7 @@ class GenerationResult:
 # Any OpenAI-compatible chat endpoint works, e.g. Mistral (default) or Azure
 # OpenAI's v1 endpoint (https://<resource>.openai.azure.com/openai/v1/ with an
 # AZURE_OPENAI_API_KEY and the deployment name as `model`). The endpoint is
-# configured in exp/sim/config.yaml (`llm:` section).
+# configured in exp/sim_talent/config.yaml (`llm:` section).
 DEFAULT_MODEL = "mistral-medium-latest"
 DEFAULT_BASE_URL = "https://api.mistral.ai/v1"
 API_KEY_ENV_VARS = ("AZURE_OPENAI_API_KEY", "OPENAI_API_KEY", "MISTRAL_API_KEY")
@@ -83,7 +83,7 @@ def load_codebook(yaml_path: str | Path) -> dict[str, dict[int, str]]:
     Load a codebook mapping tabular columns to {category index: phrase}.
 
     Accepts both a flat {column: {0: "phrase", ...}, ...} YAML and the nested
-    layout of exp/sim/codebook.yaml (columns under a top-level `columns:` key);
+    layout of exp/sim_talent/codebook.yaml (columns under a top-level `columns:` key);
     returns only the column-to-phrase mapping either way.
     """
     data = _load_yaml(yaml_path)
@@ -96,7 +96,7 @@ def load_codebook(yaml_path: str | Path) -> dict[str, dict[int, str]]:
 
 def load_codebook_spec(yaml_path: str | Path) -> dict[str, Any]:
     """
-    Load the full codebook spec (exp/sim/codebook.yaml).
+    Load the full codebook spec (exp/sim_talent/codebook.yaml).
 
     Returns {"columns": {col: {index: phrase}}, "labels": {col: display name},
     "bins": {col: {index: (lo, hi)}}, "choices": {col: {index: [option, ...]}},
