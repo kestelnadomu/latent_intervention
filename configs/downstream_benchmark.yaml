@@ -1,0 +1,25 @@
+# Downstream-predictor benchmark: python -m exp.benchmarks.downstream.run
+# Trains one MLP p: Z -> Y per latent dimension on the frozen h_Z split (fit; early
+# stopping on validation) and compares p(Z), p(Z') and p(h_Z(Z)) on the official
+# test split by confusion matrices, overall and per factual group_column level.
+# Consumes a finished h_Z benchmark run read-only; no h_Z model is (re)trained.
+hz_run_id: hz-gemma-v1
+group_column: X     # sensitive attribute; groups always use its factual value
+seed: 42
+# Bayes-optimal reference: callable(frame, sim_config) -> {information set: P(Y | set)}.
+# Applied to the test units' factual states (vs Y) and counterfactual states (vs Y').
+outcome_reference: exp.sim.talent_sfm:outcome_bayes_predictions
+predictor:
+  hidden_dim: 128
+  n_hidden: 2
+  dropout: 0.1
+  lr: 0.001
+  batch_size: 64
+  max_epochs: 300
+  patience: 20
+# Draw settings for p(h_Z(Z)); null = inherit evaluation_samples / evaluation_seed /
+# evaluation_batch_size from the h_Z run's plan. Stochastic families average p's
+# class probabilities over the draws before taking the argmax.
+evaluation_samples: null
+evaluation_seed: null
+evaluation_batch_size: null

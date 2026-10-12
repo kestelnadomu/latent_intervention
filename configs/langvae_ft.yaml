@@ -1,0 +1,23 @@
+# Same pretrained LangVAE, same 128-D latent and 32-token decoder heads.
+# The root pipeline defaults and stock/Nomic artifacts are never changed.
+base_config: src/config.yaml
+tag: langvae_ft
+seed: 42
+validation_fraction: 0.1
+device: cuda:0
+epochs: 24
+minimum_epochs: 8
+patience: 4
+warmup_epochs: 1
+batch_size: 16
+accumulation_steps: 1
+eval_batch_size: 16
+feature_batch_size: 64
+encoder_lr: 0.00001
+decoder_lr: 0.0001
+clip_grad_norm: 1.0
+validation_samples: 1   # fixed-seed MC negative ELBO, beta=1, for selection
+audit_cvs: 64           # one seeded passage per held-out CV; diagnostic only
+max_training_hours: 36  # generous budget; checked at epoch boundaries, reload extra
+cpu_threads: 4
+log_every: 50

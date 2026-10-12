@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 import torch
 
-import src.encoder as encoder_module
+import src.encoder.nomic as nomic_module
 from src.pair_encoding import encode_pairs, load_latent_artifact, sha256_file
 
 
@@ -171,7 +171,7 @@ def test_encode_pairs_records_active_nomic_encoder(tmp_path: Path, monkeypatch) 
         }
     )
 
-    monkeypatch.setattr(encoder_module, "make_encoder", lambda config: StubEncoder())
+    monkeypatch.setattr(nomic_module, "make_nomic_encoder", lambda config: StubEncoder())
     encode_pairs(config)
     info = json.loads((tmp_path / "z_pairs.info.json").read_text(encoding="utf-8"))
 
@@ -182,6 +182,55 @@ def test_encode_pairs_records_active_nomic_encoder(tmp_path: Path, monkeypatch) 
     assert info["task"] == "classification"
     assert info["task_prefix"] == "classification: "
     assert load_latent_artifact(config).encoder_info["encoder_variant"] == "nomic"
+
+
+@pytest.mark.parametrize("dimension", [64, 128, 256, 512, 768])
+def test_nomic_dimension_metadata_and_loading(tmp_path, dimension) -> None:
+    config = _config(tmp_path)
+    config["encoder"].update(variant="nomic", nomic_latent_dim=dimension)
+
+    class DimensionEncoder:
+        latent_dim = dimension
+
+        def __init__(self, config):
+            pass
+
+        def encode(self, texts, **kwargs):
+            return torch.ones(len(texts), dimension) / dimension**0.5
+
+    encode_pairs(config, encoder_factory=DimensionEncoder)
+    artifact = load_latent_artifact(config)
+    assert artifact.z.shape == (4, dimension)
+    info = json.loads((tmp_path / "z_pairs.info.json").read_text())
+    assert info["latent_dimension"] == dimension
+    assert info["normalization"] == f"layer_norm+truncate_{dimension}+l2"
+    config["encoder"]["nomic_latent_dim"] = 64 if dimension != 64 else 128
+    with pytest.raises(ValueError, match="active encoder config"):
+        load_latent_artifact(config)
+
+
+def test_encoding_refuses_to_overwrite_existing_artifacts(tmp_path) -> None:
+    config = _config(tmp_path)
+    encode_pairs(config, encoder_factory=StubEncoder)
+    before = sha256_file(config["paths"]["latents"])
+    with pytest.raises(FileExistsError, match="refusing to overwrite"):
+        encode_pairs(config, encoder_factory=StubEncoder)
+    assert sha256_file(config["paths"]["latents"]) == before
+
+
+def test_encoding_rejects_inputs_changed_during_inference(tmp_path) -> None:
+    config = _config(tmp_path)
+
+    class MutatingEncoder(StubEncoder):
+        def encode(self, texts, deterministic, batch_size):
+            frame = pd.read_csv(config["paths"]["texts"])
+            frame.loc[0, "text"] = "changed during encoding"
+            frame.to_csv(config["paths"]["texts"], index=False)
+            return super().encode(texts, deterministic, batch_size)
+
+    with pytest.raises(ValueError, match="source inputs changed"):
+        encode_pairs(config, encoder_factory=MutatingEncoder)
+    assert not Path(config["paths"]["latents"]).exists()
 
 
 def test_load_latent_artifact_rejects_artifact_hash_mismatch(tmp_path: Path) -> None:

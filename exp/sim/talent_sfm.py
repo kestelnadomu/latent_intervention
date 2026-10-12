@@ -125,6 +125,29 @@ def _category_likelihood(m: np.ndarray, mu: float, sigma: float, k: int) -> np.n
     return np.diff(0.5 * (1.0 + _erf(z)), axis=1)
 
 
+def _talent_log_posterior(
+    frame: pd.DataFrame,
+    given: list[str],
+    cardinalities: dict[str, int],
+    t_prior: tuple[float, ...],
+) -> np.ndarray:
+    """Unnormalized log P(T = t | given), shape (len(frame), len(t_prior))."""
+    coeffs = {**MECHANISM_COEFFS, **_AUXILIARY_COEFFS}
+    noise = {**NOISE_PARAMS, **_AUXILIARY_NOISE}
+    rows = np.arange(len(frame))
+    log_post = np.tile(np.log(np.asarray(t_prior)), (len(frame), 1))
+    for t in range(len(t_prior)):
+        for name in given:
+            if name not in coeffs:
+                continue  # X is independent of T: no likelihood term
+            m = np.zeros(len(frame))
+            for parent, coef in coeffs[name].items():
+                m += coef * (t if parent == "T" else frame[parent].to_numpy(float))
+            lik = _category_likelihood(m, *noise[name], cardinalities[name])
+            log_post[:, t] += np.log(lik[rows, frame[name].to_numpy()] + 1e-300)
+    return log_post
+
+
 def talent_posterior_accuracy(
     factual: pd.DataFrame,
     given: list[str],
@@ -137,20 +160,64 @@ def talent_posterior_accuracy(
     Uses the exact posterior P(T | given) under the known mechanisms: the ceiling
     any reader of the text, and hence the decoder's T head, can reach.
     """
-    coeffs = {**MECHANISM_COEFFS, **_AUXILIARY_COEFFS}
-    noise = {**NOISE_PARAMS, **_AUXILIARY_NOISE}
-    rows = np.arange(len(factual))
-    log_post = np.tile(np.log(np.asarray(t_prior)), (len(factual), 1))
-    for t in range(len(t_prior)):
-        for name in given:
-            if name not in coeffs:
-                continue  # X is independent of T: no likelihood term
-            m = np.zeros(len(factual))
-            for parent, coef in coeffs[name].items():
-                m += coef * (t if parent == "T" else factual[parent].to_numpy(float))
-            lik = _category_likelihood(m, *noise[name], cardinalities[name])
-            log_post[:, t] += np.log(lik[rows, factual[name].to_numpy()] + 1e-300)
+    log_post = _talent_log_posterior(factual, given, cardinalities, t_prior)
     return float((log_post.argmax(axis=1) == factual["T"].to_numpy()).mean())
+
+
+def outcome_posterior(
+    frame: pd.DataFrame,
+    given: list[str],
+    cardinalities: dict[str, int],
+    t_prior: tuple[float, ...] = (0.25, 0.50, 0.25),
+) -> np.ndarray:
+    """
+    Exact P(Y | given), shape (len(frame), card(Y)), under the known mechanisms.
+
+    ``given`` must contain Y's observed parents X, D, U. If it contains T, T is
+    conditioned on; otherwise T is marginalized over P(T | given), so the proxies
+    (and D, U) carry whatever talent information they have.
+    """
+    parents = set(_OUTCOME_COEFFS["Y"])
+    if not parents - {"T"} <= set(given):
+        raise ValueError(f"outcome posterior needs {sorted(parents - {'T'})} in given")
+    mu, sigma = _OUTCOME_NOISE["Y"]
+
+    def given_talent(t: np.ndarray | float) -> np.ndarray:
+        m = np.zeros(len(frame))
+        for parent, coef in _OUTCOME_COEFFS["Y"].items():
+            m += coef * (t if parent == "T" else frame[parent].to_numpy(float))
+        return _category_likelihood(m, mu, sigma, cardinalities["Y"])
+
+    if "T" in given:
+        return given_talent(frame["T"].to_numpy(float))
+    log_post = _talent_log_posterior(frame, given, cardinalities, t_prior)
+    post = np.exp(log_post - log_post.max(axis=1, keepdims=True))
+    post /= post.sum(axis=1, keepdims=True)
+    return sum(post[:, [t]] * given_talent(float(t)) for t in range(len(t_prior)))
+
+
+# Information sets for the Bayes-optimal outcome reference (benchmark ceilings).
+OUTCOME_INFORMATION_SETS: dict[str, list[str]] = {
+    "all parents (T known)": ["X", "T", "D", "U"],
+    "text content (X, D, U, proxies)": ["X", "D", "U", "P", "L", "H", "A"],
+    "no talent information (X, D, U)": ["X", "D", "U"],
+}
+
+
+def outcome_bayes_predictions(
+    frame: pd.DataFrame,
+    sim_config: dict[str, Any] | str | Path | None = None,
+) -> dict[str, np.ndarray]:
+    """P(Y | information set) per row of ``frame`` for each OUTCOME_INFORMATION_SETS entry.
+
+    Applied to factual states it is the Bayes-optimal predictor of Y; applied to
+    counterfactual states, of Y'.
+    """
+    cardinalities = {c.name: c.n_categories for c in _nodes(sim_config)}
+    return {
+        name: outcome_posterior(frame, given, cardinalities)
+        for name, given in OUTCOME_INFORMATION_SETS.items()
+    }
 
 
 if __name__ == "__main__":
@@ -182,6 +249,9 @@ if __name__ == "__main__":
     acc_all = talent_posterior_accuracy(factual, ["X", "D", "U", *proxies], card)
     print(f"Bayes-optimal T accuracy | proxies: {acc_proxies:.3f}; | X, D, U, proxies: {acc_all:.3f}"
           f" (prior-only: {factual['T'].value_counts(normalize=True).max():.3f})")
+    y = factual[outcome.name].to_numpy()
+    for name, probs in outcome_bayes_predictions(factual, config).items():
+        print(f"Bayes-optimal Y accuracy | {name}: {(probs.argmax(1) == y).mean():.3f}")
 
     invariant = ["T", *proxies]
     assert factual[invariant].equals(counterfactual[invariant]), "T and proxies must be invariant under do(X)"

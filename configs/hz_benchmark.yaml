@@ -1,0 +1,64 @@
+# Preparation only: python -m exp.benchmarks.latent_intervention.run --prepare
+# No encoding, fitting, or evaluation happens until --run is explicitly used.
+dimensions: [256, 768]
+variants: [baseline, pre_additive, noise_token, dist, particles, state_flow, distilled_flow, direct_semantic_flow, oracle_regression]
+validation_fraction: 0.2
+split_seed: 42
+search_seed: 42
+final_seeds: [42, 43, 44, 45, 46]
+deployment_seed: 42
+learning_rates: [0.00003, 0.0001, 0.0003, 0.001]
+width_multipliers: [1, 2]
+# Standard transformer widths: d_model 128/256 (FFN 256/512).
+# Absolute width overrides by family, latent dimension, and search-size tier.
+# All nine families are within 7% of the same-tier baseline's trainable count.
+# Keep eight flow blocks, both dist components, and two oracle hidden layers.
+# Existing losses/regularizers and the other seven models' sizes are unchanged.
+# Quoted mapping keys keep the saved JSON plan exactly round-trippable.
+model_widths:
+  state_flow:
+    "256": {"1": {hidden_dim: 48}, "2": {hidden_dim: 136}}
+    "768": {"1": {hidden_dim: 32}, "2": {hidden_dim: 88}}
+  distilled_flow:
+    "256": {"1": {hidden_dim: 40}, "2": {hidden_dim: 136}}
+    "768": {"1": {hidden_dim: 24}, "2": {hidden_dim: 80}}
+  direct_semantic_flow:
+    "256": {"1": {hidden_dim: 40}, "2": {hidden_dim: 136}}
+    "768": {"1": {hidden_dim: 24}, "2": {hidden_dim: 80}}
+  dist:
+    "256": {"1": {d_model: 88, dim_feedforward: 176}, "2": {d_model: 176, dim_feedforward: 352}}
+    "768": {"1": {d_model: 88, dim_feedforward: 176}, "2": {d_model: 176, dim_feedforward: 352}}
+  oracle_regression:
+    "256": {"1": {hidden_dim: 256}, "2": {hidden_dim: 592}}
+    "768": {"1": {hidden_dim: 192}, "2": {hidden_dim: 464}}
+# RMS magnitude of the full pre-additive noise vector, selected by the pilot.
+# The model receives per-coordinate noise_std = noise_rms / sqrt(latent_dim).
+pre_additive_noise_rms: {"256": 0.5, "768": 0.5}
+# Fit/validation-only pilot; its models and reports use a separate run ID.
+pilot:
+  run_id: hz-gemma-pilot-v1
+  seed: 42
+  learning_rate: 0.0003
+  width_multiplier: 1
+  max_epochs: 50
+  dist_pretrain_epochs: 10
+  patience: 15
+  noise_rms: [0.1, 0.25, 0.5, 1.0]
+  compare_legacy_noise_std_one: true
+# Other architecture/objective settings: src/config.yaml.
+max_epochs: 500
+dist_pretrain_epochs: 100  # followed by at most 400 joint epochs; no premature stop in pretraining
+batch_size: 64
+patience: 30
+min_delta: 0.0000001
+scheduler_patience: 10
+scheduler_factor: 0.5
+min_lr: 0.000001
+grad_clip: 5.0
+validation_samples: 16
+evaluation_samples: 64
+evaluation_batch_size: 32
+evaluation_seed: 20260930
+workers: 4
+threads_per_worker: 1
+# CPU-only worker processes avoid accidental GPU sharing / oversubscription here.

@@ -9,15 +9,34 @@ seed: 42
 sim_config: exp/sim/config.yaml
 
 encoder:
-  variant: langvae       # langvae | nomic (docs/architecture/text_encoder.md); changing it needs re-encode + retrain
+  variant: langvae       # langvae | nomic | qwen3 | embeddinggemma; re-encode + retrain after changes
   model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
   model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
+  langvae_encoder_model_name: bert-base-cased
+  langvae_encoder_model_revision: cd5ef92a9fb2f889e972770a36d4ed042daf221e
+  langvae_decoder_model_name: gpt2
+  langvae_decoder_model_revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
   local_checkpoint: null   # path to a fine-tuned LangVAE folder (overrides model_name)
-  tag: null                # names {encoder} in paths; default: variant, or langvae_ft with local_checkpoint
+  tag: null                # default: langvae[_ft], or <embedding variant>_<dimension>
   nomic_model_name: nomic-ai/nomic-embed-text-v1.5
   nomic_model_revision: e5cf08aadaa33385f5990def41f7a23405aec398
   nomic_code_revision: 7710840340a098cfb869c4f65e87cf2b1b70caca
   nomic_task: classification
+  nomic_latent_dim: 128     # 64 | 128 | 256 | 512 | 768; does not change LangVAE
+  qwen3_model_name: Qwen/Qwen3-Embedding-0.6B  # the only Qwen model in this experiment
+  qwen3_model_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  qwen3_latent_dim: 128     # 32 | 64 | 128 | 256 | 512 | 768 | 1024
+  qwen3_instruction: ""    # plain CV/document baseline; no retrieval prompt or chat template
+  qwen3_max_len: 1024      # fail on longer input, never silently truncate
+  qwen3_batch_size: 8
+  qwen3_cache_dir: .cache/huggingface/hub
+  embeddinggemma_model_name: google/embeddinggemma-300m
+  embeddinggemma_model_revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
+  embeddinggemma_latent_dim: 128  # 128 | 256 | 512 | 768
+  embeddinggemma_prompt: "task: classification | query: "
+  embeddinggemma_max_len: 2048    # fail on longer input, never silently truncate
+  embeddinggemma_batch_size: 8
+  embeddinggemma_cache_dir: .cache/huggingface/hub
   max_len: 512
   batch_size: 16
   device: cpu
@@ -28,14 +47,34 @@ semantic_decoder:
   #   independent    -> SemanticDecoder (one head per column, g(s|z) = prod_i g(s_i|z))
   #   autoregressive -> SemanticAutoRegDecoder (g(s|z) = prod_i g(s_i|s_<i,z), exact joint)
   variant: independent
+  tag: null                # optional artifact name; defaults to variant
   hidden_dim: 256
   n_hidden: 2
   dropout: 0.1
-  epochs: 50
+  epochs: 500            # ceiling; restore the best validation checkpoint
   batch_size: 64
   lr: 1.0e-3
-  calibration_split: 0.2  # held out from official training IDs; official test stays untouched
+  weight_decay: 0.0
+  split_seed: 42         # fixed independently of model initialization seeds
+  calibration_split: 0.2  # validation within official train; also reports descriptive ECE
   calibration_bins: 10
+  early_stopping:
+    patience: 30
+    min_delta: 1.0e-4    # absolute full joint NLL improvement, nats/example
+  scheduler:
+    patience: 10        # ReduceLROnPlateau; reduce after >10 bad epochs
+    factor: 0.5
+    min_lr: 1.0e-6
+  search:
+    trials: 20          # same candidates and search seed for each encoder/decoder
+    seed: 20260922
+    initialization_seed: 42
+    final_seeds: [42, 43, 44, 45, 46]
+    deployment_seed: 42 # predeclared; do not select the luckiest seed
+    lr: [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3]
+    weight_decay: [0.0, 1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]
+    dropout: [0.0, 0.1, 0.2, 0.3]
+    hidden_dim: [128, 256, 512]
   autoregressive:
     embed_dim: 16          # decoded-prefix embedding size
 
@@ -43,13 +82,20 @@ latent_intervention:
   # variant: which h_Z parameterisation (docs/architecture/latent_intervention.md)
   #   baseline   -> LatentIntervention  (Plan 0: deterministic z' = z + T(z,delta), per-column CE)
   #   pre_additive -> LatentInterventionPreAdditive (Plan A: z' = z + Delta(z+eps,delta), MC forward-KL)
-  #   dist    -> LatentInterventionDist (Plan B: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
+  #   noise_token -> LatentInterventionNoiseToken (Plan B: z' = z + Delta(z,eps,delta), eps its own token, MC forward-KL + entropy)
+  #   dist    -> LatentInterventionDist (Plan C: sum_s' w_theta(s'|z,delta) dirac_{z+Delta_phi(z,s')})
+  #   particles -> LatentInterventionParticles (Plan D: sum_j w_j(z,delta) dirac_{z+Delta_j(z,delta)}, exact KL + entropy)
+  #   state_flow -> p(Z|S) flow; abduct under factual S and render under target S'
+  #   distilled_flow -> standalone q(Z'|Z,delta) distilled from state_flow
+  #   direct_semantic_flow -> standalone q(Z'|Z,delta) trained through frozen g and h_S
+  #   oracle_regression -> residual MLP fitted to privileged training-pair Z', not g/h_S
   variant: baseline
+  tag: null                # optional artifact name; defaults to variant
   d_model: 128
   nhead: 4
   dim_feedforward: 256
   dropout: 0.1
-  epochs: 50             # baseline / pre_additive
+  epochs: 50             # baseline / pre_additive / noise_token / particles
   batch_size: 64
   lr: 1.0e-4
   sparsity_weight: 1.0    # alpha: L1 penalty on z' - z
@@ -57,6 +103,10 @@ latent_intervention:
   pre_additive:
     noise_std: 1.0        # sigma of the pre-additive noise eps ~ N(0, sigma^2 I)
     n_samples: 8          # M: Monte-Carlo samples for the g . h_Z composition
+  noise_token:
+    noise_dim: 4          # k: size of the outsourced noise eps ~ N(0, I_k)
+    n_samples: 8          # M: Monte-Carlo samples for the g . h_Z composition
+    entropy_weight: 0.1   # weight of E_eps[H(g(. | z'_eps))]; forces the mixture to come from eps
   dist:
     embed_dim: 16         # w_theta decoded-prefix embedding size
     top_k: 16             # retained counterfactual states s' in the exact composition
@@ -64,16 +114,47 @@ latent_intervention:
     joint_epochs: 20      # end-to-end forward-KL fine-tune
     realiser_l1: 1.0      # L1 on Delta_phi during pretraining
     realiser_l2: 1.0      # L2 on Delta_phi during pretraining
-
-finetune_vae:   # optional LangVAE fine-tune on generated CVs (src/finetune_vae.py)
-  epochs: 5
-  batch_size: 8
-  lr: 1.0e-4
-  max_beta: 1.0
-  n_cycles: 1
-  target_kl: 2.0
-  val_split: 0.1
-  output_dir: models/langvae_cv
+  particles:
+    n_particles: 16       # d: particles per latent; >= support of (h_S . g)
+    uniform_weights: false  # true = w_j = 1/d (ablation; resolution 1/d)
+    entropy_weight: 0.1   # weight of sum_j w_j H(g(. | z_j))
+  flow:
+    n_blocks: 8
+    hidden_dim: 128
+    condition_dim: 64
+    state_embed_dim: 16
+    scale_floor: 1.0e-6
+    base_std: 0.05
+    epochs: 50
+    batch_size: 64
+    lr: 3.0e-4
+    weight_decay: 1.0e-5
+    grad_clip: 5.0
+    n_samples: 8
+    eval_samples: 1       # lightweight default; raise for distributional flow evaluation
+    no_op_fraction: 0.2
+    support_bank_size: 512
+    direct_semantic:
+      entropy_weight: 0.1
+      proximity_weight: 0.1
+      support_weight: 0.05
+      identity_weight: 1.0
+  oracle_regression:
+    hidden_dim: 512
+    n_hidden: 2
+    dropout: 0.1
+    epochs: 500           # ceiling; restore minimum validation MSE checkpoint
+    batch_size: 64
+    lr: 1.0e-3
+    weight_decay: 1.0e-5
+    validation_split: 0.2 # only within official training IDs
+    split_seed: 42
+    patience: 30
+    min_delta: 1.0e-7     # mean squared error per latent coordinate
+    scheduler_patience: 10
+    scheduler_factor: 0.5
+    min_lr: 1.0e-6
+    grad_clip: 5.0
 
 paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/text, data/latents/z_pairs.pt
   # {encoder} = encoder tag (src/config.py::encoder_tag): artifacts that depend on the latent space
@@ -83,6 +164,14 @@ paths:   # talent SFM experiment; archived CV-screening run used data/sim, data/
   sim_factual: data/sim_talent/sim_data_factual.csv
   sim_counterfactual: data/sim_talent/sim_data_counterfactual.csv
   latents: data/latents/talent/{encoder}/z_pairs.pt
-  decoder_model: models/talent/{encoder}/semantic_decoder.pt
-  manipulator_model: models/talent/{encoder}/latent_intervention.pt
-  eval_report: reports/talent/{encoder}/eval.json
+  oracle_targets: data/latents/talent/{encoder}/oracle_train/z_prime.pt
+  decoder_model: models/talent/{encoder}/g-{decoder}/semantic_decoder.pt
+  decoder_report: reports/talent/{encoder}/g-{decoder}/semantic_decoder.json
+  manipulator_model: models/talent/{encoder}/g-{decoder}/h-{manipulator}/latent_intervention.pt
+  eval_report: reports/talent/{encoder}/g-{decoder}/h-{manipulator}/eval.json
+  oracle_training_report: reports/talent/{encoder}/g-{decoder}/h-{manipulator}/training.json
+  # Flow outputs use the same component tags as transformer outputs. The teacher
+  # is shared only within one encoder/decoder pair, never between latent spaces.
+  flow_manipulator_model: models/talent/{encoder}/g-{decoder}/h-{manipulator}/latent_intervention.pt
+  flow_teacher_model: models/talent/{encoder}/g-{decoder}/h-state_flow/latent_intervention.pt
+  flow_eval_report: reports/talent/{encoder}/g-{decoder}/h-{manipulator}/eval.json
