@@ -1,9 +1,12 @@
 # Data simulation: DAG, counterfactuals and texts
 
-Status: design draft for the extension ($\texttt M$, per-unit interventions, path-specific
-targets, verbalization sets). The base talent SFM is implemented in
+Status: the base talent SFM is implemented in
 [exp/sim/talent_sfm.py](../../exp/sim/talent_sfm.py) and
-[exp/sim/config.yaml](../../exp/sim/config.yaml). This doc is the data reference for the
+[exp/sim/config.yaml](../../exp/sim/config.yaml). The $\texttt M$ extension is implemented as
+the sibling experiment [exp/sim/talent_motivation.py](../../exp/sim/talent_motivation.py) with
+[config_talent_motivation.yaml](../../exp/sim/config_talent_motivation.yaml). Per-unit
+interventions, path-specific targets, partitions, noise-floor texts and verbalization sets are
+still design ([Required changes](#required-changes)). This doc is the data reference for the
 [wrong-symbolic-model experiment](wrong_symbolic_model.md) and its
 [reader](reader_benchmark.md), [operator](operator_benchmark.md) and
 [renderer](renderer_benchmark.md) benchmarks. Notation as in
@@ -374,15 +377,20 @@ becomes a headline claim.
 
 ## Required changes
 
-1. **Sibling config.** The extended setting gets its own sim config, codebook, prompt and data
-   directories, following the `config_cv_screening.yaml` pattern. Editing
-   `exp/sim/config.yaml` changes its byte hash and invalidates every trained $\psi$ checkpoint.
-2. **SCM.** $\texttt M$ as a root and parent of $\texttt Y$ ($\beta_{YM} = 0.40$,
-   $\mu_Y = -0.40$): noise sampler, `_OUTCOME_COEFFS`, `_OUTCOME_NOISE`, auxiliary schema,
-   `outcome_posterior` (BOP with $\texttt M$).
-3. **Codebook and prompt.** $\texttt M$ evidence (3 levels), a verbalization-set dimension
-   (`columns` for $\texttt D$/$\texttt U$, `evidence` for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$),
-   recorded in the render plan.
+1. **Sibling config — done.** `exp/sim/config_talent_motivation.yaml` with its own codebook
+   (`codebook_talent_motivation.yaml`), prompt (`prompts/cv_generation_talent_motivation.yaml`,
+   a copy of the talent prompt) and data directories (`data/{sim,text}_talent_motivation/`);
+   template and persona pools are shared. `exp/sim/config.yaml` is untouched (its byte hash
+   guards every trained $\psi$ checkpoint).
+2. **SCM — done.** `exp/sim/talent_motivation.py` extends `talent_sfm.py` without changing it:
+   $\texttt M$ as a root (last in `schema.auxiliary`, so $\texttt X$–$\texttt A$ equal the
+   talent SFM's per seed), $\beta_{YM} = 0.40$, $\mu_Y = -0.40$, `outcome_posterior` and the
+   BOP information sets with $\texttt M$. Tests: `tests/test_talent_motivation.py`.
+3. **Codebook and prompt.** $\texttt M$ evidence (3 levels, effort and initiative rather than
+   ability) and $\texttt M$-trait words in `forbidden_terms` — **done, wording to review**.
+   Still open: the verbalization-set dimension (`columns` for $\texttt D$/$\texttt U$,
+   `evidence` for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$), recorded in the render
+   plan.
 4. **Counterfactual data.** Counterfactual states keyed by (id, $\delta$, target) for all units;
    counterfactual texts only for evaluation IDs, one per ID with the drawn $\delta$ recorded. `SCM.simulate` needs a blocked-edge option and must stay free of node
    names. Pair validation assumes one fixed query today.
