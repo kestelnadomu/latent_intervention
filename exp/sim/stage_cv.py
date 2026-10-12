@@ -1,8 +1,11 @@
-"""Stages ``generate-texts`` and ``generate-counterfactual-texts``.
+"""Stages ``generate-texts``, ``generate-counterfactual-texts`` and ``generate-floor-texts``.
 
-Both worlds run through one routine: the factual pass renders X for every unit,
+All worlds run through one routine: the factual pass renders X for every unit,
 the counterfactual pass always renders test X' and optionally includes train X'.
-Structured identities are copied from the factual file without an API call.
+Structured identities are copied from the factual file without an API call. The
+floor pass (per-unit designs only) re-renders the factual state of the flagged
+evaluation units with the next option of the ``design.floor_swap`` choices column,
+for the noise floor of latent proximity.
 """
 
 from __future__ import annotations
@@ -23,8 +26,10 @@ from exp.sim.helpers import (
     prepare_generated_csv,
     resolve_llm,
 )
+from exp.sim.design import floor_ids, load_design
 from exp.sim.render import (
     RenderContext,
+    floor_digest,
     generation_digest,
     render_context,
     validate_grounding,
@@ -84,22 +89,40 @@ def _copy_identities(
     return copied
 
 
-def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
+def floor_swap(config: Mapping[str, Any]) -> str:
+    """The choices column swapped for noise-floor texts; fails without a floor design."""
+    spec = load_design(config)
+    if spec is None or spec.floor_swap is None:
+        raise ValueError("noise-floor texts need a design: block with floor_swap")
+    return spec.floor_swap
+
+
+def _generate_cv(config: dict[str, Any], world: str) -> None:
     validate_generation_settings(config)  # before rows are written or calls are billed
+    counterfactual = world == "counterfactual"
+    swap = floor_swap(config) if world == "floor" else None
     ctx = render_context(config)
+    if swap is not None and swap not in ctx.spec["choices"]:
+        raise ValueError(f"design.floor_swap {swap!r} must be a codebook choices column")
     prompt, prompt_templates = _cv_prompt(config)
     maximum = max_generation_attempts(config)
 
     factual_text = _load_factual_text(ctx) if counterfactual else None
-    expected_ids = ctx.counterfactual_text_ids if counterfactual else ctx.all_ids
-    output = ctx.output_path(counterfactual)
+    if world == "floor":
+        expected_ids = floor_ids(config)
+        output = Path(config["paths"]["texts_floor"])
+        digest = floor_digest(config)
+    else:
+        expected_ids = ctx.counterfactual_text_ids if counterfactual else ctx.all_ids
+        output = ctx.output_path(counterfactual)
+        digest = generation_digest(config, counterfactual)
 
     existing = prepare_generated_csv(
         output,
         ctx.schema,
         "id",
         expected_ids,
-        generation_digest(config, counterfactual),
+        digest,
         create=True,
     )
     validate_grounding(
@@ -107,6 +130,7 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
         existing,
         counterfactual=counterfactual,
         factual_text=factual_text,
+        swap=swap,
     )
     done = completed_ids(existing, "id")
     missing = sorted(expected_ids - done)
@@ -121,10 +145,9 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
             base_url, api_key = resolve_llm(config)
             budget = load_token_counter(config)
             reject = length_rejection(*budget) if budget is not None else None
-            world = "counterfactual" if counterfactual else "factual"
             print(f"generating {len(selected)} {world} CVs")
             for position, row_id in enumerate(selected, 1):
-                sample, concrete = ctx.render_inputs(row_id, counterfactual)
+                sample, concrete = ctx.render_inputs(row_id, counterfactual, swap)
                 result = generate_with_attempts(
                     output,
                     row_id,
@@ -153,9 +176,14 @@ def _generate_cv(config: dict[str, Any], *, counterfactual: bool) -> None:
 
 def stage_generate_texts(config: dict[str, Any]) -> None:
     """Generate factual X for every unit."""
-    _generate_cv(config, counterfactual=False)
+    _generate_cv(config, "factual")
 
 
 def stage_generate_counterfactual_texts(config: dict[str, Any]) -> None:
     """Generate configured X' rows, copying structured identities for free."""
-    _generate_cv(config, counterfactual=True)
+    _generate_cv(config, "counterfactual")
+
+
+def stage_generate_floor_texts(config: dict[str, Any]) -> None:
+    """Generate the noise-floor texts: unchanged state, swapped choice option."""
+    _generate_cv(config, "floor")

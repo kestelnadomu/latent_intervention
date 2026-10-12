@@ -10,12 +10,14 @@ texts that use a codebook ``forbidden_terms`` entry, plus texts over the
 from __future__ import annotations
 
 import re
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
+from exp.sim.design import floor_ids, load_design
 from exp.sim.helpers import prepare_generated_csv
-from exp.sim.render import generation_digest, render_context, validate_grounding
+from exp.sim.render import floor_digest, generation_digest, render_context, validate_grounding
 from exp.sim.text_length import load_token_counter, report_text_lengths
 
 
@@ -95,7 +97,42 @@ def stage_validate_pairs(config: dict[str, Any]) -> None:
         report_text_lengths(
             counterfactual_text, *budget, "counterfactual", ctx.counterfactual_by_id
         )
+    n_floor = _validate_floor(config, ctx, factual_text, budget)
+    floor_note = f" and {n_floor} noise-floor texts" if n_floor else ""
     print(
         f"validated {len(all_ids)} factual units and "
-        f"{len(counterfactual_ids)} counterfactual pairs"
+        f"{len(counterfactual_ids)} counterfactual pairs{floor_note}"
     )
+
+
+def _validate_floor(config, ctx, factual_text: pd.DataFrame, budget) -> int:
+    """Coverage and grounding of the noise-floor texts of a per-unit design."""
+    spec = load_design(config)
+    if spec is None or spec.floor_swap is None:
+        return 0
+    expected = floor_ids(config)
+    floor_text = prepare_generated_csv(
+        Path(config["paths"]["texts_floor"]),
+        ctx.schema,
+        "id",
+        expected,
+        floor_digest(config),
+        create=False,
+    )
+    if set(floor_text["id"]) != expected:
+        raise ValueError("noise-floor text coverage does not match the flagged evaluation units")
+    validate_grounding(ctx, floor_text, counterfactual=False, swap=spec.floor_swap)
+    header = ctx.headers[spec.floor_swap]
+    factual_by_id = factual_text.set_index("id")
+    for row in floor_text.to_dict(orient="records"):
+        factual_row = factual_by_id.loc[int(row["id"])]
+        if (int(row["template_id"]), int(row["persona_id"])) != (
+            int(factual_row["template_id"]), int(factual_row["persona_id"])
+        ):
+            raise ValueError(f"noise-floor context differs from the factual one for id={row['id']}")
+        if int(row[header]) == int(factual_row[header]):
+            raise ValueError(f"noise-floor text did not swap {spec.floor_swap} for id={row['id']}")
+    report_forbidden_terms(floor_text, ctx.spec["forbidden_terms"], "noise-floor")
+    if budget is not None:
+        report_text_lengths(floor_text, *budget, "noise-floor", ctx.factual_by_id)
+    return len(expected)

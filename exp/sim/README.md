@@ -118,6 +118,7 @@ uv run python -m exp.sim.run generate-templates            # 50 calls  -> templa
 uv run python -m exp.sim.run generate-personas             # 100 calls -> personas.csv
 uv run python -m exp.sim.run generate-texts                # n calls   -> cv_factual.csv
 uv run python -m exp.sim.run generate-counterfactual-texts # configured train/test coverage -> cv_counterfactual.csv
+uv run python -m exp.sim.run generate-floor-texts --config exp/sim_talent_motivation/config.yaml  # noise floor (per-unit design only)
 uv run python -m exp.sim.run validate-pairs                # checks the whole contract
 ```
 
@@ -149,7 +150,7 @@ uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the acti
 | `run.py` | CLI only: maps a stage name to its module and calls it. Start here. |
 | `stage_simulate.py` | `simulate`. Runs the SCM, builds the seeded split, archives the previous run's artifacts. |
 | `stage_pools.py` | `generate-templates` and `generate-personas`. Two thin wrappers over one billed row loop. |
-| `stage_cv.py` | `generate-texts` and `generate-counterfactual-texts` — one routine parameterized by world. |
+| `stage_cv.py` | `generate-texts`, `generate-counterfactual-texts` and `generate-floor-texts` (noise floor: factual state, the `design.floor_swap` choice moved to the next option) — one routine parameterized by world. |
 | `stage_validate.py` | `validate-pairs`. Coverage plus the cross-world checks that need X and X' side by side. |
 | `stage_reset.py` | `reset-attempts`. Clears spent retry budgets for IDs with no row yet. |
 

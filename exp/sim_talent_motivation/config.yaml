@@ -41,6 +41,7 @@ design:
     ps_D: {D: [X]}          # X -> D blocked: D keeps its factual value
     ps_DU: {D: [X], U: [X]} # both mediator paths blocked: direct effect only
   text_target: total        # the one counterfactual rendered as text (evaluation units)
+  floor_swap: X             # noise-floor texts: same state, the next country of the same region
   partition:
     dev: 200                # of the 3,000 non-evaluation units; the other 2,800 form the pool
     L: 1000                 # reader labels (nested: a budget m is L_rank <= m)
@@ -78,6 +79,7 @@ paths:
   personas: data/text/personas.csv                       # shared persona pool (tracked: costs API credits)
   texts: data/text_talent_motivation/cv_factual.csv      # generated CV statements (tracked: costs API credits)
   texts_counterfactual: data/text_talent_motivation/cv_counterfactual.csv  # test IDs only; see generation below
+  texts_floor: data/text_talent_motivation/cv_floor.csv  # noise-floor texts (partition.csv floor units)
   pair_index: data/sim_talent_motivation/pair_index.csv  # id, split (test = evaluation units), is_identity
   render_plan: data/sim_talent_motivation/render_plan.csv  # shared template/persona/quantiles
 

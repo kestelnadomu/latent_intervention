@@ -406,8 +406,12 @@ becomes a headline claim.
    in_P, fold, floor`): pool 2,800 / dev 200 / evaluation 1,000, nested $L$ ranks, disjoint $P$,
    5 cross-fitting folds (every $L$ prefix spans all folds), 200 floor units. Still open: the
    cross-fitted pseudo-labels and the label flag for $\rho$ (pipeline side, `src/`).
-6. **Noise-floor texts.** The within-region swap as an evaluation-only stage on a seeded subset,
-   using the next `choices` option at the same level.
+6. **Noise-floor texts — done.** Stage `generate-floor-texts` (in `exp/sim/stage_cv.py`,
+   the third world next to factual and counterfactual): for the `floor` units of
+   `partition.csv`, the factual state with `design.floor_swap` (X) rendered as the next
+   `choices` option of the same level, i.e. another country of the same region. Its own CSV
+   (`paths.texts_floor`), journal and digest; `validate-pairs` checks coverage, grounding,
+   the unchanged context and the swap. 200 billed calls, after the factual texts.
 7. **Re-rendering** given IDs with another verbalization set and an otherwise identical render
    plan; resumable like the other billed stages.
 

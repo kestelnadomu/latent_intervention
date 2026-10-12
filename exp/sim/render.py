@@ -144,6 +144,27 @@ def generation_digest(config: Mapping[str, Any], counterfactual: bool) -> str:
     return input_digest(settings, files)
 
 
+def floor_digest(config: Mapping[str, Any]) -> str:
+    """Digest of every input the noise-floor CV file depends on."""
+    sim_dir = Path(config["paths"]["sim_dir"])
+    files = {
+        "states": sim_dir / "sim_data_factual.csv",
+        "render_plan": Path(config["paths"]["render_plan"]),
+        "templates": Path(config["paths"]["templates"]),
+        "personas": Path(config["paths"]["personas"]),
+        "prompt": Path(config["prompts"]["cv"]),
+        "codebook": Path(config["codebook"]),
+        "partition": design_paths(config)["partition"],
+    }
+    settings = {
+        "renderer": RENDERER_VERSION,
+        "world": "floor",
+        "swap": config["design"]["floor_swap"],
+        "endpoint": config.get("llm", {}).get("base_url", DEFAULT_BASE_URL),
+    }
+    return input_digest(settings, files)
+
+
 def _candidate_info(
     state: Mapping[str, Any],
     spec: Mapping[str, Any],
@@ -220,14 +241,23 @@ class RenderContext:
         return Path(self.config["paths"][key])
 
     def render_inputs(
-        self, row_id: int, counterfactual: bool
+        self, row_id: int, counterfactual: bool, swap: str | None = None
     ) -> tuple[dict[str, Any], dict[str, int]]:
-        """Prompt sample and concrete binned values for one unit."""
+        """Prompt sample and concrete binned values for one unit.
+
+        ``swap`` names a choices column whose option is replaced by the next option
+        of the same level (wrapping): the noise-floor rendering of an unchanged state.
+        """
         state = self.states_by_id(counterfactual).loc[row_id]
         plan = self.plan_by_id.loc[row_id]
         template = self.templates.loc[int(plan["template_id"])]
         persona = self.personas.loc[int(plan["persona_id"])]
         concrete = materialize_binned_values(state, self.spec["bins"], plan, self.spec["choices"])
+        if swap is not None:
+            options = self.spec["choices"][swap][int(state[swap])]
+            if len(options) < 2:
+                raise ValueError(f"{swap}={int(state[swap])} has no alternative option to swap to")
+            concrete[swap] = (concrete[swap] + 1) % len(options)
         sample = {
             "cv_template": template["text"],
             "candidate_info": _candidate_info(state, self.spec, concrete),
@@ -296,15 +326,21 @@ def validate_grounding(
     *,
     counterfactual: bool,
     factual_text: pd.DataFrame | None = None,
+    swap: str | None = None,
 ) -> None:
-    """Replay the render plan and check a written CV file matches it row by row."""
+    """Replay the render plan and check a written CV file matches it row by row.
+
+    ``swap`` replays a noise-floor file (factual state, swapped choice option).
+    """
+    if swap is not None and counterfactual:
+        raise ValueError("noise-floor texts render the factual state")
     if output.empty:
         return
     factual_by_id = factual_text.set_index("id") if factual_text is not None else None
     for row in output.to_dict(orient="records"):
         row_id = int(row["id"])
         plan_row = ctx.plan_by_id.loc[row_id]
-        _, concrete = ctx.render_inputs(row_id, counterfactual)
+        _, concrete = ctx.render_inputs(row_id, counterfactual, swap)
         if int(row["template_id"]) != int(plan_row["template_id"]):
             raise ValueError(f"incorrect template for id={row_id}")
         if int(row["persona_id"]) != int(plan_row["persona_id"]):

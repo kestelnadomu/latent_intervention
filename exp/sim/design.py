@@ -14,6 +14,11 @@ With a design, the simulate stage additionally writes
 - ``partition.csv`` (``id, partition, L_rank, in_P, fold, floor``): the training
   pool / dev / evaluation partition and the label roles inside the pool.
 
+The ``floor`` units later get a noise-floor text (stage ``generate-floor-texts``):
+the factual state re-rendered with the next option of the ``floor_swap`` choices
+column (another country of the same region), so the state is unchanged and only
+the surface differs.
+
 ``sim_data_counterfactual.csv`` then holds, per unit, the state under its drawn
 intervention and the text target: the one counterfactual that is rendered as text.
 Design: ``docs/experiments/data_sim.md``.
@@ -47,6 +52,7 @@ class DesignSpec:
     n_P: int
     folds: int
     floor_fraction: float
+    floor_swap: str | None  # choices column re-rendered with its next option for floor texts
 
 
 def load_design(config: Mapping[str, Any]) -> DesignSpec | None:
@@ -77,11 +83,14 @@ def load_design(config: Mapping[str, Any]) -> DesignSpec | None:
         n_P=int(partition["P"]),
         folds=int(partition["folds"]),
         floor_fraction=float(partition["floor_fraction"]),
+        floor_swap=str(raw["floor_swap"]) if raw.get("floor_swap") is not None else None,
     )
     if min(spec.n_dev, spec.n_L, spec.n_P) < 0 or spec.folds < 2:
         raise ValueError("design.partition sizes must be non-negative and folds >= 2")
     if not 0 <= spec.floor_fraction <= 1:
         raise ValueError("design.partition.floor_fraction must lie in [0, 1]")
+    if spec.floor_fraction > 0 and (spec.floor_swap is None or "texts_floor" not in config["paths"]):
+        raise ValueError("noise-floor units need design.floor_swap and paths.texts_floor")
     return spec
 
 
@@ -95,6 +104,12 @@ def design_paths(config: Mapping[str, Any]) -> dict[str, Path]:
         "counterfactual_states": sim_dir / "sim_data_counterfactual_states.csv",
         "partition": sim_dir / "partition.csv",
     }
+
+
+def floor_ids(config: Mapping[str, Any]) -> set[int]:
+    """Evaluation units that get a noise-floor text (``floor`` in ``partition.csv``)."""
+    partition = pd.read_csv(design_paths(config)["partition"])
+    return set(partition.loc[partition["floor"].astype(bool), "id"].astype(int))
 
 
 def noise_from_epsilon(epsilon: pd.DataFrame) -> dict[str, np.ndarray]:

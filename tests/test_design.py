@@ -12,6 +12,7 @@ from exp.sim import paired_data
 from exp.sim.design import build_partition, draw_interventions, load_design
 from exp.sim.helpers import load_sim_config
 from exp.sim.pairing import PairingError
+from exp.sim.render import load_render_spec
 from exp.sim.scm import SCM, linear_mechanism
 from exp.sim.stage_simulate import stage_simulate
 from exp.sim_talent_motivation.talent_motivation import CONFIG_PATH
@@ -161,3 +162,95 @@ def test_existing_talent_simulation_still_validates():
     if not (Path(config["paths"]["sim_dir"]) / "simulation_info.json").exists():
         pytest.skip("talent simulation not present")
     paired_data.load_pair_inputs(config)
+
+
+def _pipeline_config(tmp_path):
+    """The sibling config at n=40 with temporary pools and outputs, ready for fake generation."""
+    from exp.sim import helpers
+
+    config = _small_config(tmp_path)
+    config["n"] = 40
+    config["design"]["partition"].update(dev=4, L=10, P=10, folds=5, floor_fraction=0.5)
+    config["llm"] = {"base_url": "https://example.invalid/v1", "api_key_env": None}
+    config.pop("text_length", None)  # no tokenizer download
+    text_dir = tmp_path / "text"
+    text_dir.mkdir()
+    config["paths"].update(
+        templates=str(text_dir / "templates.csv"),
+        personas=str(text_dir / "personas.csv"),
+        texts=str(text_dir / "cv_factual.csv"),
+        texts_counterfactual=str(text_dir / "cv_counterfactual.csv"),
+        texts_floor=str(text_dir / "cv_floor.csv"),
+        render_plan=str(tmp_path / "sim" / "render_plan.csv"),
+        pair_index=str(tmp_path / "sim" / "pair_index.csv"),
+    )
+    config["generation"].update(n_templates=2, n_personas=2, limit=None)
+    pools = {
+        "templates": pd.DataFrame({"template_id": [1, 2], "seed_id": [1, 2], "text": ["T one", "T two"]}),
+        "personas": pd.DataFrame(
+            {"persona_id": [1, 2], "job_title": ["Engineer", "Analyst"], "text": ["P one", "P two"]}
+        ),
+    }
+    for kind, frame in pools.items():
+        output, schema, id_column, expected, digest = helpers.pool_contract(config, kind)
+        helpers.prepare_generated_csv(output, schema, id_column, expected, digest, create=True)
+        frame.to_csv(output, index=False)
+        helpers.finish_generation(output, expected, expected)
+    return config
+
+
+def test_floor_texts_swap_the_country_within_the_region(tmp_path, monkeypatch):
+    from exp.sim import run, stage_cv
+    from exp.sim.generate_text import GenerationResult
+
+    config = _pipeline_config(tmp_path)
+    calls = []
+
+    def fake_generate(sample, *args, **kwargs):
+        calls.append(sample)
+        return GenerationResult(
+            text=f"CV::{sample['candidate_info']}::{sample['evidence_guidance']}",
+            response_id=f"r{len(calls)}",
+            model="mock-model",
+            finish_reason="stop",
+        )
+
+    monkeypatch.setattr(stage_cv, "generate_text_result", fake_generate)
+    stage_simulate(config)
+    with pytest.raises(FileNotFoundError):
+        run.stage_generate_counterfactual_texts(config)  # factual texts must exist first
+    run.stage_generate_texts(config)
+    run.stage_generate_counterfactual_texts(config)
+    run.stage_generate_floor_texts(config)
+    partition = pd.read_csv(tmp_path / "sim" / "partition.csv")
+    n_eval = int((partition["partition"] == "eval").sum())
+    n_floor = int(partition["floor"].sum())
+    assert n_floor == 5 and len(calls) == 40 + n_eval + n_floor
+    run.stage_generate_floor_texts(config)
+    assert len(calls) == 40 + n_eval + n_floor  # complete resume makes no calls
+
+    factual = pd.read_csv(config["paths"]["texts"]).set_index("id")
+    floor = pd.read_csv(config["paths"]["texts_floor"]).set_index("id")
+    states = pd.read_csv(tmp_path / "sim" / "sim_data_factual.csv").set_index("id")
+    countries = load_render_spec(config)["choices"]["X"]
+    assert set(floor.index) == set(partition.loc[partition["floor"], "id"])
+    for unit_id, row in floor.iterrows():
+        region = int(states.at[unit_id, "X"])
+        before = countries[region][int(factual.at[unit_id, "country_of_origin"])]
+        after = countries[region][int(row["country_of_origin"])]
+        assert before != after and f"Country of origin: {after}" in row["text"]
+        assert row["template_id"] == factual.at[unit_id, "template_id"]
+        assert row["persona_id"] == factual.at[unit_id, "persona_id"]
+        # everything except the country is the factual rendering
+        assert row["text"].replace(after, before) == factual.at[unit_id, "text"]
+    run.stage_validate_pairs(config)
+
+
+def test_floor_stage_requires_a_floor_design(tmp_path):
+    from exp.sim import run
+
+    config = _pipeline_config(tmp_path)
+    config["design"]["floor_swap"] = None
+    config["design"]["partition"]["floor_fraction"] = 0.0
+    with pytest.raises(ValueError, match="floor_swap"):
+        run.stage_generate_floor_texts(config)
