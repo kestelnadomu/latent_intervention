@@ -2,9 +2,11 @@
 
 $$h_Z(\cdot \mid z, \delta): \mathcal Z \to \Delta(\mathcal Z)$$
 
-The original semantic variants freeze $f$, $g$, and $h_S$, then train $h_Z$ so that the two
-paths from $z$ to counterfactual states agree: $h_S\circ g = g\circ h_Z$. The flow variants
-below instead use factual likelihood, teacher distillation, or this semantic objective explicitly.
+$h_Z$ should make the two paths from $z$ to counterfactual states agree: $h_S\circ g = g\circ h_Z$.
+A variant meets this either **by training** (the transformer plans and F3 minimise a KL between
+the two paths) or **by construction** (F1 and C-sym route through $h_S$ and only learn to render
+a given state; no $g\circ h_Z$ loss). F2 distils F1. For the general claim (control through any
+$h_S$), **F1 and Plan C are carried forward**; the others are ablations or references.
 The five transformer plans live in `src/latent_intervention/base/` (one module per plan
 plus `common.py`), the flow models in `src/latent_intervention/flow/` (one module per
 variant), and each family has its own pipeline adapter (`base/workflow.py`,
@@ -28,25 +30,32 @@ Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 | $M$, $k$, $d$, $r$ | Monte Carlo samples, top-$k$ states, particles, noise dimension |
 | $\alpha$, $\beta$, $\lambda$ | L1, L2 and entropy weights |
 | $\overline{\lvert v\rvert}$, $\overline{v^2}$ | mean absolute / mean squared entry of $v$ |
+| $\rho(\cdot\mid z,\mathbf s')$, $\Gamma_\rho$ | renderer of a target state into $\mathcal Z$ (F1, C); $g$'s confusion on its outputs |
 
 ## Overview
 
-| plan | `variant` / class | $h_Z(\cdot\mid z,\delta)$ | $g\circ h_Z$ computed by | weights from | label per component |
-|---|---|---|---|---|---|
-| 0 | `baseline` / `LatentIntervention` | $\mathbb 1_{z+\Delta_\theta(z,\delta)}$ | one $g$ pass | — | — |
-| A | `pre_additive` / `LatentInterventionPreAdditive` | pushforward of $\varepsilon\sim\mathcal N(0,\sigma^2 I_{128})$ through $z+\Delta_\theta(z+\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — |
-| B | `noise_token` / `LatentInterventionNoiseToken` | pushforward of $\varepsilon\sim\mathcal N(0,I_r)$ through $z+\Delta_\theta(z,\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — |
-| C | `dist` / `LatentInterventionDist` | $\sum_{\mathbf s'} w_\theta(\mathbf s'\mid z,\delta)\,\mathbb 1_{z+\Delta_\phi(z,\mathbf s')}$ | exact, $k$ passes | learned $w_\theta$ (distilled from $h_S\circ g$) | state $\mathbf s'$ |
-| D | `particles` / `LatentInterventionParticles` | $\sum_{j=1}^d w_j(z,\delta)\,\mathbb 1_{z+\Delta_{\theta,j}(z,\delta)}$ | exact, $d$ passes | learned $w_j$ (or uniform) | none |
-| F1 | `state_flow` / `StateConditionalFlow` | shared-noise transport through $F_\theta(S,U)$ | exact inverse/forward | observed or inferred $S$, then $h_S$ | target state $S'$ |
-| F2 | `distilled_flow` / `DistilledFlowIntervention` | conditional flow $D_\phi(E;z,\delta)$ | sampled | distilled state-flow teacher | none |
-| F3 | `direct_semantic_flow` / `DirectSemanticFlowIntervention` | conditional flow $D_\psi(E;z,\delta)$ | Monte Carlo | $g$ and $h_S$ during training only | none |
-| O | `oracle_regression` / `OracleRegression` | point mass at $z+r_\theta(z)$ for fixed $\delta$ | evaluation only | ordinary paired regression | observed training $Z'$ |
+| plan | `variant` / class | $h_Z(\cdot\mid z,\delta)$ | $g\circ h_Z$ computed by | weights from | label per component | role |
+|---|---|---|---|---|---|---|
+| 0 | `baseline` / `LatentIntervention` | $\mathbb 1_{z+\Delta_\theta(z,\delta)}$ | one $g$ pass | — | — | ablation |
+| A | `pre_additive` / `LatentInterventionPreAdditive` | pushforward of $\varepsilon\sim\mathcal N(0,\sigma^2 I_{128})$ through $z+\Delta_\theta(z+\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — | ablation |
+| B | `noise_token` / `LatentInterventionNoiseToken` | pushforward of $\varepsilon\sim\mathcal N(0,I_r)$ through $z+\Delta_\theta(z,\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — | ablation |
+| C | `dist` / `LatentInterventionDist` | $\sum_{\mathbf s'} w_\theta(\mathbf s'\mid z,\delta)\,\mathbb 1_{z+\Delta_\phi(z,\mathbf s')}$ | exact, $k$ passes | learned $w_\theta$ (distilled from $h_S\circ g$) | state $\mathbf s'$ | **carried forward** (as C-sym) |
+| D | `particles` / `LatentInterventionParticles` | $\sum_{j=1}^d w_j(z,\delta)\,\mathbb 1_{z+\Delta_{\theta,j}(z,\delta)}$ | exact, $d$ passes | learned $w_j$ (or uniform) | none | ablation |
+| F1 | `state_flow` / `StateConditionalFlow` | shared-noise transport through $F_\theta(S,U)$ | not trained; by construction | observed or inferred $S$, then $h_S$ | target state $S'$ | **carried forward** |
+| F2 | `distilled_flow` / `DistilledFlowIntervention` | conditional flow $D_\phi(E;z,\delta)$ | sampled | distilled state-flow teacher | none | ablation (amortised F1) |
+| F3 | `direct_semantic_flow` / `DirectSemanticFlowIntervention` | conditional flow $D_\psi(E;z,\delta)$ | Monte Carlo | $g$ and $h_S$ during training only | none | ablation |
+| O | `oracle_regression` / `OracleRegression` | point mass at $z+r_\theta(z)$ for fixed $\delta$ | evaluation only | ordinary paired regression | observed training $Z'$ | reference |
 
 The plans run from least to most structure in $h_Z$. A and B use continuous noise. C and D are
 finite mixtures: C indexes its components by symbolic states, D by unlabelled slots. Taking the
 weights of C from $h_S\circ g$ instead of learning them gives the most symbolic end
 (C-sym, see Plan C).
+
+F1 and C-sym are the two state-indexed designs: both take the counterfactual state distribution
+from $h_S\circ g$ and only learn how to put a state into $z$. They differ in how a state is
+rendered: F1 by a likelihood-trained flow with shared noise $u$, C by a realiser trained to make
+$g$ read the state. Because neither learns $\delta$, $h_S$ can be swapped at inference (see
+[Consistency by construction](#consistency-by-construction-f1-c-sym)).
 
 ## Oracle-supervised reference
 
@@ -92,6 +101,17 @@ is an exact numerical identity. Factual likelihood identifies the conditional de
 their cross-state noise alignment; the first implementation adds no proximity or semantic loss,
 so shared-$u$ alignment remains an explicit modelling assumption.
 
+* **No consistency loss.** Neither $g$ nor $h_S$ appears in training
+  (`train_state_conditional_flow`: NLL only). $h_S\circ g = g\circ h_Z$ holds by construction,
+  up to $g$'s confusion on rendered latents (see
+  [Consistency by construction](#consistency-by-construction-f1-c-sym)) and the point-estimate
+  gap below.
+* **Source state is a point estimate.** Without observed $\mathbf s$, inference abducts under
+  $\hat{\mathbf s}=\arg\max g(\cdot\mid z)$ (`decoder.predict`, greedy for the autoregressive
+  $g$). $g$'s uncertainty, mostly about $\texttt T$, is dropped before $h_S$ is applied.
+  *Planned:* sample $\hat{\mathbf s}\sim g(\cdot\mid z)$ per draw, so that the rendered states
+  follow $h_S\circ g$ exactly.
+
 ### F2: distilled direct flow
 
 The state flow generates several pseudo-targets for every factual unit by sampling $s'$ from
@@ -110,8 +130,36 @@ identity, and factual-neighbour support terms. Probabilities are averaged before
 There is no $z'$ likelihood term because no target latent density is observed. Consequently F3
 guarantees at most semantic agreement under $g$, not recovery of a unique causal latent.
 
-All three flows train only on the configured intervention plus the empty identity action. The API
-accepts other schema-valid interventions but warns that they are outside training support.
+F2 and F3 train only on the configured intervention plus the empty identity action. The API
+accepts other schema-valid interventions but warns that they are outside training support. F1
+records the same support and warns the same way, although its training never sees $\delta$: for
+F1 the warning is conservative, the real requirement is that every target state $\mathbf s'$ was
+seen in training.
+
+## Consistency by construction (F1, C-sym)
+
+F1 and C-sym factor through the symbolic path:
+$h_Z(\cdot\mid z,\delta) = \sum_{\mathbf s'} (h_S\circ g)(\mathbf s'\mid z,\delta)\;
+\rho(\cdot\mid z,\mathbf s')$, where $\rho$ renders a state into $z$ (F1: $F_\theta(u;\mathbf s')$;
+C: $z+\Delta_\phi(z,\mathbf s')$). Then
+
+$$g\circ h_Z = \Gamma_\rho\,(h_S\circ g),\qquad \Gamma_\rho(\tilde{\mathbf s}\mid\mathbf s') =
+\mathbb E_{z'\sim\rho(\cdot\mid z,\mathbf s')}\big[g(\tilde{\mathbf s}\mid z')\big].$$
+
+* **The square holds iff $\Gamma_\rho = I$**, i.e. $g$ reads back every rendered state exactly.
+* **For an honest renderer $\Gamma_\rho\neq I$.** If $\rho$ samples the true $p(z\mid\mathbf s')$ (F1's
+  goal), $\Gamma_\rho$ is $g$'s confusion matrix on real data. For $\texttt T$ it cannot be the identity:
+  `talent_posterior_accuracy()` bounds it below 1. Real counterfactual latents $f(x')$ fail the
+  strict square for the same reason.
+* **So the strict square is not the right target.** Pushing $\Gamma_\rho$ to $I$ means placing $z'$
+  where real latents do not go, which is the adversarial-edit risk below. C's realiser is trained
+  towards exactly that ($g$ reads $\mathbf s'$); F1 is not.
+* **Achievable target:** $g\circ h_Z \approx g\circ(\text{true counterfactual map})$, i.e. compare
+  against $g(f(x'))$ on paired data, not against $h_S\circ g$.
+* **Swapping $h_S$.** $\rho$ never sees $\delta$ or $h_S$, so any other $h_S$ (another do(), a
+  path-specific kernel, a rule, an erasure) can be used at inference without retraining, as long
+  as its target states are in the training support of $\rho$. This holds for F1 and C-sym, not for
+  C-distilled, whose $w_\theta$ is fitted to one $h_S$.
 
 ## Shared objective for the semantic transformer plans
 
@@ -330,6 +378,11 @@ $$h_Z(\cdot\mid z,\delta) = \sum_{\mathbf s'\in\text{top-}k} w(\mathbf s'\mid z,
   ambiguous strata. Measure it before fixing $k$.
 * **Bottleneck.** $h_Z$ can only produce counterfactuals expressible in $\mathcal S$. Plans A, B
   and D give up less, but their extra freedom is unsupervised.
+* **The realiser's target is not reachable honestly.** It is trained so that
+  $g(\cdot\mid z^*_{\mathbf s'})\approx\mathbb 1_{\mathbf s'}$, i.e. $\Gamma_\rho = I$, which real
+  latents do not satisfy for $\texttt T$ (see
+  [Consistency by construction](#consistency-by-construction-f1-c-sym)). Against F1, which renders
+  by likelihood, this is C's main weakness; check it with paired-$Z'$ recovery.
 * Cost: $k$ passes of $g$, comparable to Monte Carlo with $M=k$. The gain is in the pretraining.
 * Structurally close to GPT's $G\to K\to Q$, with $w_\theta$ in $K_S$'s role. $Z'$ never enters
   a loss.
@@ -418,6 +471,10 @@ For F1 the report separates observed-$S$/sampled-$S'$, explicit oracle-target $S
 decoder-inferred-$S$ regimes. Semantic evaluation deliberately reuses the configured $g$; it is
 therefore not an independent probe. Paired-$Z'$ recovery and support diagnostics are the primary
 checks against decoder-specific solutions.
+
+*Planned:* report the semantic KL also against $g(\cdot\mid f(x'))$ on paired data, not only
+against $h_S\circ g$. Only the former is attainable by an honest $h_Z$ (see
+[Consistency by construction](#consistency-by-construction-f1-c-sym)).
 
 ## Shared risk: adversarial edits against a frozen probe
 
