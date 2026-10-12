@@ -142,8 +142,10 @@ These replace the earlier commuting-square constraint $\psi\circ\omega_Z = \omeg
 
 ### Evaluation
 
-* **Fidelity:** $\psi\circ\omega_Z$ against $\psi(\cdot\mid\varphi(x'))$ on paired data (not
-  against $\omega_S\circ\psi$); support distance to real latents of state $\mathbf s'$.
+* **Fidelity:** $\psi\circ\omega_Z$ against $\Gamma\,(\omega_S\circ\psi)$, with $\Gamma$
+  estimated on *factual* latents of each state (R1), not against $\omega_S\circ\psi$ alone. This
+  needs no counterfactual text. The reader used here is independent of the one in the
+  pipeline. Support distance to real latents of state $\mathbf s'$.
 * **Preservation and recovery:** identity at $\mathbf s'=\mathbf s$; energy score and distance to
   paired $\varphi(x')$.
 * **Operator exchange:** several $\omega_S$ with one trained $\rho$ (below).

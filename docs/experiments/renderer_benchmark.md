@@ -2,8 +2,9 @@
 
 Status: design draft, not implemented. One of three component benchmarks of the
 [wrong-symbolic-model experiment](wrong_symbolic_model.md) (reader: [reader_benchmark.md](reader_benchmark.md),
-operator: [operator_benchmark.md](operator_benchmark.md)). The notation, the conditions, the
-targets and the metrics E1–E6 are defined in wrong_symbolic_model.md.
+operator: [operator_benchmark.md](operator_benchmark.md)). The notation, the conditions
+and the metrics E1–E6 are defined in wrong_symbolic_model.md, the data and targets in
+[data_sim.md](data_sim.md).
 
 ## Question
 
@@ -31,18 +32,20 @@ flowchart LR
 
 ## What is commanded
 
-| Commanded $\mathbf s'$ | Paired truth | Tests |
+| Commanded $\mathbf s'$ | Text-based truth | Tests |
 |---|---|---|
-| **True counterfactual state** (total target), full state space | $\varphi(x'_{tot})$ | rendering error proper: E1, E2, E3, E5 |
-| **True path-specific state** ($\texttt D$ held), full state space | $\varphi(x'_{ps})$ | blocking works when the mediator is in the state (the O4 side of H2) |
-| **True counterfactual on $\mathcal S_k$** with $\rho$ fitted on $\mathcal S_k$ (S2–S5) | $\varphi(x'_{tot})$ and $\varphi(x'_{ps})$ | **H2: omission is not blocking**. Does the omitted mediator move with $\texttt X$ (towards $x'_{tot}$) or stay (towards $x'_{ps}$)? |
-| **Identity**, $\mathbf s'=\mathbf s$ | $z$ | exact preservation ($z'=z$ for F1) |
+| **True counterfactual state** (total target), full state space | $\varphi(x')$ | rendering error proper: E2, E3 at state level for every $\delta$; E1, E5 on the one text per unit |
+| **True path-specific state** ($\texttt D$ held), full state space | none | blocking works when the mediator is in the state (the O4 side of H2): E2, E3 against the simulated path-specific state |
+| **True counterfactual on $\mathcal S_k$** with $\rho$ fitted on $\mathcal S_k$ (S2–S5) | $\varphi(x')$ for E1, E5 | **H2: omission is not blocking**. Does the omitted mediator move with $\texttt X$ (towards its total-target value) or stay (its path-specific value)? E3, against both simulated values |
+| **Identity**, $\mathbf s'=\mathbf s$ | none | exact preservation ($z'=z$ for F1) |
 | **Wrong states**: the outputs of O-condition operators, e.g. $\texttt M$ shifted (S6's $\rho$) | none | **"renders what it is told"**: fidelity to the commanded state, i.e. $\psi_{eval}(z')$ vs. $\mathbf s'$ (the $\rho$ part of H4) |
 | **Rare or unseen states**, grouped by their training frequency | none | fidelity vs. state frequency: where the support requirement (R3) bites |
 
-The first three rows have paired texts. The last three need none, because they measure
-fidelity to the command, which is how operators without paired truth (erasure, rules;
-contribution.md evidence items 3–4) are evaluated too.
+Only E1 (proximity) and E5 (shared residual) need a counterfactual text, and only the total
+target has one (one text per evaluation unit, see
+[data_sim.md](data_sim.md#what-needs-texts)). Everything else is fidelity or preservation
+against simulated states. That is also how operators without paired truth (erasure, rules;
+contribution.md evidence items 3–4) are evaluated.
 
 ### Omission is not blocking (H2)
 
@@ -79,28 +82,25 @@ Only methods that turn a target into a latent without a reader or an operator in
 | Constant direction | $\delta$ | $z'=z+v_\delta$; ignores the state |
 | N2, target-group OT map | $\texttt X'$ | transport baseline |
 | Identity | – | lower reference |
-| $\varphi(x')$ | – | upper reference for E2; E1's reference is the noise floor |
+| $\varphi(x')$ | – | upper reference where a text exists; E2's reference is $\Gamma$, E1's the noise floor |
 
 The residual transformer is trained against $\tilde\omega_S\circ\psi$, so it has no
 reader-free version and is evaluated only end-to-end.
 
 ## Fitting
 
-$\rho$ is fitted on the factual pool with **true** states (privileged; Variation A's
+$\rho$ is fitted on the whole training pool (2,800 units) with **true** states (privileged; Variation A's
 pseudo-label conditions belong to the end-to-end experiment). One $\rho$ per state space: S1,
-S2–S5, S6. No new texts: the paired truth uses the evaluation units' counterfactual texts
-from wrong_symbolic_model.md.
+S2–S5, S6. No new texts: E1 and E5 use the evaluation units' counterfactual texts
+([data_sim.md](data_sim.md#splits-and-cost)).
 
 ## Metrics
 
-E1 (proximity, support), E2 (fidelity vs. $\psi_{eval}(\varphi(x'))$, the $\Gamma$ reference),
-E3 (preservation), E5 (shared residual), as defined in wrong_symbolic_model.md. E6 (text) optionally.
-Additionally:
-
-- **Fidelity to the command** for the rows without paired truth:
-  $\psi_{eval}(z')$ vs. commanded $\mathbf s'$, compared with
-  $\Gamma(\cdot\mid\mathbf s')$ estimated on factual latents of that state. Reading *better*
-  than real latents flags off-manifold rendering.
+E1 (fraction of the gap closed, support), E2 (fidelity against $\Gamma$ from factual latents),
+E3 (preservation), E5 (shared residual), as defined in wrong_symbolic_model.md. E6 (text)
+optionally. E2 for a commanded state is *fidelity to the command*: $\psi_{eval}(z')$ vs. the
+commanded $\mathbf s'$, against $\Gamma(\cdot\mid\mathbf s')$; reading *better* than real
+latents flags off-manifold rendering. Additionally:
 - **Fidelity vs. state frequency**, binned by how often $\mathbf s'$ occurred in $\rho$'s
   training data.
 

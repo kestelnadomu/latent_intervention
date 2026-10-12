@@ -36,19 +36,12 @@ and in $\mathcal V_B$. The drop is the reader's dependence on wording.
 
 ### Verbalizations
 
-$\mathcal V_B$ paraphrases only what carries $\texttt D$, $\texttt U$, $\texttt T$ and
-$\texttt M$. Everything else is identical.
+$\mathcal V_B$ paraphrases only what carries $\texttt D$, $\texttt U$, $\texttt T$ (via the
+$\texttt L$/$\texttt H$/$\texttt A$ evidence) and $\texttt M$. Countries and the $\texttt P$
+numbers are unchanged. The set table and the paired re-rendering are specified in
+[data_sim.md](data_sim.md#verbalization-sets). Each test unit is rendered in both sets with an
+otherwise identical render plan, so the gap is measured within unit.
 
-| Column | Channel | $\mathcal V_B$ |
-|---|---|---|
-| $\texttt D$, $\texttt U$ | `columns` phrase | paraphrase ("MSc" / "graduate degree"; "among the world's 100 best universities") |
-| $\texttt T$ via $\texttt L$, $\texttt H$, $\texttt A$ | `evidence` sentence | different sentence per level |
-| $\texttt M$ | `evidence` sentence | different sentence per level |
-| $\texttt X$ | `choices` (countries) | **unchanged**; the encoder's world knowledge is not under test |
-| $\texttt P$ | `bins` (numbers) | unchanged |
-
-- **Paired re-rendering.** A test unit in $\mathcal V_B$ keeps its template, persona and
-  render-plan quantiles; only the codebook set differs. The gap is measured within unit.
 - **$\texttt X$ is a negative control.** Its wording does not change, so its accuracy should
   not drop. A drop in $\texttt X$ means the paraphrases elsewhere shift the whole
   representation (a context effect), and the other gaps must be read relative to it.
@@ -64,7 +57,7 @@ $\texttt M$. Everything else is identical.
 
 ```mermaid
 flowchart LR
-  fa["labelled split, V_A"] --> psi["ψ and ψ_M"]
+  fa["L and P in the training pool, V_A"] --> psi["ψ on L, ψ_M on P"]
   psi --> ta["test units in V_A"]
   psi --> tb["test units re-rendered in V_B"]
   ta --> gap["gap per column: D, U, T, M; X as control"]
@@ -79,11 +72,12 @@ on fewer labels depend more on wording (relevant for H1 in wrong_symbolic_model.
 
 ### Data
 
-The texts come from the main experiment's splits (wrong_symbolic_model.md, "Data and splits"):
+The texts come from the shared splits ([data_sim.md](data_sim.md#splits-and-cost)):
 
 | Split | Verbalization | Use | Extra billed calls |
 |---|---|---|---|
-| labelled split | $\mathcal V_A$ | fit / validate $\psi$, $\psi_{\texttt M}$ | none |
+| training pool: $L$ / $P$ | $\mathcal V_A$ | fit $\psi$ on $L$, $\psi_{\texttt M}$ on $P$ | none |
+| dev | $\mathcal V_A$ | selection and early stopping | none |
 | evaluation units, factual | $\mathcal V_A$ | test, in-set | none |
 | evaluation units, factual, re-rendered | $\mathcal V_B$ | test, held-out wording | $n_{test}$ |
 
@@ -113,8 +107,8 @@ $\mathcal V_A$ accuracy):
 
 | Outcome | Consequence |
 |---|---|
-| gaps within $\epsilon$ for $\texttt D$, $\texttt U$, $\texttt T$, $\texttt M$ | $\psi$ reads meaning; $\psi_{eval}$ can be fitted on $\mathcal V_A$ like $\psi$, and the probe split stays in $\mathcal V_A$ |
-| clear gaps | $\psi$ is wording-bound. Report it in "Meaning of the results" (wrong_symbolic_model.md). $\psi_{eval}$ must then use different wording from $\psi$: probe split in $\mathcal V_B$, and $\psi_{eval}$'s accuracy on $\mathcal V_A$ texts is measured before use |
+| gaps within $\epsilon$ for $\texttt D$, $\texttt U$, $\texttt T$, $\texttt M$ | $\psi$ reads meaning; $\psi_{eval}$ is fitted on $P$ in $\mathcal V_A$, like $\psi$ on $L$ |
+| clear gaps | $\psi$ is wording-bound. Report it in "Meaning of the results" (wrong_symbolic_model.md). $P$ gets an additional $\mathcal V_B$ rendering (+1,000 calls) used only by $\psi_{eval}$, and $\psi_{eval}$'s accuracy on $\mathcal V_A$ texts is measured before use |
 
 The second row is the only case in which a reader fitted on $\mathcal V_B$ is needed.
 

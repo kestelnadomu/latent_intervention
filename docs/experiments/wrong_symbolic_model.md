@@ -3,9 +3,9 @@
 Status: design draft. Nothing here is implemented yet; the code it requires is listed in
 [Required changes](#required-changes).
 
-This doc defines the shared setting (data, conditions, targets, metrics) and the
-**end-to-end** experiment. Three component benchmarks isolate one part each, with the truth
-substituted for the others:
+This doc defines the conditions, the metrics and the **end-to-end** experiment. The DAG, the
+counterfactual targets, text generation and splits are in [data_sim.md](data_sim.md). Three
+component benchmarks isolate one part each, with the truth substituted for the others:
 
 | Benchmark | Isolates | Doc |
 |---|---|---|
@@ -35,7 +35,7 @@ variables, $\texttt{typewriter}$ for SCM variables. Additions:
 | $\delta$ | the intervention, always $do(\texttt X = k)$ |
 | $z' = \omega_Z(z)$ | edited latent |
 | $\varphi(x')$ | latent of the real counterfactual text (evaluation only) |
-| $x'_{tot}$, $x'_{ps}$ | counterfactual text under the total-effect and the path-specific target |
+| $x'_{tot}$, $x'_{ps}$ | the total-effect and the path-specific counterfactual (simulated as states for every unit; only $x'_{tot}$ is rendered as text) |
 | $\psi_{eval}$ | independent evaluation reader, never used by any method |
 | $n_\psi$ | label budget: number of state-labelled texts used to fit $\psi$ |
 | E1–E6 | evaluation metrics; R1–R3 are the renderer requirements of contribution.md |
@@ -55,7 +55,7 @@ keeps the state space reuses one trained $\psi$ and $\rho$.
 | # | Hypothesis | Supported if | Where |
 |---|---|---|---|
 | H1 | A small $n_\psi$ suffices | E1, E2 and E4 at small $n_\psi$ lie within the seed spread of $n_\psi$ = all | reader (groundwork), end-to-end (Variation A) |
-| H2 | Omitted mediators are moved by transport, i.e. towards the total-effect target | $\psi_{eval}$ reads $\texttt D'$, $\texttt U'$ of $x'_{tot}$ from $z'$ better than the factual $\texttt D$, $\texttt U$ | renderer |
+| H2 | Omitted mediators are moved by transport, i.e. towards the total-effect target | $\psi_{eval}$ reads the total-target $\texttt D'$, $\texttt U'$ from $z'$ better than the factual $\texttt D$, $\texttt U$ | renderer |
 | H3 | Variables outside the state that matter for $\texttt Y$ are preserved under $do(\texttt X)$ | $\texttt M$ is read from $z'$ as accurately as from $z$ | renderer; end-to-end under $\psi$ |
 | H4 | A false mediator in $\tilde\omega_S$ is rendered faithfully, so the error reaches downstream predictions | the shift in $\psi_{eval}$'s $\texttt M$ and in $\pi(z')$ grows with the assumed coefficient and vanishes at 0 | renderer (fidelity to the command), end-to-end (E4) |
 | H5 | Under a correct DAG, the cost of estimated parameters is dominated by the $\texttt X$ coefficients | the response to perturbing the $\texttt X$ coefficients is clearly larger than to the $\texttt T$ coefficients or the noise | operator (state level), end-to-end (propagation) |
@@ -65,101 +65,25 @@ Thresholds ("within the seed spread", "clearly larger", "high") are fixed before
 
 ## Setup
 
-### Data-generating process
+### Data
 
-The active talent SFM ([exp/sim/talent_sfm.py](../../exp/sim/talent_sfm.py)) gets one more
-root, **$\texttt M$ (motivation, 3 tiers)**. It is a parent of $\texttt Y$ only, independent of
-$\texttt X$, $\texttt T$, $\texttt D$ and $\texttt U$, and verbalized in the CV. It is not in the
-state, except in S6/O5.
+The DAG, structural equations, counterfactual targets, text generation, splits and costs are in
+[data_sim.md](data_sim.md). In short:
 
-```mermaid
-flowchart LR
-  X["X: country of origin"]:::state
-  T["T: talent, not in text"]:::hidden
-  D["D: degree"]:::state
-  U["U: university tier"]:::state
-  PR["P, L, H, A: talent proxies"]:::verb
-  M["M: motivation"]:::verb
-  Y["Y: qualification"]:::outcome
-  X --> D & U & Y
-  T --> D & U & PR & Y
-  D --> Y
-  U --> Y
-  M --> Y
-  classDef state fill:#ede9fe,stroke:#6d28d9,color:#111
-  classDef hidden fill:#ede9fe,stroke:#6d28d9,stroke-dasharray:5 3,color:#111
-  classDef verb fill:#ccfbf1,stroke:#0f766e,color:#111
-  classDef outcome fill:#ffffff,stroke:#6b7280,color:#111
-```
-
-Purple = in the full state $\mathbf s = (\texttt X, \texttt T, \texttt D, \texttt U)$ (dashed:
-not in the text, read only through the proxies), teal = verbalized, not in the full state
-($\texttt M$ joins the state only in S6/O5), white = outcome, neither in the state nor in the
-text.
-
-**Why $\texttt M$.** Without it, the only non-state content of $z$ is persona and style, which
-carries nothing about $\texttt Y$. $\texttt M$ puts $\texttt Y$-relevant information into the
-residual $u$. A renderer that keeps $u$ (R2) keeps $\texttt M$; one that overwrites the latent
-loses it.
-
-**Why motivation.** It is plausibly independent of origin, degree and talent and has a direct
-effect on performance. In the text it must stay separable from talent: "sustained effort,
-follows through, takes on additional responsibility" vs. the proxy evidence for
-$\texttt P$/$\texttt L$/$\texttt H$/$\texttt A$, in particular "sought out for advice"
-($\texttt A$) and "completed projects" ($\texttt P$). Check on the generated texts: $\psi_{eval}$
-reads $\texttt M$ above chance, and its $\texttt M$ predictions do not correlate with $\texttt T$
-($\texttt M\perp\texttt T$ in the simulation).
-
-### Data and splits
-
-No method is trained on counterfactual latents. Training needs **factual texts only**;
-counterfactual texts exist only for the evaluation units, crossed with all interventions and
-targets.
-
-```mermaid
-flowchart LR
-  scm["SCM: factual s, M, Y"] --> fac["factual texts x, N calls"]
-  fac --> lab["labelled split: n_ψ texts with s"]
-  fac --> pool["unlabelled pool"]
-  fac --> evl["probe split: fits ψ_eval"]
-  fac --> dev["dev split"]
-  fac --> test["evaluation units, n_test"]
-  scm -->|"same noise; do(X=k); blocked edges"| cfs["counterfactual states per δ and target"]
-  test --> cft["counterfactual texts x', 10 per unit"]
-  cfs --> cft
-  classDef billed fill:#fde2c4,stroke:#c2410c,color:#111
-  class fac,cft billed
-```
-
-Orange = billed LLM calls. All splits are disjoint by unit.
-
-- **Labelled split** ($n_\psi$ texts): fits $\psi$. In the simulation all states are known, so
-  the label budget is imposed by subsampling.
-- **Unlabelled pool**: $\psi$ labels it, and $\rho$ is fitted on it (Variation A). The
-  renderer benchmark fits $\rho$ on its true states instead.
-- **Probe split**: fits $\psi_{eval}$ over all text-carried variables plus $\texttt T$. It is
-  never used by a method. This keeps the evaluation from reusing the training reader
-  (Monteiro et al. 2023). Rendered in the training verbalization unless the
-  [reader robustness check](reader_benchmark.md) shows that $\psi$ is wording-bound. In that
-  case it is rendered in a held-out paraphrase, so that $\psi_{eval}$ does not share wording
-  with $\psi$.
-- **Dev split**: factual, for hyperparameters (validation likelihood of $\rho$, accuracy of
-  $\psi$). Paired dev texts serve only as a sanity check, never for model selection.
-- **Evaluation units** ($n_{test}$): per unit, one counterfactual text per non-identity
-  $do(\texttt X = k)$ (3) × target type (3, see [Targets](#targets)), plus one identity text
-  ($k = x_i$), i.e. 10 texts. The identity text yields the **noise floor**: $\varphi(x)$ vs. a
-  regenerated $\varphi(x')$ for the same state and render plan. Crossing keeps every unit in
-  every condition, so all comparisons are paired. The renderer and end-to-end experiments
-  share these units.
-- **Cost**: $N$ factual calls once, plus $10\,n_{test}$, plus $n_{test}$ for the reader
-  benchmark's re-rendering. A new operator on the existing state space costs nothing. A new
-  target type costs $3\,n_{test}$.
-- `SCM.simulate` reuses the factual noise for the same seed, so one simulate per $\delta$ (and
-  per blocked-edge set) gives every counterfactual state.
-- Interventions on mediators ($do(\texttt D)$, $do(\texttt U)$) are not part of the setting:
-  "assign a candidate a degree" is not a meaningful action in the fairness question.
-  Path-specific questions are expressed through the target. $do(\texttt M)$ becomes possible on
-  S6's state space (possible extension: a pure isolation test).
+- **DGP:** the talent SFM ($\texttt X$ origin, hidden $\texttt T$ talent read through proxies,
+  mediators $\texttt D$, $\texttt U$, outcome $\texttt Y$), extended by **$\texttt M$
+  (motivation)**. $\texttt M$ is a root, a parent of $\texttt Y$ only, verbalized, and not in
+  the state except in S6/O5. It puts $\texttt Y$-relevant information into the residual $u$.
+- **Training needs factual texts only.** Three partitions, disjoint by unit: a training pool
+  (2,800), dev (200) and evaluation units (1,000). Inside the pool, $\psi$ may see the labels of
+  a subset $L$ (up to 1,000, nested for the $n_\psi$ grid) and $\psi_{eval}$ those of a disjoint
+  subset $P$ (1,000). $\rho$ is fitted on the whole pool.
+- **Most metrics need no counterfactual text.** E2–E4 compare readings of $z'$ with the
+  simulated truth, for every unit, every $do(\texttt X=k)$ and every target. Only E1
+  (proximity) and E5 (shared residual) need $\varphi(x')$.
+- **Evaluation units** therefore get one counterfactual text each (total target, random
+  non-identity $k$), and a 20 % subset gets a noise-floor text.
+- **Cost:** $N + 2.2\,n_{test}$ billed calls. A new operator or target costs nothing.
 
 ### Method
 
@@ -196,19 +120,25 @@ C-sym, abduction is implicit in $z$.
 
 | Condition | $\psi$ fitted on | $\rho$ fitted on | $\mathbf s$ at inference |
 |---|---|---|---|
-| A★ privileged | not used | true $\mathbf s$ | true $\mathbf s$ |
-| A1 oracle | labelled split | true $\mathbf s$ | $\psi$ |
-| A2 inferred | all labels | $\psi$'s labels on the pool | $\psi$ |
-| A3 label budget | $n_\psi$ labels, swept | $\psi$'s labels on the pool | $\psi$ |
+| A★ privileged | not used | whole pool, true $\mathbf s$ | true $\mathbf s$ |
+| A1 oracle | $L$ | whole pool, true $\mathbf s$ | $\psi$ |
+| A2 inferred | $L$ (1,000) | whole pool, cross-fitted $\psi$-labels | $\psi$ |
+| A3 label budget | $n_\psi$-subset of $L$, swept | whole pool, cross-fitted $\psi$-labels | $\psi$ |
+| A2/A3, practitioner variant | as A2/A3 | true $\mathbf s$ on $L$, cross-fitted $\psi$-labels elsewhere | $\psi$ |
 
 - **A★ is the renderer benchmark's setting.** Here it is the ceiling of the end-to-end grid.
 - **A1 is not a ceiling.** $\rho$ is fitted on true $\mathbf s$ but used with $\psi$'s reading,
   a train/inference mismatch that A2 does not have. It matters most for $\texttt T$, which
   $\psi$ reads only up to the Bayes ceiling (`talent_posterior_accuracy`).
-- **A3 is a curve:** $n_\psi$ on a geometric grid down to a few dozen texts, per encoder, with
-  the pool for $\rho$ unchanged.
-- **Pseudo-labels:** $\rho$ is fitted on samples $\mathbf s\sim\psi(\cdot\mid z)$ rather than
-  on $\arg\max\psi$, so $\psi$'s uncertainty is kept (contribution.md, "Reading is uncertain").
+- **A3 is a curve:** $n_\psi$ on a geometric grid down to a few dozen texts, per encoder.
+  $\rho$'s training units stay the same (the whole pool); only the quality of its labels changes.
+- **Pseudo-labels are cross-fitted and sampled.** Each fold of the pool is labelled by a $\psi$
+  fitted on the $L$-units of the other folds, so $\rho$ never sees $\psi$'s in-sample (too clean)
+  predictions. Labels are samples $\mathbf s\sim\psi(\cdot\mid z)$ rather than
+  $\arg\max\psi$, so $\psi$'s uncertainty is kept (contribution.md, "Reading is uncertain").
+  Details: [data_sim.md](data_sim.md#who-is-fitted-on-what).
+- **The practitioner variant** uses the true states where they exist. It is what one would do
+  in practice; A2/A3 isolate the pseudo-label effect.
 
 ### Variation B: assumed symbolic model
 
@@ -247,18 +177,19 @@ stereotype ("motivation differs by origin") into the symbolic model.
 
 ### Targets
 
-| Target | Definition | Simulated by |
-|---|---|---|
-| total, $x'_{tot}$ | all paths from $\texttt X$ active | `simulate` with $do(\texttt X = k)$ |
-| path-specific, $x'_{ps}$ (Chiappa 2019) | blocked mediators keep their factual value | `simulate` with the blocked edges reading the factual $\texttt X$ |
+Every condition is evaluated against the **total** target and, where it has one, its
+**path-specific** target. Definitions and simulation: [data_sim.md](data_sim.md#targets). Both
+exist as simulated states for every unit, so E2–E4 cover both. E1 and E5 exist only for the
+total target, the only one rendered as text.
 
-Three target types per unit: total, and blocked sets $\{\texttt D, \texttt U\}$ (S3, direct
-effect only) and $\{\texttt D\}$ (S4, S5, O4).
+| Condition | Path-specific target (blocked mediators) |
+|---|---|
+| S3 | $\{\texttt D, \texttt U\}$: direct effect only |
+| S4, S5, O4 | $\{\texttt D\}$ |
+| S1, S2, S6, O1, O2, O3, O5 | none: $\texttt T$ and $\texttt M$ are not descendants of $\texttt X$, so their omission or misuse changes the model, not the target |
 
-- S1, S2, O1, O2 have no path-specific reading. $\texttt T$ is not a descendant of
-  $\texttt X$, so its omission changes the model, not the target.
-- Which target is right is a normative choice (which paths are unfair), not an empirical one.
-  Both are reported, and neither is preferred.
+Which target is right is a normative choice (which paths are unfair), not an empirical one.
+Both are reported, and neither is preferred.
 
 ## End-to-end experiment
 
@@ -313,7 +244,7 @@ These are the reasons the end-to-end runs exist at all:
 | State-conditioned flow (F1) | main renderer; $\rho$ fitted by conditional likelihood on factual $(z, \mathbf s)$ | reused | yes |
 | C-sym | state realiser; **not implemented** yet, see [background.md](../background.md) | reused | yes |
 | Identity, $z' = z$ | lower reference for every metric | – | yes |
-| Real counterfactual, $z' = \varphi(x')$ | upper reference for E2 and E4; for E1 the noise floor is the reference | – | yes |
+| Real counterfactual, $z' = \varphi(x')$ | upper reference for E4 where a text exists; E2's reference is $\Gamma$, E1's the noise floor | – | yes |
 | Residual transformer | trained against $\tilde\omega_S\circ\psi$; exposes adversarial edits against $\psi$; violates R3 | retrained | no |
 | Constant direction per $\delta$ | $z' = z + v_\delta$, $v_\delta$ from factual group means (by $\psi$'s $\texttt X$) | reused | yes |
 | LEACE | strongest linear erasure; erasure, not a counterfactual | – | no |
@@ -344,15 +275,15 @@ Shared by the renderer benchmark and the end-to-end runs.
 
 ```mermaid
 flowchart LR
-  subgraph UNIT["evaluation unit, per δ and target"]
+  subgraph UNIT["evaluation unit"]
     z((z))
-    zt(("φ(x')"))
-    truth["simulated s', M, Y'"]
+    zt(("φ(x'): one text, total target"))
+    truth["simulated s', M, Y': every δ and target"]
   end
   z --> om["ω_Z: method under test"] --> zp(("z'"))
   subgraph REF["references"]
     id["identity: z"]
-    floor["noise floor: identity texts"]
+    floor["noise floor: same-state texts"]
     bop["BOP: Y given s, given s and M"]
   end
   zp --> pe["ψ_eval: independent reader"]
@@ -380,11 +311,11 @@ flowchart LR
 
 | Metric | Question | Computed | Reference |
 |---|---|---|---|
-| E1 proximity and support | Does $z'$ land near the real counterfactual latent, and on the manifold? | distance $z'$ to $\varphi(x')$ (L2, cosine; energy distance over $\mathbf s\sim\psi$ draws), normalized by the identity distance; support: distance to real factual latents with state $\mathbf s'$ | noise floor (lower bound, not zero), identity |
-| E2 fidelity (R1) | Is the target state realized, as well as in a real latent? | $\psi_{eval}(z')$ vs. $\mathbf s'$, and against $\psi_{eval}(\varphi(x'))$. The target is *equal* to the real latent ($\Gamma$, contribution.md); reading *better* than the real latent flags off-manifold edits | $\psi_{eval}(\varphi(x'))$, $\texttt T$ Bayes ceiling |
+| E1 proximity and support | Does $z'$ land near the real counterfactual latent, and on the manifold? Catch-all for damage to content no reader probes (style, persona, length) | **fraction of the gap closed**, $\big(d(z,\varphi(x')) - d(z',\varphi(x'))\big)\,/\,\big(d(z,\varphi(x')) - d_{floor}\big)$, with $d$ = L2 or cosine (energy distance over $\mathbf s\sim\psi$ draws for the distributional version): 0 = identity, 1 = as close as the floor allows. Raw distances are dominated by style and are reported only alongside. Support: distance to real factual latents with state $\mathbf s'$. Total target only | [noise floor](data_sim.md#noise-floor) $d_{floor}$, identity |
+| E2 fidelity (R1) | Is the target state realized, as well as in a real latent? | $\psi_{eval}(z')$ vs. the simulated $\mathbf s'$, compared with $\Gamma(\cdot\mid\mathbf s')$: $\psi_{eval}$'s confusion on **factual** latents whose state is $\mathbf s'$ (contribution.md, R1). The target is to be read exactly as well as a real latent; reading *better* flags off-manifold edits. No counterfactual text needed | $\Gamma$ from factual latents, $\texttt T$ Bayes ceiling |
 | E3 preservation (R2) | Is what should not change unchanged? | $\psi_{eval}$ on $z'$ for $\texttt M$, $\texttt T$, the proxies and any mediator omitted from $\mathcal S_k$, against the value under the evaluated target: $\texttt M'=\texttt M$, $\texttt T'=\texttt T$ always; omitted mediators keep their factual value under $x'_{ps}$ and change under $x'_{tot}$; identity check $\mathbf s'=\mathbf s\Rightarrow z'=z$ | $\psi_{eval}$ on $z$ |
-| E4 downstream | Does $\pi$ behave counterfactually correctly? | $\pi$ fitted on factual $(z, \texttt Y)$. $\pi(z')$ vs. $\texttt Y'$ (fidelity), $\pi(z')$ vs. $\pi(z)$ (invariance), group-parity gap (spread of $E[\pi(z')\mid\texttt X]$ across $\texttt X$); report fidelity and invariance separately | BOP: $\texttt Y$ given $\mathbf s$ and given $(\mathbf s, \texttt M)$, closed form via `outcome_posterior`; $\pi(z)$; $\pi(\varphi(x'))$; N1, N2 |
-| E5 shared residual | Is $u$ preserved by $do(\texttt X)$? | $\lVert\rho^{-1}(z;\mathbf s) - \rho^{-1}(\varphi(x');\mathbf s')\rVert$ with each condition's own $\rho$ and states; F1 only | identity texts, shuffled pairs |
+| E4 downstream | Does $\pi$ behave counterfactually correctly? | $\pi$ fitted on factual $(z, \texttt Y)$. $\pi(z')$ vs. $\texttt Y'$ (fidelity), $\pi(z')$ vs. $\pi(z)$ (invariance), group-parity gap (spread of $E[\pi(z')\mid\texttt X]$ across $\texttt X$); report fidelity and invariance separately | BOP: $\texttt Y$ given $\mathbf s$ and given $(\mathbf s, \texttt M)$, closed form via `outcome_posterior`; $\pi(z)$; $\pi(\varphi(x'))$ where a text exists; N1, N2 |
+| E5 shared residual | Is $u$ preserved by $do(\texttt X)$? | $\lVert\rho^{-1}(z;\mathbf s) - \rho^{-1}(\varphi(x');\mathbf s')\rVert$ with each condition's own $\rho$ and states; F1 only | noise-floor texts, shuffled pairs |
 | E6 text | Can $x'$ be read back from $z'$? | a translation module (fitted on factual latents) maps $z'$ into a decodable LangVAE latent; decode and check $\mathbf s'$ and $\texttt M$ with $\psi_{eval}$ on the re-encoded text or the validators | the same pipeline on $\varphi(x')$ |
 
 **$\psi_{eval}$ instead of $\psi$.** In the state-space family each condition's $\psi$ reads a
@@ -393,7 +324,9 @@ conditions. Using the training reader would also make E2 partly circular.
 
 **Statistics.** Bootstrap CIs over evaluation units. Paired tests between conditions (same
 units throughout), at least three seeds for $\psi$/$\rho$, and a breakdown per factual
-$\texttt X$, per $\delta$, per target, and identity vs. non-identity.
+$\texttt X$, per $\delta$ and per target. E2–E4 are computed for every unit under every
+$\delta$, so comparisons between interventions are within unit. For E1 and E5 (one text per
+unit) they are between units. The identity check ($\delta$ with $k = x_i$) needs no text.
 
 ## Meaning of the results
 
@@ -406,7 +339,7 @@ data. This section fixes in advance which kinds of claims the experiments can su
 | Claim type | Example | Transfers? |
 |---|---|---|
 | **Mechanism**: a structural property of the method, independent of the numbers | omission is not blocking (H2); a false mediator is rendered faithfully (H4); a false edge is detectable from factual data but an omitted variable is not (O5 refit) | yes; follows from how $\rho$ and $\tilde\omega_S$ are built, the simulation demonstrates it |
-| **Ordering / relative sensitivity** | $\texttt X$ coefficients matter more than noise (H5); omission costs more than estimation error | with care; holds for this SCM's effect sizes, check across worlds (below) |
+| **Ordering / relative sensitivity** | $\texttt X$ coefficients matter more than noise (H5); omission costs more than estimation error | with care; holds for this SCM's effect sizes; state-level orderings are checked in alternative worlds (below) |
 | **Decomposition**: which component dominates the error | reading vs. operator vs. rendering cost from the substitution grid | as an ordering, with the same care |
 | **Diagnostic validity**: whether a metric computable without ground truth tracks one that needs it | support distance and $\psi$-consistency against $\Gamma$ predict E1/E3/E4 | yes, and this is the main bridge (below) |
 | **Magnitude** | "E4 drops by 0.08 in S3"; "$n_\psi = 200$ suffices" | no; depends on the simulated world, the generator and the encoder |
@@ -421,7 +354,7 @@ magnitudes.
 | States are exact and free; the label budget is imposed by subsampling | annotations are noisy, ambiguous, costly | H1's $n_\psi$ is a lower bound; real budgets are larger |
 | $\texttt T$ has true labels, so $\psi$ can learn to read it | talent is never labelled; only proxies or tests exist | S1 is *privileged* in practice; S2 (no $\texttt T$ in the state) is the realistic default. The S1–S2 gap is what a hidden variable costs |
 | The true parameters exist and can be fitted from true states | the SCM comes from domain knowledge or from data without hidden variables | O2a/b are optimistic; O2c and O2d (sensitivity) are the transferable part |
-| $\texttt X$ is a root, independent of $\texttt T$ | origin is confounded with background, age, socio-economic status (the SFM's spurious path) | conditional differences $p(z\mid x)$ vs. $p(z\mid x')$ contain no spurious part here, so **transport-based results (H2, N2, F1 at S3) are favoured**. With confounding, transport also moves what the counterfactual should keep |
+| $\texttt X$ is a root, independent of $\texttt T$ | origin is confounded with background, age, socio-economic status (the SFM's spurious path) | conditional differences $p(z\mid x)$ vs. $p(z\mid x')$ contain no spurious part here, so **transport-based results (H2, N2, F1 at S3) are favoured**. With confounding, transport also moves what the counterfactual should keep. Not tested here; a stated limitation |
 | Linear-Gaussian mechanisms, 3–4 levels, $\lvert\mathcal S\rvert$ around 100 | nonlinear, interacting, high-cardinality or continuous states | almost every target state is seen in training (R3 support); in reality many are not, and $\rho$ extrapolates |
 | One misspecification at a time, of known type and size | several, combined, unknown | the conditions give a vocabulary of failure modes, not an error budget |
 | Texts are rendered by one LLM from a known state plus persona/template | real CVs: selection, formatting, length, many unstated signals | the residual is small and stylised; $\texttt M$ is the only $\texttt Y$-relevant non-state content |
@@ -447,19 +380,12 @@ design.
 
 ### Robustness across worlds
 
-One SCM parameterisation is one world. Two or three alternatives, compute-heavy but with
-few texts if only the evaluation set is regenerated, test whether the orderings hold:
-
-- **asymmetric mediators** (strong $\texttt X\to\texttt D$, weak $\texttt X\to\texttt U$):
-  revisits the dropped "$\texttt U$ omitted" condition, which was left out because
-  $\texttt D$ and $\texttt U$ are near-symmetric in the current SCM;
-- **confounded origin** ($\texttt X$ correlated with $\texttt T$ through a shared root): the
-  case where transport and counterfactual come apart, see above;
-- **one nonlinear mechanism** (e.g. an interaction $\texttt X\cdot\texttt T$ in $\texttt U$):
-  the case where the closed-form kernel is wrong by construction.
-
-The operator benchmark is free in every world, so it runs in all of them. A claim that holds
-in only one world is reported as specific to that world.
+One SCM parameterisation is one world. Mechanism claims do not need more. Ordering claims are
+mostly state-level, so the operator benchmark checks them in alternative parameterisations for
+free (asymmetric mediators, a nonlinear mechanism; [data_sim.md](data_sim.md#alternative-worlds)).
+No alternative world gets texts. A confounded-origin world, the one that would test the
+transport result where it should fail, is a stated limitation (table above), not part of the
+plan.
 
 ### The bridge: validating real-world diagnostics
 
@@ -483,40 +409,31 @@ consistent to a reader of $\mathcal S_k$.
 
 Shared and end-to-end; each component doc lists its own.
 
-1. **Sibling config.** The setting gets its own sim config, codebook, prompt and data
-   directories, following the `config_cv_screening.yaml` pattern. Editing
-   `exp/sim/config.yaml` changes its byte hash and invalidates every trained $\psi$ checkpoint.
-2. **SCM.** Add $\texttt M$ as a root and parent of $\texttt Y$: `_OUTCOME_COEFFS`, auxiliary
-   schema, codebook (3 tiers, `evidence:`, `forbidden_terms`), prompt evidence block, and
-   `outcome_posterior` (BOP with $\texttt M$). Check the text-length budget.
-3. **Counterfactual data.** Counterfactual states and texts keyed by (id, $\delta$, target),
-   generated only for evaluation IDs. `SCM.simulate` needs a blocked-edge option (the child's
-   mechanism reads the parent's factual value) and stays free of node names. Pair validation
-   assumes one fixed query today.
-4. **Splits and label budget.** Labelled / pool / probe / dev / evaluation splits. $\psi$ fitted
-   on $n_\psi$ labels; $\rho$ fitted on $\psi$'s sampled labels on the pool.
-5. **End-to-end runner.** The substitution grid (true or $\psi$-read states × true or assumed
+1. **Data:** sibling config, $\texttt M$, codebook sets, per-unit counterfactuals with
+   blocked edges, noise-floor texts. See [data_sim.md](data_sim.md#required-changes).
+2. **Label roles and cross-fitting.** $\psi$ on $L$ or its $n_\psi$ subsets; cross-fitted,
+   sampled pseudo-labels for $\rho$; the per-condition label flag for $\rho$ (partitions in
+   [data_sim.md](data_sim.md#partitions)).
+3. **End-to-end runner.** The substitution grid (true or $\psi$-read states × true or assumed
    operator) on shared evaluation units, the decomposition with bootstrap, the
    diagnostic-validity analysis, translation module for E6.
-6. **No longer needed here:** the oracle regression (`src/latent_intervention/oracle/`,
+4. **No longer needed here:** the oracle regression (`src/latent_intervention/oracle/`,
    `exp/encoding/oracle_targets.py`). Its role as a reference is taken by the noise floor and
    $\varphi(x')$.
-7. **Known issues that surface here** (see [background.md](../background.md)): F1 warns on any
+5. **Known issues that surface here** (see [background.md](../background.md)): F1 warns on any
    intervention other than the configured one, although its training never sees $\delta$; F1
    abducts under $\arg\max\psi$ instead of sampling.
-8. **Optional:** second generator for evaluation texts; alternative SCM worlds as further sim
-   configs.
+6. **Optional:** second generator for evaluation texts.
 
 ## Open decisions
 
-- Three or four tiers for $\texttt M$.
 - Encoders in scope. E6 needs LangVAE, or the translation module for the others.
-- $N$, $n_{test}$ and the $n_\psi$ grid. Cost: $N + 11\,n_{test}$ billed calls (incl. the reader
-  benchmark's re-rendering).
+- The $n_\psi$ grid. Data-side decisions ($\texttt M$, $N$, $n_{test}$, noise floor, worlds) are
+  listed in [data_sim.md](data_sim.md#open-decisions).
 - Order of the first round. Proposed: reader and operator benchmarks (cheap) → renderer
   benchmark → end-to-end grid at S1 with O1, O4, then the S family, O2, O3, O5.
 - Thresholds for H1–H6 and the operator screening rule.
 - N1: relabeling, independence penalty, or both. N2: pooled, target-group OT, or both.
-- Which robustness worlds and whether a second generator is affordable.
+- Whether a second generator is affordable.
 - References marked † (Kamiran & Calders, Feldman et al.) are not in `references.bib` yet and
   were written from memory: verify before citing.

@@ -2,8 +2,9 @@
 
 Status: design draft, not implemented. One of three component benchmarks of the
 [wrong-symbolic-model experiment](wrong_symbolic_model.md) (reader: [reader_benchmark.md](reader_benchmark.md),
-renderer: [renderer_benchmark.md](renderer_benchmark.md)). The notation, the conditions
-(S1–S6, O1–O5) and the targets are defined in wrong_symbolic_model.md.
+renderer: [renderer_benchmark.md](renderer_benchmark.md)). The notation and the conditions
+(S1–S6, O1–O5) are defined in wrong_symbolic_model.md, the data and targets in
+[data_sim.md](data_sim.md).
 
 ## Question
 
@@ -76,7 +77,7 @@ built only if unaware and refit differ from the true kernel here.
 | O2★ | none (privileged) | true coefficients and noise; the zero point of every curve |
 | O2a | estimator bias | `SymbolicIntervention.fit(..., fit_mechanisms=True)` on true states, large sample |
 | O2b | sampling error | the same estimator on $n_{fit}$ true states, swept, several resamples per size |
-| O2c | label error | the same estimator on $\psi$'s labels of the pool |
+| O2c | label error | the same estimator on $\psi$'s cross-fitted labels of the training pool |
 | O2d | sensitivity | multiplicative perturbation of one parameter group at a time: $\texttt X$ coefficients, $\texttt T$ coefficients, noise $\mu$, noise $\sigma$ |
 
 - **The current estimator is biased even with infinite data.**
