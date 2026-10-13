@@ -23,14 +23,17 @@ The autoregressive head of v1 is dropped: it showed no benefit in `g-all-encoder
 
 Does $\psi$ read the **meaning** of a level, or the **wording** the codebook gave it? All
 texts come from one LLM, one prompt and one codebook
-([exp/sim_talent/codebook.yaml](../../exp/sim_talent/codebook.yaml)). Each $\texttt D$ and $\texttt U$ level
-is one fixed phrase, and each evidence level of the talent proxies and of $\texttt M$ is one
-fixed guidance sentence, which the LLM paraphrases closely. A reader can score well by
-looking up that wording. Templates and personas are drawn independently of the state, so
+([exp/sim_talent_motivation/codebook.yaml](../../exp/sim_talent_motivation/codebook.yaml)).
+Each $\texttt D$ and $\texttt U$ level is one fixed phrase, and each evidence level of the
+talent proxies and of $\texttt M$ is one of three fixed guidance sentences, which the LLM
+paraphrases closely. A reader can score well by looking up that small vocabulary. Templates and personas are drawn independently of the state, so
 they are not the channel.
 
 The check: fit $\psi$ on $\mathcal V_A$, test it on the same units rendered in $\mathcal V_A$
-and in $\mathcal V_B$. The drop is the reader's dependence on wording.
+and in $\mathcal V_B$. The drop is the reader's dependence on wording. $\mathcal V_A$ itself
+has three evidence variants per level ([data_sim.md](data_sim.md#verbalization-sets)), so the
+check measures generalisation from varied training wording to unseen wording. It stays valid
+as long as $\mathcal V_B$ shares no variant with $\mathcal V_A$.
 
 ## Design
 

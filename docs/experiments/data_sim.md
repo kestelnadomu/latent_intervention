@@ -196,7 +196,7 @@ Orange = billed LLM calls.
   | `columns` + `labels` | stated facts in the candidate information | $\texttt D$: "Master's degree" |
   | `choices` | a concrete option per level, picked by the plan's quantile | $\texttt X$: 4 countries per region |
   | `bins` | a concrete number inside the level's range | $\texttt P$: 3–5 projects |
-  | `evidence` | behavioural guidance, never stated as a fact | $\texttt L$, $\texttt H$, $\texttt A$, and $\texttt M$ (new) |
+  | `evidence` | behavioural guidance, never stated as a fact; a level may list several variants of the same strength, one picked per unit by the plan's quantile | $\texttt L$, $\texttt H$, $\texttt A$, and $\texttt M$ (new), three variants each in the sibling |
   | `hidden` | decoded, never verbalized | $\texttt T$ |
   | `forbidden_terms` | evaluative trait words the text must not use | "talented", "gifted", … |
 
@@ -211,9 +211,17 @@ Orange = billed LLM calls.
 
 ### Verbalization sets
 
-For the [reader robustness check](reader_benchmark.md), the codebook gets a second
-verbalization $\mathcal V_B$ that paraphrases only what carries $\texttt D$, $\texttt U$,
-$\texttt T$ and $\texttt M$:
+**$\mathcal V_A$, the production codebook, already varies the evidence.** In the sibling, each
+level of $\texttt L$, $\texttt H$, $\texttt A$ and $\texttt M$ has three guidance variants of
+the same strength that describe different kinds of episode. With one sentence per level the
+LLM reproduced near-identical episodes (seen in the first pilot). The render plan picks the
+variant by a per-unit quantile, like a country, so generation stays deterministic at
+temperature 0. $x$ and $x'$ share the variant, since the evidence columns do not change under
+$do(\texttt X)$, and the CV row records the index for replay.
+
+For the [reader robustness check](reader_benchmark.md), a second verbalization $\mathcal V_B$
+(a separate codebook file, same format) holds held-out variants, disjoint from
+$\mathcal V_A$, for what carries $\texttt D$, $\texttt U$, $\texttt T$ and $\texttt M$:
 
 | Column | Channel | $\mathcal V_B$ |
 |---|---|---|
@@ -387,10 +395,14 @@ becomes a headline claim.
    talent SFM's per seed), $\beta_{YM} = 0.40$, $\mu_Y = -0.40$, `outcome_posterior` and the
    BOP information sets with $\texttt M$. Tests: `tests/test_talent_motivation.py`.
 3. **Codebook and prompt.** $\texttt M$ evidence (3 levels, effort and initiative rather than
-   ability) and $\texttt M$-trait words in `forbidden_terms` — **done, wording to review**.
-   Still open: the verbalization-set dimension (`columns` for $\texttt D$/$\texttt U$,
-   `evidence` for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$), recorded in the render
-   plan.
+   ability) and $\texttt M$-trait words in `forbidden_terms` — done. Evidence variants — done:
+   a level may list several guidance variants; varied columns join the render plan's quantile
+   columns and the CV row (variant index), and grounding replays them. Codebooks with single
+   strings (the talent SFM) keep their exact plan layout. $\mathcal V_A$ has three variants per
+   level for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$ — **wording to review**. Still
+   open: the $\mathcal V_B$ file (also `columns` variants for $\texttt D$/$\texttt U$) and the
+   re-render stage. The first pilot (50 texts, single sentences) is kept in
+   `data/{sim,text}_talent_motivation/pilot_v0/`.
 4. **Counterfactual data — simulation done.** `SCM.generate` evaluates the model for stored
    noise with blocked edges (generic, no node names). The opt-in `design:` block
    ([exp/sim/design.py](../../exp/sim/design.py)) makes `simulate` write

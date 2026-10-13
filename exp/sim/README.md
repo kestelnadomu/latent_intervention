@@ -264,7 +264,7 @@ The codebook blocks, all optional except `columns`:
 | `hidden` | Schema columns that are decoded but never verbalized (T). |
 | `bins` | Numeric ranges; a concrete number is sampled inside the level's range. |
 | `choices` | Option lists per level. The render-plan quantile picks one, and the CV CSV stores its index. |
-| `evidence` | Not stated as a fact: rendered as writing guidance into the prompt's `{evidence_guidance}` block. |
+| `evidence` | Not stated as a fact: rendered as writing guidance into the prompt's `{evidence_guidance}` block. A level is one string or a list of variants of the same strength; with variants, the render plan picks one per unit by quantile (like `choices`) and the CV row stores its index. |
 | `forbidden_terms` | Inlined into the prompt as `{forbidden_terms}`; `validate-pairs` reports texts that use them. |
 
 If you change the structural equations in `talent_sfm.py`, keep `schema` here in

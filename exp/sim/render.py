@@ -67,15 +67,28 @@ def load_render_spec(config: Mapping[str, Any]) -> dict[str, Any]:
     return spec
 
 
+def varied_evidence(spec: Mapping[str, Any]) -> dict[str, dict[int, list[str]]]:
+    """Evidence columns with several guidance variants for at least one level."""
+    return {
+        column: levels
+        for column, levels in spec["evidence"].items()
+        if any(len(variants) > 1 for variants in levels.values())
+    }
+
+
 def sampled_columns(spec: Mapping[str, Any]) -> list[str]:
-    """Columns rendered from a render-plan quantile: bins first, then choices."""
-    return [*spec["bins"], *spec["choices"]]
+    """Columns rendered from a render-plan quantile: bins, choices, then varied evidence.
+
+    Codebooks without evidence variants keep exactly the earlier plan layout.
+    """
+    return [*spec["bins"], *spec["choices"], *varied_evidence(spec)]
 
 
 def cv_schema(spec: Mapping[str, Any]) -> tuple[list[str], dict[str, str]]:
     """Column layout of a generated CV CSV and the header of each sampled field.
 
-    A binned field stores the concrete number, a choice field the option index.
+    A binned field stores the concrete number, a choice field the option index, a
+    varied evidence field the guidance-variant index.
     """
     headers = {column: slug(spec["labels"].get(column, column)) for column in sampled_columns(spec)}
     return [
@@ -186,10 +199,16 @@ def _candidate_info(
     return "[" + ", ".join(parts) + "]"
 
 
-def _evidence_guidance(state: Mapping[str, Any], spec: Mapping[str, Any]) -> str:
-    """One bullet of writing guidance per evidence column, at the state's level."""
+def _evidence_guidance(
+    state: Mapping[str, Any], spec: Mapping[str, Any], concrete: Mapping[str, int]
+) -> str:
+    """One bullet of writing guidance per evidence column, at the state's level.
+
+    For a varied column, ``concrete`` holds the render plan's variant index.
+    """
     return "\n".join(
-        f"- {spec['labels'].get(column, column)}: {levels[int(state[column])]}"
+        f"- {spec['labels'].get(column, column)}: "
+        f"{levels[int(state[column])][concrete.get(column, 0)]}"
         for column, levels in spec["evidence"].items()
     )
 
@@ -252,7 +271,9 @@ class RenderContext:
         plan = self.plan_by_id.loc[row_id]
         template = self.templates.loc[int(plan["template_id"])]
         persona = self.personas.loc[int(plan["persona_id"])]
-        concrete = materialize_binned_values(state, self.spec["bins"], plan, self.spec["choices"])
+        concrete = materialize_binned_values(
+            state, self.spec["bins"], plan, {**self.spec["choices"], **varied_evidence(self.spec)}
+        )
         if swap is not None:
             options = self.spec["choices"][swap][int(state[swap])]
             if len(options) < 2:
@@ -263,7 +284,7 @@ class RenderContext:
             "candidate_info": _candidate_info(state, self.spec, concrete),
             "persona_details": f"Job Title: {persona['job_title']}\n{persona['text']}",
             # extra keys are ignored by prompts without these placeholders
-            "evidence_guidance": _evidence_guidance(state, self.spec),
+            "evidence_guidance": _evidence_guidance(state, self.spec, concrete),
             "forbidden_terms": ", ".join(self.spec["forbidden_terms"]),
         }
         return sample, concrete

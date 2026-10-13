@@ -254,3 +254,47 @@ def test_floor_stage_requires_a_floor_design(tmp_path):
     config["design"]["partition"]["floor_fraction"] = 0.0
     with pytest.raises(ValueError, match="floor_swap"):
         run.stage_generate_floor_texts(config)
+
+
+def test_evidence_variants_are_planned_shared_and_replayed(tmp_path, monkeypatch):
+    from exp.sim import run, stage_cv
+    from exp.sim.generate_text import GenerationResult
+    from exp.sim.render import cv_schema, sampled_columns
+
+    config = _pipeline_config(tmp_path)
+    spec = load_render_spec(config)
+    assert sampled_columns(spec) == ["P", "X", "L", "H", "A", "M"]
+    headers = cv_schema(spec)[1]
+
+    def fake_generate(sample, *args, **kwargs):
+        return GenerationResult(
+            text=sample["evidence_guidance"], response_id="r", model="mock-model", finish_reason="stop"
+        )
+
+    monkeypatch.setattr(stage_cv, "generate_text_result", fake_generate)
+    stage_simulate(config)
+    run.stage_generate_texts(config)
+    run.stage_generate_counterfactual_texts(config)
+    factual = pd.read_csv(config["paths"]["texts"]).set_index("id")
+    counterfactual = pd.read_csv(config["paths"]["texts_counterfactual"]).set_index("id")
+    states = pd.read_csv(tmp_path / "sim" / "sim_data_factual.csv").set_index("id")
+
+    for column in ("L", "H", "A", "M"):
+        index = factual[headers[column]]
+        assert index.nunique() > 1  # units differ in the variant they get
+        # the guidance in the prompt is the planned variant at the unit's level
+        for unit_id, variant in index.items():
+            guidance = spec["evidence"][column][int(states.at[unit_id, column])][int(variant)]
+            assert guidance in factual.at[unit_id, "text"]
+        # X' keeps the variant: the evidence columns do not change under do(X)
+        shared = counterfactual.index
+        assert (counterfactual[headers[column]] == index.loc[shared]).all()
+    run.stage_generate_floor_texts(config)
+    run.stage_validate_pairs(config)
+
+    tampered = factual.reset_index()
+    tampered.loc[0, headers["M"]] = (tampered.loc[0, headers["M"]] + 1) % 3
+    from exp.sim.render import render_context, validate_grounding
+
+    with pytest.raises(ValueError, match="incorrect concrete M"):
+        validate_grounding(render_context(config), tampered, counterfactual=False)
