@@ -124,9 +124,11 @@ The second row is the only case in which a reader fitted on $\mathcal V_B$ is ne
 
 ## Required changes
 
-1. **Codebook.** A second set for the `columns` phrases of $\texttt D$, $\texttt U$ and the
-   `evidence` sentences of $\texttt L$, $\texttt H$, $\texttt A$, $\texttt M$; the render plan
-   records the set.
+1. **Codebook — written.** [codebook_vb.yaml](../../exp/sim_talent_motivation/codebook_vb.yaml)
+   (`codebook_held_out` in the config): new `columns` phrases for $\texttt D$, $\texttt U$ and
+   three new `evidence` variants per level for $\texttt L$, $\texttt H$, $\texttt A$,
+   $\texttt M$; everything else identical. Disjointness and layout are tested. The paraphrase
+   calibration check (level order and spacing) is still pending.
 2. **Text generation.** Re-render given IDs with another set and an otherwise identical render
    plan; resumable like the other billed stages.
 3. **Benchmark.** In `exp/benchmarks/semantic_decoder/`: independent heads only, an

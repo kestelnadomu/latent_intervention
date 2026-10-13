@@ -83,3 +83,51 @@ def test_outcome_posterior_requires_observed_parents():
     frame = pd.DataFrame({"X": [0], "T": [1], "D": [1]})
     with pytest.raises(ValueError, match="U"):
         tm.outcome_posterior(frame, ["X", "T", "D"], CARD)
+
+
+def _held_out_spec():
+    import copy
+
+    config = copy.deepcopy(CONFIG)
+    config["codebook"] = config["codebook_held_out"]
+    return load_render_spec(config)
+
+
+def _four_grams(text):
+    import re
+
+    words = re.findall(r"[a-z']+", text.lower())
+    return {" ".join(words[i : i + 4]) for i in range(len(words) - 3)}
+
+
+def test_held_out_codebook_has_the_same_layout():
+    from exp.sim.render import cv_schema, sampled_columns
+
+    a, b = load_render_spec(CONFIG), _held_out_spec()
+    assert sampled_columns(a) == sampled_columns(b)
+    assert cv_schema(a) == cv_schema(b)
+    for block in ("choices", "bins", "labels", "hidden", "forbidden_terms"):
+        assert a[block] == b[block]
+    for column in ("L", "H", "A", "M"):
+        assert {k: len(v) for k, v in a["evidence"][column].items()} == {
+            k: len(v) for k, v in b["evidence"][column].items()
+        }
+
+
+def test_held_out_codebook_shares_no_wording_with_production():
+    import re
+
+    a, b = load_render_spec(CONFIG), _held_out_spec()
+    for column in ("D", "U"):
+        assert all(a["columns"][column][k] != b["columns"][column][k] for k in a["columns"][column])
+    for column in ("L", "H", "A", "M"):
+        for level, variants in b["evidence"][column].items():
+            production = a["evidence"][column][level]
+            assert not set(variants) & set(production)
+            shared = set().union(*map(_four_grams, variants)) & set().union(*map(_four_grams, production))
+            assert not shared, (column, level, shared)
+    terms = b["forbidden_terms"]
+    for levels in b["evidence"].values():
+        for variants in levels.values():
+            for text in variants:
+                assert not any(re.search(rf"\b{re.escape(t)}\b", text, re.IGNORECASE) for t in terms)

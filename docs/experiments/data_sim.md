@@ -220,12 +220,15 @@ temperature 0. $x$ and $x'$ share the variant, since the evidence columns do not
 $do(\texttt X)$, and the CV row records the index for replay.
 
 For the [reader robustness check](reader_benchmark.md), a second verbalization $\mathcal V_B$
-(a separate codebook file, same format) holds held-out variants, disjoint from
-$\mathcal V_A$, for what carries $\texttt D$, $\texttt U$, $\texttt T$ and $\texttt M$:
+([codebook_vb.yaml](../../exp/sim_talent_motivation/codebook_vb.yaml), `codebook_held_out` in
+the config; same format) holds held-out wording, disjoint from $\mathcal V_A$, for what carries
+$\texttt D$, $\texttt U$, $\texttt T$ and $\texttt M$. Three variants per evidence level, so a
+unit's quantile picks the same position in both sets. Tests enforce that no variant and no
+four-word sequence is shared with $\mathcal V_A$, and that the CV layout is identical:
 
 | Column | Channel | $\mathcal V_B$ |
 |---|---|---|
-| $\texttt D$, $\texttt U$ | `columns` phrase | paraphrase ("MSc" / "graduate degree"; "among the world's 100 best universities") |
+| $\texttt D$, $\texttt U$ | `columns` phrase | paraphrase ("a postgraduate degree at master level"; "a university among the world's 100 best") |
 | $\texttt T$ via $\texttt L$, $\texttt H$, $\texttt A$ | `evidence` sentence | different sentence per level |
 | $\texttt M$ | `evidence` sentence | different sentence per level |
 | $\texttt X$ | `choices` (countries) | unchanged; the encoder's world knowledge is not under test |
@@ -399,9 +402,9 @@ becomes a headline claim.
    a level may list several guidance variants; varied columns join the render plan's quantile
    columns and the CV row (variant index), and grounding replays them. Codebooks with single
    strings (the talent SFM) keep their exact plan layout. $\mathcal V_A$ has three variants per
-   level for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$ — **wording to review**. Still
-   open: the $\mathcal V_B$ file (also `columns` variants for $\texttt D$/$\texttt U$) and the
-   re-render stage. The first pilot (50 texts, single sentences) is kept in
+   level for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$ — **wording to review**.
+   $\mathcal V_B$ — written (`codebook_vb.yaml`, wording to review, calibration check
+   pending). Still open: the re-render stage. The first pilot (50 texts, single sentences) is kept in
    `data/{sim,text}_talent_motivation/pilot_v0/`.
 4. **Counterfactual data — simulation done.** `SCM.generate` evaluates the model for stored
    noise with blocked edges (generic, no node names). The opt-in `design:` block
