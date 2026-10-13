@@ -1,5 +1,8 @@
 .DS_Store
 
+# Recoverable pre-consolidation experiments; never publish with the supported model.
+/archives/csym-experiments-2026-10-13/
+
 # Quarto
 /.quarto/
 /_site/
@@ -52,6 +55,13 @@ models/**
 !models/talent/*/g-*/h-*/benchmarks/*/selected/
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.pt
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.info.json
+# Supported C-sym: published weights and independent audit readers only.
+!models/talent/embeddinggemma_256/g-independent/h-c_sym_project/latent_intervention.pt
+!models/talent/embeddinggemma_256/g-independent/h-c_sym_project/latent_intervention.info.json
+!models/talent/embeddinggemma_256/g-independent/h-c_sym_project/audit_readers.pt
+!models/talent/embeddinggemma_768/g-independent/h-c_sym_project/latent_intervention.pt
+!models/talent/embeddinggemma_768/g-independent/h-c_sym_project/latent_intervention.info.json
+!models/talent/embeddinggemma_768/g-independent/h-c_sym_project/audit_readers.pt
 
 # Published training reports and the small all-encoder benchmark audit bundle.
 reports/**
@@ -112,6 +122,23 @@ reports/**
 !reports/talent/hz_benchmarks/*/source/**/*.sh
 !reports/talent/hz_benchmarks/*/source/pyproject.toml
 !reports/talent/hz_benchmarks/*/source/uv.lock
+# Compact C-sym provenance/results; runs, logs and archived experiments stay local.
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/protocol.json
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/training.json
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/probes.json
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/audit.json
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/evaluation.json
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/original_evaluation.json
+!reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/migration.json
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/protocol.json
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/training.json
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/probes.json
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/audit.json
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/evaluation.json
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/original_evaluation.json
+!reports/talent/embeddinggemma_768/g-independent/h-c_sym_project/migration.json
 
 # Overleaf repo
 overleaf*
