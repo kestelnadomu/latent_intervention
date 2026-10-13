@@ -217,7 +217,11 @@ def stage_train_decoder(config: dict[str, Any]) -> dict[str, Any]:
 def stage_train_manipulator(config: dict[str, Any]) -> None:
     """Train the configured manipulator on official training units."""
     variant = config["latent_intervention"]["variant"]
-    if variant == ORACLE_VARIANT:
+    if variant == "c_sym_project":
+        from src.latent_intervention.csym.workflow import train_manipulator
+
+        train_manipulator(config)
+    elif variant == ORACLE_VARIANT:
         from src.latent_intervention.oracle.workflow import train_oracle_manipulator
 
         train_oracle_manipulator(config)
@@ -230,7 +234,11 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
 def stage_evaluate(config: dict[str, Any]) -> None:
     """Evaluate decoder and manipulator behavior on official test units only."""
     variant = config["latent_intervention"]["variant"]
-    if variant == ORACLE_VARIANT:
+    if variant == "c_sym_project":
+        from src.latent_intervention.csym.workflow import evaluate_manipulator
+
+        evaluate_manipulator(config)
+    elif variant == ORACLE_VARIANT:
         from src.latent_intervention.oracle.workflow import evaluate_oracle_manipulator
 
         evaluate_oracle_manipulator(config)
@@ -266,7 +274,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--manipulator-variant",
-        choices=(*BASE_VARIANTS, *FLOW_VARIANTS, ORACLE_VARIANT),
+        choices=(*BASE_VARIANTS, *FLOW_VARIANTS, ORACLE_VARIANT, "c_sym_project"),
         default=None,
         help="override latent_intervention.variant before artifact paths are resolved",
     )
