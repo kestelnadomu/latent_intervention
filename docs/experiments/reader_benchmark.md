@@ -82,10 +82,17 @@ The texts come from the shared splits ([data_sim.md](data_sim.md#splits-and-cost
 | training pool: $L$ / $P$ | $\mathcal V_A$ | fit $\psi$ on $L$, $\psi_{\texttt M}$ on $P$ | none |
 | dev | $\mathcal V_A$ | selection and early stopping | none |
 | evaluation units, factual | $\mathcal V_A$ | test, in-set | none |
-| evaluation units, factual, re-rendered | $\mathcal V_B$ | test, held-out wording | $n_{test}$ |
+| evaluation units, factual, re-rendered (seeded half, `held_out_fraction: 0.5`) | $\mathcal V_B$ | test, held-out wording | $0.5\,n_{test}$ = 500 |
 
 Plus writing and checking the paraphrases. Every encoder in scope re-encodes the
 $\mathcal V_B$ texts (compute only).
+
+**Why 500 units.** The gap is paired by unit, so its precision depends on the share of units
+read correctly in one rendering and not the other. At about 10 %, 500 units give a 95 % CI of
+roughly ±2.8 points (1,000: ±2.0), and about 55 units per column × level × variant cell for the
+per-variant breakdown. Any gap that would change a decision is detected. A "no gap" result is
+established to about ±3 points. Raising `held_out_fraction` extends the subset and keeps the
+existing texts.
 
 ## Protocol
 
@@ -129,8 +136,9 @@ The second row is the only case in which a reader fitted on $\mathcal V_B$ is ne
    three new `evidence` variants per level for $\texttt L$, $\texttt H$, $\texttt A$,
    $\texttt M$; everything else identical. Disjointness and layout are tested. The paraphrase
    calibration check (level order and spacing) is still pending.
-2. **Text generation.** Re-render given IDs with another set and an otherwise identical render
-   plan; resumable like the other billed stages.
+2. **Text generation — done.** `generate-held-out-texts`: the evaluation units' factual state
+   with `codebook_held_out` and the identical render plan, resumable like the other billed
+   stages; checked by `validate-pairs`.
 3. **Benchmark.** In `exp/benchmarks/semantic_decoder/`: independent heads only, an
    $\texttt M$ head, a second test rendering, saved per-text predictions, the paired bootstrap,
    and a run ID distinct from `g-all-encoders-v1`.

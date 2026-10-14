@@ -87,7 +87,7 @@ def stage_simulate(config: dict[str, Any]) -> None:
     sim_dir = Path(config["paths"]["sim_dir"])
     text_outputs = [
         Path(config["paths"][key])
-        for key in ("texts", "texts_counterfactual", "texts_floor")
+        for key in ("texts", "texts_counterfactual", "texts_floor", "texts_held_out")
         if key in config["paths"]
     ]
     archive_paths = [

@@ -80,11 +80,13 @@ paths:
   texts: data/text_talent_motivation/cv_factual.csv      # generated CV statements (tracked: costs API credits)
   texts_counterfactual: data/text_talent_motivation/cv_counterfactual.csv  # test IDs only; see generation below
   texts_floor: data/text_talent_motivation/cv_floor.csv  # noise-floor texts (partition.csv floor units)
+  texts_held_out: data/text_talent_motivation/cv_factual_vb.csv  # evaluation units in codebook_held_out (V_B)
   pair_index: data/sim_talent_motivation/pair_index.csv  # id, split (test = evaluation units), is_identity
   render_plan: data/sim_talent_motivation/render_plan.csv  # shared template/persona/quantiles
 
 codebook: exp/sim_talent_motivation/codebook.yaml
 codebook_held_out: exp/sim_talent_motivation/codebook_vb.yaml  # V_B: held-out wording for the reader robustness re-render only
+held_out_fraction: 0.5  # evaluation units rendered in V_B (seeded subset; raising it keeps existing rows)
 prompts:
   templates: exp/sim/prompts/template_generation.yaml
   personas: exp/sim/prompts/persona_generation.yaml

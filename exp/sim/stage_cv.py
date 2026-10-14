@@ -5,7 +5,9 @@ the counterfactual pass always renders test X' and optionally includes train X'.
 Structured identities are copied from the factual file without an API call. The
 floor pass (per-unit designs only) re-renders the factual state of the flagged
 evaluation units with the next option of the ``design.floor_swap`` choices column,
-for the noise floor of latent proximity.
+for the noise floor of latent proximity. The held-out pass re-renders the factual
+state of every test (evaluation) unit with ``codebook_held_out`` (V_B) and the same
+render plan, for the reader robustness check (a seeded ``held_out_fraction`` of them).
 """
 
 from __future__ import annotations
@@ -31,6 +33,9 @@ from exp.sim.render import (
     RenderContext,
     floor_digest,
     generation_digest,
+    held_out_config,
+    held_out_digest,
+    held_out_ids,
     render_context,
     validate_grounding,
 )
@@ -101,7 +106,12 @@ def _generate_cv(config: dict[str, Any], world: str) -> None:
     validate_generation_settings(config)  # before rows are written or calls are billed
     counterfactual = world == "counterfactual"
     swap = floor_swap(config) if world == "floor" else None
-    ctx = render_context(config)
+    if world == "held_out":
+        # the factual file (production codebook) must be complete and grounded first
+        _load_factual_text(render_context(config))
+        ctx = render_context(held_out_config(config))
+    else:
+        ctx = render_context(config)
     if swap is not None and swap not in ctx.spec["choices"]:
         raise ValueError(f"design.floor_swap {swap!r} must be a codebook choices column")
     prompt, prompt_templates = _cv_prompt(config)
@@ -112,6 +122,10 @@ def _generate_cv(config: dict[str, Any], world: str) -> None:
         expected_ids = floor_ids(config)
         output = Path(config["paths"]["texts_floor"])
         digest = floor_digest(config)
+    elif world == "held_out":
+        expected_ids = held_out_ids(config, ctx.test_ids)
+        output = Path(config["paths"]["texts_held_out"])
+        digest = held_out_digest(config)
     else:
         expected_ids = ctx.counterfactual_text_ids if counterfactual else ctx.all_ids
         output = ctx.output_path(counterfactual)
@@ -124,6 +138,7 @@ def _generate_cv(config: dict[str, Any], world: str) -> None:
         expected_ids,
         digest,
         create=True,
+        allow_extension=world == "held_out",  # raising held_out_fraction extends the subset
     )
     validate_grounding(
         ctx,
@@ -187,3 +202,8 @@ def stage_generate_counterfactual_texts(config: dict[str, Any]) -> None:
 def stage_generate_floor_texts(config: dict[str, Any]) -> None:
     """Generate the noise-floor texts: unchanged state, swapped choice option."""
     _generate_cv(config, "floor")
+
+
+def stage_generate_held_out_texts(config: dict[str, Any]) -> None:
+    """Generate the test units' factual texts in the held-out (V_B) codebook."""
+    _generate_cv(config, "held_out")

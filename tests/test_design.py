@@ -181,6 +181,7 @@ def _pipeline_config(tmp_path):
         texts=str(text_dir / "cv_factual.csv"),
         texts_counterfactual=str(text_dir / "cv_counterfactual.csv"),
         texts_floor=str(text_dir / "cv_floor.csv"),
+        texts_held_out=str(text_dir / "cv_factual_vb.csv"),
         render_plan=str(tmp_path / "sim" / "render_plan.csv"),
         pair_index=str(tmp_path / "sim" / "pair_index.csv"),
     )
@@ -298,3 +299,91 @@ def test_evidence_variants_are_planned_shared_and_replayed(tmp_path, monkeypatch
 
     with pytest.raises(ValueError, match="incorrect concrete M"):
         validate_grounding(render_context(config), tampered, counterfactual=False)
+
+
+def test_held_out_texts_reuse_the_plan_with_the_held_out_codebook(tmp_path, monkeypatch):
+    import copy
+
+    from exp.sim import run, stage_cv
+    from exp.sim.generate_text import GenerationResult
+    from exp.sim.render import cv_schema, held_out_ids
+
+    config = _pipeline_config(tmp_path)
+    held_out = copy.deepcopy(config)
+    held_out["codebook"] = config["codebook_held_out"]
+    spec_a, spec_b = load_render_spec(config), load_render_spec(held_out)
+    headers = cv_schema(spec_a)[1]
+
+    calls = []
+
+    def fake_generate(sample, *args, **kwargs):
+        calls.append(sample)
+        return GenerationResult(
+            text=f"{sample['candidate_info']}\n{sample['evidence_guidance']}",
+            response_id="r",
+            model="mock-model",
+            finish_reason="stop",
+        )
+
+    monkeypatch.setattr(stage_cv, "generate_text_result", fake_generate)
+    stage_simulate(config)
+    with pytest.raises(FileNotFoundError):
+        run.stage_generate_held_out_texts(config)  # factual texts must exist first
+    run.stage_generate_texts(config)
+    run.stage_generate_counterfactual_texts(config)
+    run.stage_generate_floor_texts(config)
+    run.stage_validate_pairs(config)  # held-out texts absent: skipped, not an error
+    before = len(calls)
+    assert config["held_out_fraction"] == 0.5
+    run.stage_generate_held_out_texts(config)
+
+    factual = pd.read_csv(config["paths"]["texts"]).set_index("id")
+    vb = pd.read_csv(config["paths"]["texts_held_out"]).set_index("id")
+    states = pd.read_csv(tmp_path / "sim" / "sim_data_factual.csv").set_index("id")
+    pairs = pd.read_csv(tmp_path / "sim" / "pair_index.csv")
+    test_ids = set(pairs.loc[pairs["split"] == "test", "id"])
+    half = held_out_ids(config, test_ids)
+    assert set(vb.index) == half and len(half) == round(0.5 * len(test_ids))
+    assert len(calls) - before == len(half)
+    for unit_id, row in vb.iterrows():
+        for column in ["template_id", "persona_id", *headers.values()]:
+            assert row[column] == factual.at[unit_id, column]  # same plan and variant positions
+        for column in ("D", "U"):
+            level = int(states.at[unit_id, column])
+            assert spec_b["columns"][column][level] in row["text"]
+            assert spec_a["columns"][column][level] not in row["text"]
+        for column in ("L", "H", "A", "M"):
+            level, variant = int(states.at[unit_id, column]), int(row[headers[column]])
+            assert spec_b["evidence"][column][level][variant] in row["text"]
+            assert spec_a["evidence"][column][level][variant] in factual.at[unit_id, "text"]
+    run.stage_validate_pairs(config)
+
+    config["held_out_fraction"] = 1.0  # raising the fraction extends the subset
+    before = len(calls)
+    run.stage_generate_held_out_texts(config)
+    assert len(calls) - before == len(test_ids) - len(half)  # existing rows are kept
+    vb = pd.read_csv(config["paths"]["texts_held_out"]).set_index("id")
+    assert set(vb.index) == test_ids
+    run.stage_validate_pairs(config)
+
+    tampered = vb.reset_index()
+    tampered.loc[0, "persona_id"] = 3 - tampered.loc[0, "persona_id"]
+    tampered.to_csv(config["paths"]["texts_held_out"], index=False)
+    with pytest.raises(ValueError, match="incorrect persona"):
+        run.stage_validate_pairs(config)
+
+
+def test_journal_extension_is_narrow(tmp_path):
+    from exp.sim.helpers import prepare_generated_csv
+
+    output = tmp_path / "out.csv"
+    schema = ["id", "text"]
+    prepare_generated_csv(output, schema, "id", {1, 2}, "d1", create=True)
+    with pytest.raises(RuntimeError, match="incompatible"):  # default: coverage pinned
+        prepare_generated_csv(output, schema, "id", {1, 2, 3}, "d1", create=True)
+    with pytest.raises(RuntimeError, match="incompatible"):  # shrinking is refused
+        prepare_generated_csv(output, schema, "id", {1}, "d1", create=True, allow_extension=True)
+    with pytest.raises(RuntimeError, match="incompatible"):  # other inputs changed
+        prepare_generated_csv(output, schema, "id", {1, 2, 3}, "d2", create=True, allow_extension=True)
+    prepare_generated_csv(output, schema, "id", {1, 2, 3}, "d1", create=True, allow_extension=True)
+    prepare_generated_csv(output, schema, "id", {1, 2, 3}, "d1", create=False)  # recorded

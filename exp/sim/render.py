@@ -9,11 +9,13 @@ replays the plan to check a written CSV against it.
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from exp.sim.generate_text import DEFAULT_BASE_URL, GenerationResult, load_codebook_spec
@@ -154,6 +156,54 @@ def generation_digest(config: Mapping[str, Any], counterfactual: bool) -> str:
         if load_design(config) is not None:  # per-unit queries: the drawn values decide X'
             files["interventions"] = design_paths(config)["interventions"]
             settings["design"] = config["design"]
+    return input_digest(settings, files)
+
+
+def held_out_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    """The config with ``codebook_held_out`` as its codebook (V_B rendering).
+
+    Everything else, in particular the render plan, is shared with the production
+    codebook, which must therefore have the same CV layout (sampled columns, labels).
+    """
+    if "codebook_held_out" not in config or "texts_held_out" not in config["paths"]:
+        raise ValueError("held-out texts need codebook_held_out and paths.texts_held_out")
+    held_out = copy.deepcopy(dict(config))
+    held_out["codebook"] = config["codebook_held_out"]
+    return held_out
+
+
+def held_out_ids(config: Mapping[str, Any], test_ids: set[int]) -> set[int]:
+    """The test units rendered in the held-out codebook.
+
+    A seeded permutation of the test units, of which the first ``held_out_fraction``
+    (default 1) are taken. Raising the fraction only extends the subset, so already
+    generated rows stay valid; the fraction is therefore not part of the digest.
+    """
+    fraction = float(config.get("held_out_fraction", 1.0))
+    if not 0 < fraction <= 1:
+        raise ValueError("held_out_fraction must lie in (0, 1]")
+    seed = int(config["split"]["seed"])
+    order = np.random.default_rng([seed, 5]).permutation(sorted(test_ids))
+    return {int(unit_id) for unit_id in order[: round(fraction * len(order))]}
+
+
+def held_out_digest(config: Mapping[str, Any]) -> str:
+    """Digest of every input the held-out (V_B) CV file depends on."""
+    sim_dir = Path(config["paths"]["sim_dir"])
+    files = {
+        "states": sim_dir / "sim_data_factual.csv",
+        "render_plan": Path(config["paths"]["render_plan"]),
+        "templates": Path(config["paths"]["templates"]),
+        "personas": Path(config["paths"]["personas"]),
+        "prompt": Path(config["prompts"]["cv"]),
+        "codebook": Path(config["codebook_held_out"]),
+        "pair_index": Path(config["paths"]["pair_index"]),
+    }
+    settings = {
+        "renderer": RENDERER_VERSION,
+        "world": "held_out",
+        "endpoint": config.get("llm", {}).get("base_url", DEFAULT_BASE_URL),
+    }
     return input_digest(settings, files)
 
 

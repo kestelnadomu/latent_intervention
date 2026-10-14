@@ -83,7 +83,7 @@ The DAG, structural equations, counterfactual targets, text generation, splits a
   (proximity) and E5 (shared residual) need $\varphi(x')$.
 - **Evaluation units** therefore get one counterfactual text each (total target, random
   non-identity $k$), and a 20 % subset gets a noise-floor text.
-- **Cost:** $N + 2.2\,n_{test}$ billed calls. A new operator or target costs nothing.
+- **Cost:** $N + 1.7\,n_{test}$ billed calls. A new operator or target costs nothing.
 
 ### Method
 

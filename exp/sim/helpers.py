@@ -176,8 +176,14 @@ def prepare_generated_csv(
     digest: str,
     *,
     create: bool,
+    allow_extension: bool = False,
 ) -> pd.DataFrame:
-    """Validate a resumable billed output before any API call."""
+    """Validate a resumable billed output before any API call.
+
+    The journal pins the expected IDs, so a coverage change is refused. With
+    ``allow_extension``, a strictly larger ID set with otherwise identical inputs is
+    accepted and recorded (existing rows stay valid); shrinking is still refused.
+    """
     info_path = generation_info_path(output)
     expected_info = {
         "input_digest": digest,
@@ -198,7 +204,16 @@ def prepare_generated_csv(
         pd.DataFrame(columns=schema).to_csv(output, index=False)
 
     info = json.loads(info_path.read_text(encoding="utf-8"))
-    if any(info.get(key) != value for key, value in expected_info.items()):
+    mismatched = {key for key, value in expected_info.items() if info.get(key) != value}
+    if (
+        allow_extension
+        and mismatched == {"expected_ids"}
+        and set(info.get("expected_ids") or []) < expected_ids
+    ):
+        info.update(expected_ids=sorted(expected_ids), complete=False)
+        write_json(info_path, info)
+        mismatched = set()
+    if mismatched:
         raise RuntimeError(f"{info_path} is incompatible with current generation inputs")
     frame = pd.read_csv(output)
     if list(frame.columns) != schema:

@@ -355,8 +355,8 @@ $n_{test}$ is large. It also gives the diagnostic-validity analysis its power.
 | factual texts | $N$ |
 | counterfactual texts | $n_{test}$ |
 | noise-floor texts | $0.2\,n_{test}$ |
-| $\mathcal V_B$ re-rendering (reader benchmark) | $n_{test}$ |
-| **total** | $N + 2.2\,n_{test}$ = 6,200 at the proposed sizes |
+| $\mathcal V_B$ re-rendering (reader benchmark; `held_out_fraction` 0.5) | $0.5\,n_{test}$ |
+| **total** | $N + 1.7\,n_{test}$ = 5,700 at the proposed sizes |
 | a new operator or target | 0 (state-level metrics) |
 | only if the reader check fails: $P$ in $\mathcal V_B$ | +1,000 |
 
@@ -403,8 +403,13 @@ becomes a headline claim.
    columns and the CV row (variant index), and grounding replays them. Codebooks with single
    strings (the talent SFM) keep their exact plan layout. $\mathcal V_A$ has three variants per
    level for $\texttt L$/$\texttt H$/$\texttt A$/$\texttt M$ — **wording to review**.
-   $\mathcal V_B$ — written (`codebook_vb.yaml`, wording to review, calibration check
-   pending). Still open: the re-render stage. The first pilot (50 texts, single sentences) is kept in
+   $\mathcal V_B$ — written (`codebook_vb.yaml`). Re-render stage — done:
+   `generate-held-out-texts` renders the evaluation units' factual state with
+   `codebook_held_out` and the unchanged render plan (`paths.texts_held_out`, own journal and
+   digest). `validate-pairs` checks coverage, grounding against $\mathcal V_B$ and the
+   unchanged plan columns, and skips the file while it doesn't exist. Only a seeded
+   `held_out_fraction` (0.5: 500 units, 500 billed calls) is rendered; raising it later extends the
+   subset and keeps existing rows (the journal accepts a strictly larger ID set for this stage only). The first pilot (50 texts, single sentences) is kept in
    `data/{sim,text}_talent_motivation/pilot_v0/`.
 4. **Counterfactual data — simulation done.** `SCM.generate` evaluates the model for stored
    noise with blocked edges (generic, no node names). The opt-in `design:` block
