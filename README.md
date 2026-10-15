@@ -466,6 +466,15 @@ The modules `benchmark_matrix`, `training`/`validation`, `evaluation`, and `repo
 `src/latent_intervention/` separate planning, fitting, evaluation, and reporting; only small
 optional epoch-control hooks were added to the established trainers.
 
+### Projected C-sym
+
+`c_sym_project` is the supported standalone factual state-effect editor, with
+mandatory preservation projection and portable 256D/768D checkpoints (768D is
+the lead configuration). It needs frozen `g` and `h_S`, but no flow teacher or
+paired counterfactual training embeddings. Existing nine-family benchmarks are unchanged.
+See [the C-sym guide](docs/experiments/csym_project.md) for commands, guarantees,
+results, provenance and the single record of retired experimental variants.
+
 ## Publish
 
 From root directory:
