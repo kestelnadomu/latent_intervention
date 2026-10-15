@@ -338,7 +338,7 @@ data. This section fixes in advance which kinds of claims the experiments can su
 
 | Claim type | Example | Transfers? |
 |---|---|---|
-| **Mechanism**: a structural property of the method, independent of the numbers | omission is not blocking (H2); a false mediator is rendered faithfully (H4); a false edge is detectable from factual data but an omitted variable is not (O5 refit) | yes; follows from how $\rho$ and $\tilde\omega_S$ are built, the simulation demonstrates it |
+| **Mechanism**: a structural property of the method, independent of the numbers | omission is not blocking (H2); a false mediator is rendered faithfully (H4); a false edge is detectable from factual data but an omitted variable is not (O5 refit; only with an estimator that has an intercept: the naive fit even reports a strong false edge, see the [operator benchmark](operator_benchmark.md#results-operator-v3)) | yes; follows from how $\rho$ and $\tilde\omega_S$ are built, the simulation demonstrates it |
 | **Ordering / relative sensitivity** | $\texttt X$ coefficients matter more than noise (H5); omission costs more than estimation error | with care; holds for this SCM's effect sizes; state-level orderings are checked in alternative worlds (below) |
 | **Decomposition**: which component dominates the error | reading vs. operator vs. rendering cost from the substitution grid | as an ordering, with the same care |
 | **Diagnostic validity**: whether a metric computable without ground truth tracks one that needs it | support distance and $\psi$-consistency against $\Gamma$ predict E1/E3/E4 | yes, and this is the main bridge (below) |

@@ -1,0 +1,20 @@
+# Operator benchmark: python -m exp.benchmarks.operator.run --run-id <id>
+# Assumed vs. true symbolic operator on states alone (docs/experiments/operator_benchmark.md).
+# No texts, encoders or billed calls: transition matrices are exact; only the log score and
+# the fitted conditions (O2a/b, O5 refit) use simulated units.
+sim_config: exp/sim_talent_motivation/config.yaml
+seed: 0
+n_score: 50000          # simulated units for the log score of realized counterfactuals
+o2a_n_fit: 200000       # O2a: estimator bias, large sample
+o2b:                    # O2b: sampling error of the same estimator
+  n_fit: [100, 300, 1000, 3000, 10000]
+  resamples: 20
+o2d:                    # O2d: one parameter group scaled at a time
+  factors: [0.5, 0.75, 1.25, 1.5]
+  groups: [coef_X, coef_T, noise_mu, noise_sigma]
+o5:                     # O5: false edge X -> M; c relative to the true X -> D coefficient
+  c_relative: [0.0, 0.25, 0.5, 1.0, 1.5]
+  refit_n_fit: [100, 300, 1000, 3000, 10000]
+  refit_resamples: 20
+estimators: [naive, intercept, mle]  # fitted conditions: existing fit, OLS with intercept, ordered-probit MLE
+screening_tv: 0.001     # state-level TV above this enters the end-to-end runs (exact metric)

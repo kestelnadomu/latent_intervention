@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import math
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
@@ -89,11 +89,16 @@ class SymbolicIntervention:
             the keys are the non-root nodes and each value's keys are that node's
             parents, so this doubles as the graph structure.
         noise_params: ``(mu_i, sigma_i)`` of ``eps_i ~ Normal`` per non-root node.
+        blocked: optional cut edges ``{child: {parent, ...}}``. Abduction uses every edge;
+            in the prediction step a blocked child reads that parent's *factual* value,
+            which yields the path-specific counterfactual (e.g. ``X -> D`` blocked:
+            ``D`` keeps its factual value while other paths from ``X`` stay active).
     """
 
     columns: list[ColumnSpec]
     mechanism_coeffs: dict[str, dict[str, float]]
     noise_params: dict[str, tuple[float, float]]
+    blocked: dict[str, set[str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self._names = [c.name for c in self.columns]
@@ -204,10 +209,12 @@ class SymbolicIntervention:
                 continue
             mu, sigma = self.noise_params[name]
             k = self._card[name]
+            cut = self.blocked.get(name, set())
             nxt: list[tuple[dict[str, int], float]] = []
             for assign, p in beam:
+                inputs = {**assign, **{parent: state[parent] for parent in cut}} if cut else assign
                 probs = _category_probs(
-                    self._mechanism(name, assign), *intervals[name], mu, sigma, k
+                    self._mechanism(name, inputs), *intervals[name], mu, sigma, k
                 )
                 for c, pc in enumerate(probs):
                     if pc > 1e-9:

@@ -1,6 +1,7 @@
 # Operator benchmark: assumed vs. true symbolic model
 
-Status: design draft, not implemented. One of three component benchmarks of the
+Status: implemented and run (`operator-v3`, results below). O2c needs the reader's labels and
+is pending. One of three component benchmarks of the
 [wrong-symbolic-model experiment](wrong_symbolic_model.md) (reader: [reader_benchmark.md](reader_benchmark.md),
 renderer: [renderer_benchmark.md](renderer_benchmark.md)). The notation and the conditions
 (S1–S6, O1–O5) are defined in wrong_symbolic_model.md, the data and targets in
@@ -138,22 +139,111 @@ wrong_symbolic_model.md). Conditions are therefore selected here, with the rule 
   identical) enter only as a single spot check.
 - The S family always enters, because its error is invisible here.
 
+## Results (`operator-v3`)
+
+Run: `uv run python -m exp.benchmarks.operator.run --run-id operator-v3` (protocol
+[configs/operator_benchmark.yaml](../../configs/operator_benchmark.yaml); about 12 s). Full tables:
+`reports/talent_motivation/operator_benchmarks/operator-v3/summary.md` (local; `reports/` is
+ignored). All TV values are exact except the fitted rows (mean over resamples) and the log
+score (50,000 simulated units).
+
+**Sanity checks hold.** The true kernels against their own target, O4 against its
+path-specific target, O5 at $c=0$, and S3/S4 restricted to their spaces all have TV exactly 0.
+
+**1. The existing estimator is the dominant error source, not sampling.**
+
+| Estimator (O2a, 200,000 units) | TV | rel. err. $\texttt X$ coef. | rel. err. $\sigma$ |
+|---|---|---|---|
+| naive (`SymbolicIntervention.fit`) | 0.263 | 0.105 | 0.553 |
+| OLS with intercept | 0.268 | 0.113 | 0.562 |
+| ordered-probit MLE (new) | **0.002** | 0.004 | 0.000 |
+
+`fit` estimates $\sigma$ from the residual variance of the interior level only. For 3-level
+variables those residuals lie in a window of width 1, so $\sigma$ comes out at about 0.30 instead
+of 0.50. For a root-like variable (M) it collapses to the floor of 0.01, which makes every
+$\texttt M = 2$ observation impossible. With the naive estimators O2b is flat at TV ≈ 0.26 for
+every $n_{fit}$ (100 to 10,000). With MLE it falls from 0.11 ($n=100$) to 0.009 ($n=10{,}000$):
+genuine sampling error. The ordered-probit MLE is in `exp/sim/assumed.py` (`estimator="mle"`);
+`fit` itself is unchanged, because the talent pipeline depends on it.
+
+**2. False edges are detectable from factual data only with a correct estimator.**
+
+| O5 refit (only M's mechanism) | $\hat c$ at $n=10{,}000$ (true 0) | TV |
+|---|---|---|
+| naive (no intercept) | 0.428 ± 0.004 | 0.507 |
+| OLS with intercept | −0.001 ± 0.006 | 0.250 (σ collapse) |
+| MLE | −0.001 ± 0.008 | 0.009 |
+
+Without an intercept, $\hat c \approx E[\texttt X]E[\texttt M]/E[\texttt X^2] = 0.43$: the
+naive refit "finds" a false edge 1.4 times as strong as the true $\texttt X\to\texttt D$ edge.
+The claim "a false edge is detectable, an omitted variable is not" therefore holds only for an
+estimator with an intercept. With MLE, $\hat c$ is within ±0.07 at $n = 100$.
+
+**3. Ignoring $\texttt T$ leaves the means right but the distributions wrong.**
+
+| Condition | TV | E[D′] error | E[U′] error |
+|---|---|---|---|
+| O1 unaware (full state) | 0.222 | 0.012 | −0.002 |
+| O1 refit, naive | 0.367 | 0.032 | 0.057 |
+| O1 refit, MLE | 0.130 | −0.002 | −0.001 |
+| S2 unaware ($\texttt X,\texttt D,\texttt U$) | 0.220 | 0.012 | −0.002 |
+| S2 refit, MLE | 0.064 | −0.002 | −0.001 |
+| S5 refit, MLE ($\texttt X,\texttt U$) | 0.002 | – | −0.001 |
+
+As predicted, $\texttt T$ cancels in the mean shift. Contrary to the prediction that the
+variants differ little, the *distributions* differ substantially: unaware attributes
+$\texttt T$'s contribution to the noise and gets the spread wrong. A refit with MLE absorbs
+most of it. What remains on S2 (0.064) is the $\texttt D$–$\texttt U$ correlation that only a
+marginalizing kernel can keep. With a single mediator (S5) nothing remains.
+
+**4. Parameter sensitivity (O2d, H5): $\texttt X$ coefficients dominate the mean, $\sigma$ the spread.**
+
+| Group | TV ×0.5 / ×0.75 / ×1.25 / ×1.5 | E[D′] error ×0.5 |
+|---|---|---|
+| $\texttt X$ coefficients | 0.278 / 0.140 / 0.138 / 0.262 | −0.180 |
+| noise $\sigma$ | 0.216 / 0.092 / 0.067 / 0.117 | 0.041 |
+| $\texttt T$ coefficients | 0.119 / 0.061 / 0.062 / 0.120 | 0.010 |
+| noise $\mu$ | 0.028 / 0.014 / 0.014 / 0.028 | 0.000 |
+
+H5 holds for the mean shift and narrowly for TV. A halved $\sigma$ costs almost as much TV as
+halved $\texttt X$ coefficients, but moves the means four times less.
+
+**5. Edges and false mediators.**
+
+- **Dropping $\texttt X\to\texttt D$ (O3) and blocking it (O4) give identical counterfactual
+  states** (TV 0.440 against the total target, 0 against the path-specific one).
+  $\texttt D$ has no descendant in the state, so the wrong abduction under "drop" is invisible
+  here. It would matter only downstream (e.g. through $\texttt Y$) or with a mediator chain.
+- **Using the total-effect operator for a path-specific question** costs TV 0.44 ($\texttt D$
+  blocked) and 0.68 (direct effect only): the size of the normative choice between targets.
+- **O5 is a clean dose-response:** TV 0.10 / 0.19 / 0.37 / 0.50 and E[M′] error 0.10 / 0.19 /
+  0.37 / 0.51 at $c$ = 0.25 / 0.5 / 1 / 1.5 × the true $\texttt X\to\texttt D$ coefficient. The
+  Bayes-optimal $\texttt Y'$ moves along with it (E[Y′] error 0.04 / 0.07 / 0.13 / 0.18): H4's
+  downstream harm, at state level.
+
+**Screening.** With exact metrics, a threshold of 0.001 admits every condition except the
+references and exact variants (S3, S4, O4 against its own target). That isn't selective. See the
+open decisions.
+
 ## Required changes
 
-1. **Assumed operators.** A config-selected wrapper in `exp/sim/symbolic.py` that derives
-   $\tilde\omega_S$ from the true kernel by restricting to $\mathcal S_k$ (unaware or refit),
-   ignoring a variable on the full state (O1), fitting the parameters from a given frame
-   (O2a–c) or scaling them per group (O2d), dropping (O3) or blocking (O4) edges, and adding an
-   edge with a given coefficient and matched marginal (O5). The marginalizing variant is the
-   only new inference code and is optional.
-2. **True marginalized counterfactuals** for $\mathcal S_k$: by exact enumeration or Monte
-   Carlo from the SCM.
-3. **A runner** in `exp/benchmarks/`: conditions × $\delta$ × targets → metrics JSON and report.
-   No billed calls, no encoders.
+1. **Assumed operators — done.** [exp/sim/assumed.py](../../exp/sim/assumed.py) (generic):
+   `restrict`, `drop_parents`, `block` (also `SymbolicIntervention.blocked` in
+   `exp/sim/symbolic.py`), `scale`, `add_mechanism` with `matched_root_noise`, `refit`
+   (estimators `naive`, `intercept`, `mle`; `only=` for single mechanisms), the exact
+   `state_distribution`, and `projection`/`project` onto a column subset.
+2. **True marginalized counterfactuals — done,** exactly, by projecting the full transition
+   matrix with the exact factual state distribution.
+3. **Runner — done.** `exp/benchmarks/operator/` (`run.py`, `metrics.py`). Tests:
+   `tests/test_operator_benchmark.py`.
 
 ## Open decisions
 
-- $n_{fit}$ grid and resamples (O2b), perturbation factors (O2d), $c$ grid (O5).
-- Keep the biased `fit` only (the "naive practitioner" estimator), or also add a censored
-  estimator (ordered probit with intercept) to separate estimator bias from misspecification.
-- Whether to build the marginalizing kernel (decided by the kernel-variant result).
+- **Screening threshold.** 0.001 admits nearly everything. Options: a meaningful threshold
+  (e.g. TV ≥ 0.05), or one representative level per group (O1 unaware and refit MLE; O2d
+  $\texttt X$ and $\sigma$ at ×0.5; O3 = O4; O5 at $c$ = 0.5 and 1).
+- **Marginalizing kernel.** Only S2 needs it (TV 0.064 after an MLE refit, from the lost
+  $\texttt D$–$\texttt U$ correlation). Worth building only if S2 is a headline condition.
+- **Which estimator the realistic O2c uses.** MLE by default. `naive` stays as the
+  "practitioner" reference.
+- **O2c** runs after the reader benchmark ($\psi$'s cross-fitted labels).
