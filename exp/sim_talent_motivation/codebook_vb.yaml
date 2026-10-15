@@ -1,0 +1,166 @@
+# Held-out verbalization V_B of the talent-motivation codebook, for the reader robustness
+# check (docs/experiments/reader_benchmark.md). Same format and layout as codebook.yaml (V_A):
+# countries, project bins and labels are identical, so the CV schema is the same. Only what
+# carries D, U, T (via L, H, A) and M is paraphrased, and no D/U phrase or evidence variant
+# may occur in V_A. Each evidence level keeps three variants, so a unit's plan quantile
+# picks the same position in both sets. Used only by the V_B re-render of the evaluation
+# units; editing this file never touches the production texts' digest.
+# Y (qualification) is the downstream outcome and is deliberately absent.
+#
+# columns:  {column: {level index: phrase}} for every verbalized column
+#           (schema.columns + schema.auxiliary minus hidden).
+# labels:   display name per column in the candidate information list.
+# hidden:   schema columns that are decoded but never verbalized.
+# bins:     numeric ranges; a concrete value is sampled inside the row's bin.
+# choices:  per-level option lists; one option is picked by the render-plan
+#           quantile, so X and X' take the same position in the list.
+# evidence: columns that are never stated as facts. Their level is rendered as
+#           behavioural writing guidance in the {evidence_guidance} prompt block
+#           (show, don't tell). Low levels are modest, never negative.
+# forbidden_terms: evaluative trait words the text must not use (inlined in the
+#           prompt as {forbidden_terms}; reported by validate-pairs).
+#
+# X region codes are ORDINAL BY A SIMULATED ACCESS GAP: X enters D and U
+# linearly. This is a synthetic modelling choice for the fairness simulation,
+# not an empirical claim about these regions. Review the region/country lists.
+
+hidden: [T]   # talent: only inferable through the proxies P, L, H, A
+
+columns:
+  X:
+    0: "Sub-Saharan Africa"
+    1: "South Asia"
+    2: "Latin America"
+    3: "Western Europe"
+  D:
+    0: "an undergraduate degree at bachelor level"
+    1: "a postgraduate degree at master level"
+    2: "a PhD"
+  U:   # globally anchored tiers: same standing regardless of the country
+    0: "a university outside the major international rankings"
+    1: "a university among the world's 500 best"
+    2: "a university among the world's 100 best"
+  P:
+    0: "1-2 projects"
+    1: "3-5 projects"
+    2: "6-9 projects"
+  L:
+    0: "gradual"
+    1: "moderate"
+    2: "fast"
+  H:
+    0: "routine"
+    1: "workaround"
+    2: "novel solution"
+  A:
+    0: "occasional"
+    1: "sometimes"
+    2: "go-to person"
+  M:
+    0: "steady"
+    1: "persistent"
+    2: "self-initiated"
+
+labels:
+  X: "Country of origin"
+  D: "Degree"
+  U: "University"
+  P: "Completed projects with tangible outcomes"
+  L: "Learning new skills"
+  H: "Hard problems"
+  A: "Colleagues"
+  M: "Effort and follow-through"
+
+bins:
+  P:
+    0: [1, 2]
+    1: [3, 5]
+    2: [6, 9]
+
+choices:
+  X:
+    0: ["Nigeria", "Ghana", "Kenya", "Ethiopia"]
+    1: ["India", "Pakistan", "Bangladesh", "Sri Lanka"]
+    2: ["Brazil", "Mexico", "Colombia", "Peru"]
+    3: ["Germany", "France", "the Netherlands", "Spain"]
+
+evidence:
+  # Held-out variants: same strength per level as V_A, different wording and episodes.
+  L:
+    0:
+      - "needed a long period of regular practice, well over a year, before a new piece of software felt familiar"
+      - "learned the methods of a new project slowly, building them up bit by bit over many months"
+      - "settled into an unfamiliar topic at a measured pace, relying on repetition until it felt natural after roughly a year"
+    1:
+      - "got up to speed with an unfamiliar system in two to three months of concentrated work"
+      - "after one season of steady study could use a technique that was new to them without supervision"
+      - "spent around eight weeks practising deliberately before working confidently with a new set of methods"
+    2:
+      - "was fluent in a technology new to them after only a couple of weeks and was then coaching newcomers in it"
+      - "absorbed an unfamiliar discipline in less than a month and was soon contributing like a long-standing specialist"
+      - "learned a new system so quickly that after a few weeks they were writing the introduction guide for the next people to use it"
+  H:
+    0:
+      - "deals with the standard issues of their job by applying the documented process and asks a senior colleague when a case does not fit"
+      - "sticks to proven procedures for everyday difficulties and hands unusual cases to someone more experienced"
+      - "keeps ordinary tasks running by using familiar solutions and seeks advice when a situation is new to them"
+    1:
+      - "came up with a pragmatic fix for an issue that had kept interrupting their colleagues' work"
+      - "traced the cause of a repeated delay and changed one step of the process so it no longer occurred"
+      - "reworked a clumsy part of an existing procedure so that a frequent error disappeared"
+    2:
+      - "developed an entirely new approach to a problem colleagues had given up on, and it was taken up across several departments"
+      - "resolved a problem that had defeated more experienced people by inventing a method that is now used well beyond their group"
+      - "found an unprecedented way around a technical obstacle that had blocked several projects, and the solution was rolled out across the organisation"
+  A:
+    0:
+      - "gets along with the team and passes on what they know about their own assignments on request"
+      - "is helpful when a coworker asks about something they are working on"
+      - "takes part in team exchanges and explains their own part of the work when someone needs it"
+    1:
+      - "is asked from time to time by coworkers for an opinion on topics within their speciality"
+      - "receives the occasional request from colleagues to explain something in their field"
+      - "now and again has teammates come to them for input on matters they handle"
+    2:
+      - "is the first contact for colleagues and managers facing tough questions, often well beyond their own subject"
+      - "is constantly approached by people from other teams and by leadership for guidance on complex issues"
+      - "has become the person most people in the organisation consult when a hard question arises, whatever the area"
+  # M is about effort, persistence and initiative, never about ability or the quality of a
+  # solution, so that it stays separable from the talent proxies (L, H, A, P).
+  M:
+    0:
+      - "finishes the work handed to them as agreed and on time"
+      - "delivers the assignments of their role within the planned scope and timeline"
+      - "does what their role asks of them and meets the deadlines that were set"
+    1:
+      - "kept going on a long, frustrating assignment through repeated setbacks, working extra hours when it was necessary"
+      - "persisted with a slow project when it hit obstacles and put in additional evenings to keep it on track"
+      - "did not let a series of delays stop a long task and added time of their own to bring it to completion"
+    2:
+      - "launched an extensive initiative beyond their job description on their own and kept it running for more than twelve months, through to its finish"
+      - "of their own accord took charge of a substantial project outside their remit and pushed it forward over many months to completion"
+      - "proposed a large extra effort on top of their normal workload and kept at it, month after month, until it was complete"
+
+forbidden_terms:
+  - talent
+  - talented
+  - gifted
+  - brilliant
+  - genius
+  - prodigy
+  - natural ability
+  - naturally gifted
+  - exceptional
+  - outstanding
+  - extraordinary
+  - highly intelligent
+  - motivated
+  - self-motivated
+  - highly motivated
+  - driven
+  - self-driven
+  - hard-working
+  - hardworking
+  - diligent
+  - conscientious
+  - tenacious

@@ -12,7 +12,7 @@ from exp.sim.generate_text import GenerationResult
 from exp.sim.pairing import build_pair_index, build_render_plan, materialize_binned_values
 
 # The pairing pipeline is exercised on the active talent-SFM config
-# (exp/sim/config.yaml): do(X=3) with S = {X, T, D, U}, proxies P, L, H, A and
+# (exp/sim_talent/config.yaml): do(X=3) with S = {X, T, D, U}, proxies P, L, H, A and
 # outcome Y. T and the proxies are invariant under do(X).
 WESTERN_EUROPE = ["Germany", "France", "the Netherlands", "Spain"]
 
