@@ -40,6 +40,7 @@ Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 | A | `pre_additive` / `LatentInterventionPreAdditive` | pushforward of $\varepsilon\sim\mathcal N(0,\sigma^2 I_{128})$ through $z+\Delta_\theta(z+\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — | ablation |
 | B | `noise_token` / `LatentInterventionNoiseToken` | pushforward of $\varepsilon\sim\mathcal N(0,I_r)$ through $z+\Delta_\theta(z,\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — | ablation |
 | C | `dist` / `LatentInterventionDist` | $\sum_{\mathbf s'} w_\theta(\mathbf s'\mid z,\delta)\,\mathbb 1_{z+\Delta_\phi(z,\mathbf s')}$ | exact, $k$ passes | learned $w_\theta$ (distilled from $h_S\circ g$) | state $\mathbf s'$ | **carried forward** (as C-sym) |
+| C-sym | `c_sym_project` / `ProjectedCSym` | projected factual state-effect shifts | exact, all supported transitions | fixed $g(s\mid z)h_S(s'\mid s,\delta)$ | coupled source and target, not guaranteed decoded states |
 | D | `particles` / `LatentInterventionParticles` | $\sum_{j=1}^d w_j(z,\delta)\,\mathbb 1_{z+\Delta_{\theta,j}(z,\delta)}$ | exact, $d$ passes | learned $w_j$ (or uniform) | none | ablation |
 | F1 | `state_flow` / `StateConditionalFlow` | shared-noise transport through $F_\theta(S,U)$ | not trained; by construction | observed or inferred $S$, then $h_S$ | target state $S'$ | **carried forward** |
 | F2 | `distilled_flow` / `DistilledFlowIntervention` | conditional flow $D_\phi(E;z,\delta)$ | sampled | distilled state-flow teacher | none | ablation (amortised F1) |
@@ -341,8 +342,8 @@ $$h_Z(\cdot\mid z,\delta) = \sum_{\mathbf s'\in\text{top-}k} w(\mathbf s'\mid z,
   three options:
   * *distilled* (implemented): $w_\theta$ is an autoregressive head, like $g$, trained on
     $D_{\mathrm{KL}}(h_S\circ g \,\|\, w_\theta)$;
-  * *C-sym* (planned): $w = (h_S\circ g)(\cdot\mid z,\delta)$ exactly, so only $\Delta_\phi$ is
-    trained;
+  * *Target-only C-sym* (conceptual precursor; see the supported variant below): $w = (h_S\circ g)(\cdot\mid z,\delta)$ exactly,
+    so only $\Delta_\phi$ is trained. See the qualification below;
   * *unit* (planned): $w_\theta$ trained by likelihood on the true $\mathbf s'$.
 * **Mixture.** Keep the top-$k$ states, renormalise their weights, and realise each one.
   `sample()` draws $\mathbf s'$ from $w$ and realises it. `forward()` returns the argmax
@@ -398,6 +399,15 @@ def composed_log_joint(self, z, values, mask, decoder):
 ```
 
 ---
+
+### Supported projected C-sym
+
+The supported implementation is `c_sym_project` in `src/latent_intervention/csym/`.
+It uses factual state-effect differences and all coupled source–target symbolic
+transitions, with preservation projection inside inference. The preceding
+single-target C-sym description is a conceptual precursor, not the supported API.
+See [the C-sym guide](../experiments/csym_project.md) for its definition, guarantees,
+training/evaluation protocol and experiment history.
 
 ## Plan D — Deterministic particle set
 

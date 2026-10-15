@@ -13,7 +13,15 @@ def test_result_tracking_allowlist(tmp_path):
     report = "reports/talent/embeddinggemma_768/g-independent"
     hz = "reports/talent/hz_benchmarks/test-run"
     hz_model = f"{model}/h-state_flow/benchmarks/test-run"
+    preservation = "reports/talent/hz_preservation/test-run"
     portable = {
+        "models/talent/embeddinggemma_256/g-independent/h-c_sym_project/latent_intervention.pt",
+        "reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/evaluation.json",
+        f"{model}/h-c_sym_project/latent_intervention.pt",
+        f"{model}/h-c_sym_project/latent_intervention.info.json",
+        f"{model}/h-c_sym_project/audit_readers.pt",
+        *(f"{report}/h-c_sym_project/{name}.json" for name in
+          ("protocol", "training", "probes", "audit", "evaluation", "original_evaluation", "migration")),
         f"{hz_model}/selected/latent_intervention.pt",
         f"{hz_model}/selected/latent_intervention.info.json",
         *(
@@ -72,6 +80,21 @@ def test_result_tracking_allowlist(tmp_path):
         f"{bundle}/source/uv.lock",
     }
     local = {
+        "models/talent/embeddinggemma_128/g-independent/h-c_sym_project/latent_intervention.pt",
+        "reports/talent/embeddinggemma_128/g-independent/h-c_sym_project/evaluation.json",
+        f"{model}/h-csym-new-run/latent_intervention.pt",
+        f"{report}/h-csym-new-run/training.json",
+        "archives/csym-experiments-2026-10-13/archive.json",
+        f"{model}/h-c_sym_project/resume.pt",
+        f"{model}/preservation/test-run/probes.pt",
+        f"{model}/preservation/test-run/c_sym/project/editor.pt",
+        f"{preservation}/plan.json",
+        f"{report}/h-c_sym_project/progress.json",
+        f"{preservation}/run.log",
+        f"{preservation}/.run.lock",
+        f"{preservation}/fits/embeddinggemma_256/c_sym/project/progress.json",
+        f"{preservation}/source/.env",
+        f"{model}/preservation/test-run/c_sym/project/.editor.pt.tmp",
         f"{hz_model}/search/trial-000/latent_intervention.pt",
         f"{hz_model}/final/seed-42/latent_intervention.pt",
         f"{hz_model}/selected/.latent_intervention.pt.tmp",
