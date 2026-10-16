@@ -16,7 +16,9 @@ Comparison axes: retraining an encoder versus editing a frozen representation; i
 
 Read [RepE](papers/zou2023repe.md), [CAA](papers/panickssery2023caa.md), [ReFT/LoReFT](papers/wu2024reft.md), [LEACE](papers/belrose2023leace.md), [LatentOps](papers/liu2022composable.md), [PPLM](papers/dathathri2019pplm.md), [controlled generation with VAEs](papers/hu2017toward.md), and [RegDiff](papers/zhou2025regdiff.md).
 
-For C-sym, ask what supplies the target edit: a behavior label, a concept direction, a counterfactual example, or a symbolic causal kernel? Check whether a method edits token activations, a sentence/document embedding, or a generative latent. Compare inference-time dependencies, preservation objectives and support diagnostics rather than just the word “intervention”.
+For the semantic editor, ask what supplies the target edit: a behavior label, a concept direction, a counterfactual example, or a symbolic causal kernel? Check whether a method edits token activations, a sentence/document embedding, or a generative latent. Compare inference-time dependencies, preservation objectives and support diagnostics rather than just the word “intervention”.
+
+The newer editor discussions require especially close comparison with [counterfactual text representations](papers/lemberger2024counterfactual-text-representations.md), [Representation Surgery/MiMiC](papers/singh2024representation-surgery.md), [MUtE](papers/saillenfest2026mute.md), [CausaLM](papers/feder2021causalm.md), and [FACE](papers/poyiadzi2020face.md). These works preclude broad claims that latent counterfactual editing, affine shifts, or projection are new. The paper's narrower comparison must specify the frozen encoder, externally supplied SCM target, factual-only training and individual-level evaluation.
 
 [Controllable representations without supervision](papers/xu2020variational.md), [counterfactual explanations versus adversarial examples](papers/pawelczyk2022adversarial.md), and [adversarial features](papers/ilyas2019adversarial.md) motivate checking plausibility and independent semantics, not merely the same decoder used by the training objective.
 
@@ -36,6 +38,10 @@ For state flow, compare the meaning of a preserved noise variable and the assump
 
 [The flow review](papers/papamakarios2021flows.md) and [Real NVP](papers/dinh2016realnvp.md) motivate the architecture, not its causal interpretation. [Engression](papers/shen2025engression.md) belongs with conditional-distribution learning and sample-based objectives; historical discussions also considered it for distillation.
 
+For text-specific flow precedents, read [MATTE](papers/yan2023matte.md), [FairFlow](papers/tokpo2024fairflow.md), [StyleFlow](papers/zhu2024styleflow.md), [BERT-flow](papers/li2020bert-flow.md), [A Causal Lens for Controllable Text Generation](papers/hu2021causal-lens-text.md), and [Beyond What If](papers/wang2024beyond-what-if.md). [Flow-based medical harmonization](papers/wang2021flow-harmonization.md) and [the neuroimage dimensionality-reduction study](papers/ohara2025dimensionality-neuroimages.md) are cross-domain controls against overclaiming the abduction–action–prediction recipe.
+
+For OT, separate three questions: matching factual state distributions, imposing a geometric preference on the edit, and recovering the unobserved counterpart of the *same* individual. Start with [Computational OT](papers/peyre2019computational-ot.md), [Transport-based Counterfactual Models](papers/delara2024transport-counterfactuals.md), [CellOT](papers/bunne2023cellot.md), [sequential conditional transport](papers/fernandesmachado2024sequential-transport.md), and [counterfactual cocycles](papers/dance2024counterfactual-cocycles.md). [Input Convex Neural Networks](papers/amos2017icnn.md) and [Makkuva et al.](papers/makkuva2020ot-icnn.md) motivate a convex-gradient editor; [the Monge gap](papers/uscidda2023monge-gap.md) is a softer alternative. [Dynamic OT](papers/desousaribeiro2025dynamic-ot.md) is pertinent to the OT-flow direction, and [CounterPC](papers/yang2025counterpc.md) is an embedding-space counterfactual OT precedent. A convex-gradient map alone does not certify the SCM target distribution or an identified individual counterfactual.
+
 ## 5. Semantic decoders and evaluation
 
 Read [CEBaB](papers/abraham2022cebab.md), [CPM](papers/wu2023cpm.md), [RAVEL](papers/huang2024ravel.md), [Text Bottleneck Models](papers/ludan2024text-bottleneck.md), [CB-LLM](papers/sun2025cbllm.md), [concept completeness](papers/bhan2025concept-completeness.md), [concept leakage](papers/mahinpei2021concept-leakage.md), and [probe control tasks](papers/hewitt2019control-tasks.md).
@@ -54,8 +60,12 @@ Separate encoder engineering from the main intervention contribution. [LangVAE](
 
 For benchmark motivation, compare [LIBERTy](papers/toker-liberty-2026.md), [CEBaB](papers/abraham2022cebab.md), [PopResume](papers/yu2026popresume.md), and [causal bias detection in generative AI](papers/plecko2026generative-bias.md). Record which provide semantic labels, a causal mechanism, paired counterfactual texts, population representativeness, and independent evaluation.
 
+For text reconstruction feasibility, distinguish [vec2text](papers/morris2023vec2text.md) and [conditional masked-diffusion inversion](papers/xiao2026embedding-inversion.md) from reliable rendering of edited, potentially off-support CV vectors. [Jina Embeddings](papers/gunther2023jina-embeddings.md) appeared in encoder selection but is not a current benchmark family.
+
 ## Practical first reading pass
 
 A manageable first pass is: LIBERTy; Kusner; Causal Fairness Analysis; the hiring survey; CPM; LatentOps; ReFT; DSCM; the BGM identification paper; counterfactual non-identifiability; and the closest fairness comparator among CLAIRE/Joo/Ng. Then fill gaps from the topic index.
 
 For each, write down only: target problem; training supervision; intervention mechanism; inference inputs; guarantee and assumptions; evaluation; and the precise difference from our method. Do not claim “first”, “only”, unbiased recovery, or causal equivalence from this collection alone.
+
+When comparing variants selected after inspecting benchmark results, account for the selection-bias warning in [Cawley and Talbot](papers/cawley2010model-selection.md). [Gorishniy et al.](papers/gorishniy2021tabular-dl.md) was cited for validation-based training protocol, not as an intervention baseline.

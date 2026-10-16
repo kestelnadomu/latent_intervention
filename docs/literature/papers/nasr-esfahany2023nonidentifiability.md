@@ -29,3 +29,4 @@ Basic bibliographic identity checked against a primary source on 2026-10-16. Thi
 ## Encountered in
 
 - Local Codex `chat:01a04ee1-968d-78f1-adc8-c2e5498a8626:rollout-line-305`.
+- Local Codex `chat:01a0c4d1-2215-7030-99a6-7fb2f4808705:msg_0e6ec6c759bec10f016ac6267094f487d29b2509374065b09b` — identifiability caution for factual-only latent flows.

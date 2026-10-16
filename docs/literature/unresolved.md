@@ -28,7 +28,7 @@ These were discussed in project material but do not uniquely specify a bibliogra
 | Blog Authorship Corpus | notes/leo/semantic_decoder.md:74 | Resolve dataset origin and accompanying publication. |
 | TrustPilot demographic corpus | notes/leo/semantic_decoder.md:75 | Determine which dataset/release and paper are intended. |
 | FYelp/Amazon, Yelp, GYAFC | notes/leo/semantic_decoder.md:85 | Resolve dataset versions if selected for experiments; not each generic dataset name is a paper. |
-| Generic HSIC, energy score/distance, optimal transport | implementation/theory discussions | Architecture/objective names were often used without explicit bibliographic citations. Add foundational sources later as new literature, not as recovered historical citations unless evidence is found. |
+| Generic HSIC and energy score/distance | implementation/theory discussions | Objective names were often used without explicit bibliographic citations. Resolve exact foundational sources before citing; do not guess from a method name alone. |
 
 ## Corrections already recorded, originals intentionally unchanged
 
@@ -40,6 +40,8 @@ These were discussed in project material but do not uniquely specify a bibliogra
 - [Heilmann](papers/heilmann2026neurosymbolic.md): the 2025 proceedings and recovered 2026 journal entry have different author lists; do not merge their citation metadata blindly.
 - [Conneau probing](papers/conneau2018probing.md): the notes' arXiv ID identifies the linguistic probing paper, not the separate SentEval toolkit paper.
 - [Kernel representations](papers/li-learning-2020.md): the misleading legacy key is not the first author's name.
+- [Ohara et al.](papers/ohara2025dimensionality-neuroimages.md): the Linux chat's broad flow-precedent shorthand referred to a specific 2025 neuroimage dimensionality-reduction study, not a general identification result.
+- [MATTE](papers/yan2023matte.md): NeurIPS 2023 publication and 2024 arXiv posting are one work, not two papers.
 
 ## Retrieval gaps
 

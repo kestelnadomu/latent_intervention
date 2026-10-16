@@ -27,3 +27,4 @@ Recovered from existing project material; some details may have been checked, bu
 - [docs/references.bib](<../../../docs/references.bib>) — line 1240, `sousaribeiro_fidelty_2023`.
 - [poster/ref.bib](<../../../poster/ref.bib>) — line 1240, `sousaribeiro_fidelty_2023`.
 - [overleaf/references.bib](<../../../overleaf/references.bib>) — line 1240, `sousaribeiro_fidelty_2023`.
+- Local Codex `chat:01a0c4d1-2215-7030-99a6-7fb2f4808705:msg_0e6ec6c759bec10f016ac4f915577087d29f2643245d7e2d92` — related-work comparison for latent counterfactuals.

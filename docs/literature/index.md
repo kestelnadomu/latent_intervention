@@ -1,6 +1,6 @@
 # Literature index
 
-142 records collected on 2026-10-16. Status: **V** = basic metadata verified; **R** = recovered, verify before citing; **?** = unresolved identity/version issue. No full-paper reviews were performed for this import. See [README](README.md) for scope and [unresolved leads](unresolved.md) for references not yet identifiable as a paper.
+169 records collected through 2026-10-16, including [the Linux-device supplement](imports/2026-10-16-linux.md). Status: **V** = basic metadata verified; **R** = recovered, verify before citing; **?** = unresolved identity/version issue. No full-paper reviews were performed for these imports. See [README](README.md) for scope and [unresolved leads](unresolved.md) for references not yet identifiable as a paper.
 
 ## Fair representations and counterfactual fairness
 
@@ -58,6 +58,7 @@
 - [Density estimation using Real NVP](papers/dinh2016realnvp.md) — 2016; V.
 - [Causal Effect Inference with Deep Latent-Variable Models](papers/louizos2017cevae.md) — 2017; R.
 - [Deep Structural Causal Models for Tractable Counterfactual Inference](papers/pawlowski-dscm-2020.md) — 2020; R.
+- [Harmonization with Flow-based Causal Inference](papers/wang2021flow-harmonization.md) — 2021; V.
 - [Causal Autoregressive Flows](papers/khemakhem2021carefl.md) — 2021; V.
 - [Normalizing Flows for Probabilistic Modeling and Inference](papers/papamakarios2021flows.md) — 2021; V.
 - [VACA: Designing Variational Graph Autoencoders for Causal Queries](papers/sanchezmartin-vaca-2022.md) — 2022; R.
@@ -66,6 +67,20 @@
 - [High Fidelity Image Counterfactuals with Probabilistic Causal Models](papers/sousaribeiro-fidelty-2023.md) — 2023; R.
 - [Counterfactually-Equivalent Structural Causal Modelling Using Causal Graphical Normalizing Flows](papers/balgi2024cgnf.md) — 2024; V.
 - [Engression: extrapolation through the lens of distributional regression](papers/shen2025engression.md) — 2025; V.
+- [Dimensionality reduction in 3D causal deep learning for neuroimage generation](papers/ohara2025dimensionality-neuroimages.md) — 2025; V.
+
+## Optimal transport and counterfactual transport
+
+- [Input Convex Neural Networks](papers/amos2017icnn.md) — 2017; V.
+- [Computational Optimal Transport](papers/peyre2019computational-ot.md) — 2019; V.
+- [Optimal transport mapping via input convex neural networks](papers/makkuva2020ot-icnn.md) — 2020; V.
+- [The Monge Gap: A Regularizer to Learn All Transport Maps](papers/uscidda2023monge-gap.md) — 2023; V.
+- [Learning single-cell perturbation responses using neural optimal transport (CellOT)](papers/bunne2023cellot.md) — 2023; V.
+- [Transport-based Counterfactual Models](papers/delara2024transport-counterfactuals.md) — 2024; V.
+- [Sequential Conditional Transport on Probabilistic Graphs for Interpretable Counterfactual Fairness](papers/fernandesmachado2024sequential-transport.md) — 2024; V.
+- [Counterfactual Cocycles](papers/dance2024counterfactual-cocycles.md) — 2024; V.
+- [CounterPC: Counterfactual Feature Realignment for Unsupervised Domain Adaptation on Point Clouds](papers/yang2025counterpc.md) — 2025; V.
+- [Counterfactual Identifiability via Dynamic Optimal Transport](papers/desousaribeiro2025dynamic-ot.md) — 2025; V.
 
 ## Representation editing and controllable text
 
@@ -73,15 +88,25 @@
 - [Adversarial Examples Are Not Bugs, They Are Features](papers/ilyas2019adversarial.md) — 2019; R.
 - [Controllable Unsupervised Text Attribute Transfer via Editing Entangled Latent Representation](papers/entangled2019attribute-transfer.md) — 2019; R.
 - [Plug and Play Language Models: A Simple Approach to Controlled Text Generation](papers/dathathri2019pplm.md) — 2019; V.
+- [FACE: Feasible and Actionable Counterfactual Explanations](papers/poyiadzi2020face.md) — 2020; V.
 - [Unsupervised Discovery of Interpretable Latent Manipulations in Language VAEs](papers/vechtomova2020unsupervised.md) — 2020; ?.
+- [CausaLM: Causal Model Explanation Through Counterfactual Language Models](papers/feder2021causalm.md) — 2021; V.
+- [A Causal Lens for Controllable Text Generation](papers/hu2021causal-lens-text.md) — 2021; V.
 - [Exploring Counterfactual Explanations Through the Lens of Adversarial Examples: A Theoretical and Empirical Analysis](papers/pawelczyk2022adversarial.md) — 2022; R.
 - [PCAE: A Framework of Plug-in Conditional Auto-Encoder for Controllable Text Generation](papers/tu2022pcae.md) — 2022; V.
 - [Composable Text Controls in Latent Space with ODEs](papers/liu2022composable.md) — 2023; R.
 - [LEACE: Perfect linear concept erasure in closed form](papers/belrose2023leace.md) — 2023; V.
 - [Representation Engineering: A Top-Down Approach to AI Transparency](papers/zou2023repe.md) — 2023; V.
 - [Steering Llama 2 via Contrastive Activation Addition](papers/panickssery2023caa.md) — 2023; V.
+- [Counterfactual Generation with Identifiability Guarantees (MATTE)](papers/yan2023matte.md) — 2023; V.
 - [ReFT: Representation Finetuning for Language Models](papers/wu2024reft.md) — 2024; V.
+- [Explaining Text Classifiers with Counterfactual Representations](papers/lemberger2024counterfactual-text-representations.md) — 2024; V.
+- [Representation Surgery: Theory and Practice of Affine Steering](papers/singh2024representation-surgery.md) — 2024; V.
+- [Beyond What If: Advancing Counterfactual Text Generation with Structural Causal Modeling](papers/wang2024beyond-what-if.md) — 2024; V.
+- [FairFlow: Model-based Counterfactual Data Augmentation For NLP](papers/tokpo2024fairflow.md) — 2024; V.
+- [StyleFlow: Disentangle Latent Representations via Normalizing Flow](papers/zhu2024styleflow.md) — 2024; V.
 - [Controllable Stylistic Text Generation with Train-Time Attribute-Regularized Diffusion](papers/zhou2025regdiff.md) — 2025; V.
+- [MUtE: A Dual Framework for Concept Erasure and Counterfactual Interventions](papers/saillenfest2026mute.md) — 2026; V.
 
 ## Causal abstraction and neurosymbolic methods
 
@@ -141,19 +166,27 @@
 ## Encoders, text VAEs and embedding inversion
 
 - [Generating Sentences from a Continuous Space](papers/bowman2016generating.md) — 2016; R.
+- [On the Sentence Embeddings from Pre-trained Language Models (BERT-flow)](papers/li2020bert-flow.md) — 2020; V.
 - [On Variational Learning of Controllable Representations for Text without Supervision](papers/xu2020variational.md) — 2020; R.
 - [Optimus: Organizing Sentences via Pre-trained Modeling of a Latent Space](papers/li2020optimus.md) — 2020; R.
 - [Matryoshka Representation Learning](papers/kusupati2022matryoshka.md) — 2022; R.
 - [Learning Disentangled Representations for Natural Language Definitions](papers/carvalho2023definitions.md) — 2023; R.
 - [LlaMaVAE: Guiding Large Language Model Generation via Continuous Latent Sentence Spaces](papers/zhang2023llamavae.md) — 2023; R.
 - [Sentence Embedding Leaks More Information than You Expect: Generative Embedding Inversion Attack to Recover the Whole Sentence](papers/li2023embedding-inversion.md) — 2023; R.
-- [Text Embeddings Reveal (Almost) As Much As Text](papers/morris2023vec2text.md) — 2023; R.
+- [Text Embeddings Reveal (Almost) As Much As Text](papers/morris2023vec2text.md) — 2023; V.
+- [Jina Embeddings: A Novel Set of High-Performance Sentence Embedding Models](papers/gunther2023jina-embeddings.md) — 2023; V.
 - [Graph-Induced Syntactic-Semantic Spaces in Transformer-Based Variational AutoEncoders](papers/zhang2024graph.md) — 2024; R.
 - [Improving Semantic Control in Discrete Latent Spaces with Transformer Quantized Variational Autoencoders](papers/zhang2024improving.md) — 2024; R.
 - [Nomic Embed: Training a Reproducible Long Context Text Embedder](papers/nussbaum2024nomic.md) — 2024; V.
 - [EmbeddingGemma: Powerful and Lightweight Text Representations](papers/vera2025embeddinggemma.md) — 2025; V.
 - [LangVAE and LangSpace: Building and Probing for Language Model VAEs](papers/carvalho2025langvae.md) — 2025; R.
 - [Qwen3 Embedding: Advancing Text Embedding and Reranking Through Foundation Models](papers/qwen2025embedding.md) — 2025; R.
+- [Embedding Inversion via Conditional Masked Diffusion Language Models](papers/xiao2026embedding-inversion.md) — 2026; V.
+
+## Experimental design and evaluation
+
+- [On Over-fitting in Model Selection and Subsequent Selection Bias in Performance Evaluation](papers/cawley2010model-selection.md) — 2010; V.
+- [Revisiting Deep Learning Models for Tabular Data](papers/gorishniy2021tabular-dl.md) — 2021; V.
 
 ## Hiring, text fairness and benchmarks
 
