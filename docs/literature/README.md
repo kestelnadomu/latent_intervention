@@ -2,7 +2,7 @@
 
 This is the shared, Markdown-based literature library for **latent_intervention**. It supports motivating the paper and writing related work across fairness, representation editing, neurosymbolic modelling and causal inference. It is designed for humans and agents contributing from different devices.
 
-Start with [the topic index](index.md), [the related-work map](related-work-map.md), and [unresolved leads](unresolved.md). The [initial Windows import](imports/2026-10-16-windows.md) and [Linux-device supplement](imports/2026-10-16-linux.md) explain what was searched and what could not be recovered.
+Start with [the topic index](index.md), [the related-work map](related-work-map.md), and [unresolved leads](unresolved.md). The [initial Windows import](imports/2026-10-16-windows.md), [Linux-device supplement](imports/2026-10-16-linux.md), and [current-device decoder-chat supplement](imports/2026-10-16-current-device.md) explain what was searched and what could not be recovered.
 
 ## What is here
 
@@ -14,7 +14,7 @@ Start with [the topic index](index.md), [the related-work map](related-work-map.
 - [template.md](template.md): the record format.
 - [log.md](log.md): short, append-only change history.
 
-The library currently has **169 records**: **71 metadata-verified**, **96 recovered**, and **2 needs-resolution**. The initial Windows import contributed 142; the Linux-device supplement added 27 and verified one existing record. All 75 unique keys from the three existing project bibliographies are represented; two Bias in Bios keys share one record. These are collection counts, not counts of papers read.
+The library currently has **182 records**: **84 metadata-verified**, **96 recovered**, and **2 needs-resolution**. The initial Windows import contributed 142; the Linux-device supplement added 27 and verified one existing record; the current-device decoder-chat supplement added 13. All 75 unique keys from the three existing project bibliographies are represented; two Bias in Bios keys share one record. These are collection counts, not counts of papers read.
 
 ## Project context for the next agent
 

@@ -1,6 +1,6 @@
 # Literature index
 
-169 records collected through 2026-10-16, including [the Linux-device supplement](imports/2026-10-16-linux.md). Status: **V** = basic metadata verified; **R** = recovered, verify before citing; **?** = unresolved identity/version issue. No full-paper reviews were performed for these imports. See [README](README.md) for scope and [unresolved leads](unresolved.md) for references not yet identifiable as a paper.
+182 records collected through 2026-10-16, including [the current-device decoder-chat supplement](imports/2026-10-16-current-device.md). Status: **V** = basic metadata verified; **R** = recovered, verify before citing; **?** = unresolved identity/version issue. No full-paper reviews were performed for these imports. See [README](README.md) for scope and [unresolved leads](unresolved.md) for references not yet identifiable as a paper.
 
 ## Fair representations and counterfactual fairness
 
@@ -92,6 +92,7 @@
 - [Unsupervised Discovery of Interpretable Latent Manipulations in Language VAEs](papers/vechtomova2020unsupervised.md) — 2020; ?.
 - [CausaLM: Causal Model Explanation Through Counterfactual Language Models](papers/feder2021causalm.md) — 2021; V.
 - [A Causal Lens for Controllable Text Generation](papers/hu2021causal-lens-text.md) — 2021; V.
+- [Polyjuice: Generating Counterfactuals for Explaining, Evaluating, and Improving Models](papers/wu2021polyjuice.md) — 2021; V.
 - [Exploring Counterfactual Explanations Through the Lens of Adversarial Examples: A Theoretical and Empirical Analysis](papers/pawelczyk2022adversarial.md) — 2022; R.
 - [PCAE: A Framework of Plug-in Conditional Auto-Encoder for Controllable Text Generation](papers/tu2022pcae.md) — 2022; V.
 - [Composable Text Controls in Latent Space with ODEs](papers/liu2022composable.md) — 2023; R.
@@ -165,10 +166,20 @@
 
 ## Encoders, text VAEs and embedding inversion
 
+- [Scheduled Sampling for Sequence Prediction with Recurrent Neural Networks](papers/bengio2015scheduled-sampling.md) — 2015; V.
 - [Generating Sentences from a Continuous Space](papers/bowman2016generating.md) — 2016; R.
+- [A Structured Self-attentive Sentence Embedding](papers/lin2017structured-self-attention.md) — 2017; V.
+- [BERT: Pre-training of Deep Bidirectional Transformers for Language Understanding](papers/devlin2019bert.md) — 2019; V.
+- [Cyclical Annealing Schedule: A Simple Approach to Mitigating KL Vanishing](papers/fu2019cyclical-annealing.md) — 2019; V.
+- [Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks](papers/reimers2019sentence-bert.md) — 2019; V.
 - [On the Sentence Embeddings from Pre-trained Language Models (BERT-flow)](papers/li2020bert-flow.md) — 2020; V.
 - [On Variational Learning of Controllable Representations for Text without Supervision](papers/xu2020variational.md) — 2020; R.
 - [Optimus: Organizing Sentences via Pre-trained Modeling of a Latent Space](papers/li2020optimus.md) — 2020; R.
+- [BART: Denoising Sequence-to-Sequence Pre-training for Natural Language Generation, Translation, and Comprehension](papers/lewis2020bart.md) — 2020; V.
+- [Exploring the Limits of Transfer Learning with a Unified Text-to-Text Transformer (T5)](papers/raffel2020t5.md) — 2020; V.
+- [The Curious Case of Neural Text Degeneration](papers/holtzman2020neural-text-degeneration.md) — 2020; V.
+- [LoRA: Low-Rank Adaptation of Large Language Models](papers/hu2021lora.md) — 2021; V.
+- [Prefix-Tuning: Optimizing Continuous Prompts for Generation](papers/li2021prefix-tuning.md) — 2021; V.
 - [Matryoshka Representation Learning](papers/kusupati2022matryoshka.md) — 2022; R.
 - [Learning Disentangled Representations for Natural Language Definitions](papers/carvalho2023definitions.md) — 2023; R.
 - [LlaMaVAE: Guiding Large Language Model Generation via Continuous Latent Sentence Spaces](papers/zhang2023llamavae.md) — 2023; R.
@@ -179,8 +190,10 @@
 - [Improving Semantic Control in Discrete Latent Spaces with Transformer Quantized Variational Autoencoders](papers/zhang2024improving.md) — 2024; R.
 - [Nomic Embed: Training a Reproducible Long Context Text Embedder](papers/nussbaum2024nomic.md) — 2024; V.
 - [EmbeddingGemma: Powerful and Lightweight Text Representations](papers/vera2025embeddinggemma.md) — 2025; V.
+- [Gemma 3 Technical Report](papers/gemma-team2025gemma3.md) — 2025; V.
 - [LangVAE and LangSpace: Building and Probing for Language Model VAEs](papers/carvalho2025langvae.md) — 2025; R.
 - [Qwen3 Embedding: Advancing Text Embedding and Reranking Through Foundation Models](papers/qwen2025embedding.md) — 2025; R.
+- [Rethinking the Privacy of Text Embeddings: A Reproducibility Study of "Text Embeddings Reveal (Almost) As Much As Text"](papers/seputis2025rethinking-embedding-privacy.md) — 2025; V.
 - [Embedding Inversion via Conditional Masked Diffusion Language Models](papers/xiao2026embedding-inversion.md) — 2026; V.
 
 ## Experimental design and evaluation

@@ -20,6 +20,8 @@ For the semantic editor, ask what supplies the target edit: a behavior label, a 
 
 The newer editor discussions require especially close comparison with [counterfactual text representations](papers/lemberger2024counterfactual-text-representations.md), [Representation Surgery/MiMiC](papers/singh2024representation-surgery.md), [MUtE](papers/saillenfest2026mute.md), [CausaLM](papers/feder2021causalm.md), and [FACE](papers/poyiadzi2020face.md). These works preclude broad claims that latent counterfactual editing, affine shifts, or projection are new. The paper's narrower comparison must specify the frozen encoder, externally supplied SCM target, factual-only training and individual-level evaluation.
 
+If comparing latent-only inversion with source-CV-guided editing, include [Polyjuice](papers/wu2021polyjuice.md) as a text-counterfactual generator and keep the inference inputs and supervision explicit. Editing given the source CV is a different task from recovering that CV from a single latent vector.
+
 [Controllable representations without supervision](papers/xu2020variational.md), [counterfactual explanations versus adversarial examples](papers/pawelczyk2022adversarial.md), and [adversarial features](papers/ilyas2019adversarial.md) motivate checking plausibility and independent semantics, not merely the same decoder used by the training objective.
 
 ## 3. Causal abstraction and neurosymbolic learning
@@ -60,7 +62,9 @@ Separate encoder engineering from the main intervention contribution. [LangVAE](
 
 For benchmark motivation, compare [LIBERTy](papers/toker-liberty-2026.md), [CEBaB](papers/abraham2022cebab.md), [PopResume](papers/yu2026popresume.md), and [causal bias detection in generative AI](papers/plecko2026generative-bias.md). Record which provide semantic labels, a causal mechanism, paired counterfactual texts, population representativeness, and independent evaluation.
 
-For text reconstruction feasibility, distinguish [vec2text](papers/morris2023vec2text.md) and [conditional masked-diffusion inversion](papers/xiao2026embedding-inversion.md) from reliable rendering of edited, potentially off-support CV vectors. [Jina Embeddings](papers/gunther2023jina-embeddings.md) appeared in encoder selection but is not a current benchmark family.
+For text reconstruction feasibility, distinguish [vec2text](papers/morris2023vec2text.md), [its reproducibility/length-sensitivity study](papers/seputis2025rethinking-embedding-privacy.md), and [conditional masked-diffusion inversion](papers/xiao2026embedding-inversion.md) from reliable rendering of edited, potentially off-support CV vectors. [Jina Embeddings](papers/gunther2023jina-embeddings.md) appeared in encoder selection but is not a current benchmark family.
+
+For the project's decoder experiments, [BERT](papers/devlin2019bert.md), [Sentence-BERT](papers/reimers2019sentence-bert.md), [BART](papers/lewis2020bart.md), [T5](papers/raffel2020t5.md), [Gemma 3](papers/gemma-team2025gemma3.md), [LoRA](papers/hu2021lora.md), and [prefix-tuning](papers/li2021prefix-tuning.md) are architectural/training context, not baselines that automatically invert EmbeddingGemma. [Scheduled sampling](papers/bengio2015scheduled-sampling.md) and [text degeneration](papers/holtzman2020neural-text-degeneration.md) help frame exposure/decoding effects without establishing factual fidelity. The broader index also tracks [VAE KL annealing](papers/fu2019cyclical-annealing.md) and [attention-based sentence embeddings](papers/lin2017structured-self-attention.md).
 
 ## Practical first reading pass
 

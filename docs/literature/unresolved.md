@@ -22,8 +22,8 @@ These were discussed in project material but do not uniquely specify a bibliogra
 | Name | Encountered in | What remains |
 | --- | --- | --- |
 | DELLA / LD4LG | notes/leo/vae.md:39 | Resolve each architecture's paper separately; verify the notes' grouping and claims. |
-| Sentence-T5 / Sentence-BERT | notes/leo/vae.md:40 | Resolve the relevant sentence-embedding papers if used in the motivation; a model name alone does not establish which publication was meant. |
-| BERT, GPT-2, BART, T5, generic VAEs | encoder and VAE notes | Optional implementation-background citations; exact variants/reports were not consistently specified. |
+| Sentence-T5 | notes/leo/vae.md:40 | Resolve the relevant Sentence-T5 publication if used; do not conflate it with [Sentence-BERT](papers/reimers2019sentence-bert.md), now identified from an explicit local chat citation. |
+| GPT-2 and generic VAEs | encoder and VAE notes | The local decoder chat explicitly identified [BERT](papers/devlin2019bert.md), [BART](papers/lewis2020bart.md) and [T5](papers/raffel2020t5.md), but model-name mentions alone still do not select a particular GPT-2 report or generic VAE citation. |
 | EntailmentBank | docs/architecture/text_encoder.md:112; encoder chats | Resolve the dataset publication if discussing the LangVAE training domain. Do not substitute the dataset paper for checkpoint-specific training evidence. |
 | Blog Authorship Corpus | notes/leo/semantic_decoder.md:74 | Resolve dataset origin and accompanying publication. |
 | TrustPilot demographic corpus | notes/leo/semantic_decoder.md:75 | Determine which dataset/release and paper are intended. |
