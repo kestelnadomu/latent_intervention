@@ -17,6 +17,8 @@ from torch import nn
 from src.schema import ColumnSpec
 from src.semantic_decoder.model import SemanticDecoderModel
 from src.symbolic_intervention import SymbolicKernel
+from src.latent_intervention.ot import OT_VARIANTS
+from src.latent_intervention.editor import EDITOR_VARIANTS
 
 from src.latent_intervention.flow.common import (
     FLOW_CHECKPOINT_FORMAT_VERSION,
@@ -86,19 +88,21 @@ def make_latent_intervention(
     permutation_seed: int = 0,
     scale_floor: float = 1e-6,
     base_std: float = 0.05,
-    preservation_guide: nn.Module | None = None,
+    ot_settings: Mapping[str, Any] | None = None,
+    editor_settings: Mapping[str, Any] | None = None,
 ) -> nn.Module:
     """Construct any existing or flow-based ``h_Z`` variant at one dispatch point."""
     columns = _validate_columns(columns)
 
     def construct() -> nn.Module:
-        if variant == "c_sym_project":
-            from src.latent_intervention.csym import ProjectedCSym
+        if variant in OT_VARIANTS:
+            from src.latent_intervention.ot import make_model
 
-            return ProjectedCSym(
-                latent_dim, columns, guide=preservation_guide,
-                hidden_dim=hidden_dim, state_embed_dim=state_embed_dim,
-            )
+            return make_model(variant, latent_dim=latent_dim, columns=columns, settings=ot_settings)
+        if variant in EDITOR_VARIANTS:
+            from src.latent_intervention.editor import make_model
+
+            return make_model(variant, latent_dim=latent_dim, columns=columns, settings=editor_settings)
         if variant == StateConditionalFlow.variant:
             return StateConditionalFlow(
                 latent_dim,
@@ -167,8 +171,9 @@ def make_latent_intervention(
             )
         raise ValueError(
             f"unknown latent intervention variant {variant!r}; expected one of "
-            "'baseline', 'pre_additive', 'noise_token', 'dist', 'c_sym_project', 'particles', "
-            "'state_flow', 'distilled_flow', or 'direct_semantic_flow'"
+            "'baseline', 'pre_additive', 'noise_token', 'dist', 'semantic_editor', 'particles', "
+            "'state_flow', 'distilled_flow', 'direct_semantic_flow', "
+            "'ot_gaussian', 'ot_editor', or 'ot_flow'"
         )
 
     if seed is None:
@@ -206,15 +211,20 @@ def load_latent_intervention(
     if not isinstance(payload, dict):
         raise _checkpoint_error("latent-intervention checkpoint is malformed")
 
-    if payload.get("format") == "csym_project_v1":
-        from src.latent_intervention.csym import ProjectedCSym
+    if payload.get("format") == "latent_ot_v1":
+        from src.latent_intervention.ot import load_model
 
-        if expected_variant is not None and expected_variant != "c_sym_project":
-            raise _checkpoint_error("C-sym checkpoint variant mismatch")
-        return ProjectedCSym.load(
-            path, device=device, expected_columns=expected_columns,
-            expected_metadata=expected_metadata,
-        )
+        return load_model(path, device=device, expected_variant=expected_variant,
+                          expected_columns=expected_columns, expected_metadata=expected_metadata)
+
+    if payload.get("format") == "csym_project_v1":
+        raise ValueError("projected C-sym is retired; its checkpoint is archive-only")
+
+    if payload.get("format") == "semantic_editor_v1":
+        from src.latent_intervention.editor import load_model
+
+        return load_model(path, device=device, expected_variant=expected_variant,
+                          expected_columns=expected_columns, expected_metadata=expected_metadata)
 
     if payload.get("format_version") != FLOW_CHECKPOINT_FORMAT_VERSION:
         # Existing transformer checkpoints predate the versioned flow format.
@@ -344,11 +354,10 @@ def train_latent_intervention_model(
     columns = getattr(model, "columns", None)
     if columns is not None:
         _objective_tensors(intervention, columns, 1, _model_device(model))
-    if getattr(model, "variant", None) == "c_sym_project":
-        raise ValueError(
-            "C-sym needs factual labels and a validation split; use its workflow or "
-            "python -m src.latent_intervention.csym train --tag FRESH_RUN"
-        )
+    if getattr(model, "variant", None) in OT_VARIANTS:
+        raise ValueError("OT needs factual fitting/tuning partitions; use its dedicated workflow")
+    if getattr(model, "variant", None) in EDITOR_VARIANTS:
+        raise ValueError("clean editors need factual fitting/tuning partitions; use their dedicated workflow")
     shared_flow = {
         "epochs": epochs,
         "batch_size": batch_size,
@@ -496,9 +505,17 @@ def sample_counterfactual(
     intervention = dict(intervention or {})
     _warn_if_unsupported(model, intervention)
 
-    if getattr(model, "variant", None) == "c_sym_project":
+    if getattr(model, "variant", None) in OT_VARIANTS:
         if source_states is not None or target_states is not None:
-            raise ValueError("c_sym_project uses g and h_S, not observed source/target states")
+            raise ValueError("OT latent-only inference uses g and h_S, not observed states")
+        return model.sample_symbolic(
+            z.to(device=_model_device(model), dtype=_model_dtype(model)), intervention,
+            decoder=decoder, h_s=h_s, n_samples=n_samples, generator=generator,
+        )
+
+    if getattr(model, "variant", None) in EDITOR_VARIANTS:
+        if source_states is not None or target_states is not None:
+            raise ValueError("clean editors use g and h_S, not observed source/target states")
         _validate_latents(z, model.latent_dim)
         z = z.to(device=_model_device(model), dtype=_model_dtype(model))
         return model.sample_symbolic(
