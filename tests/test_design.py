@@ -83,7 +83,12 @@ def _small_config(tmp_path):
     config = copy.deepcopy(load_sim_config(CONFIG_PATH))
     config["n"] = 400
     config["design"]["partition"].update(dev=40, L=100, P=100, folds=5, floor_fraction=0.2)
-    for key in ("sim_dir", "pair_index", "render_plan", "texts", "texts_counterfactual"):
+    # Simulation archives every configured text output, including its journal.
+    # Keep all of them under tmp_path so tests never rename real CV artifacts.
+    for key in (
+        "sim_dir", "pair_index", "render_plan", "texts", "texts_counterfactual",
+        "texts_floor", "texts_held_out",
+    ):
         config["paths"][key] = str(tmp_path / key)
     config["paths"]["sim_dir"] = str(tmp_path / "sim")
     return config
