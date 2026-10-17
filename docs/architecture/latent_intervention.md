@@ -13,6 +13,13 @@ samples any of them behind one interface.
 The separate oracle-supervised reference lives in `src/latent_intervention/oracle/`
 (`regression.py`, `workflow.py`); its privileged training targets are isolated by
 `targets.py` and prepared by `encoding.py`.
+The target-only editors (`semantic_editor`, `ot_editor`) live in
+`src/latent_intervention/editor/`; they share a proxy-free factual protocol and
+objective, differing only in flexible residual versus convex-gradient maps.
+See [the editor guide](../experiments/semantic_editor.md).
+The factual-only OT baselines (`ot_gaussian`, `ot_flow`) live separately
+in `src/latent_intervention/ot/`, with their own fitting/audit protocol and no changes
+to the original benchmark membership. See [the OT guide](../experiments/ot_baselines.md).
 Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 
 **Notation.**
@@ -37,7 +44,8 @@ Select a plan with `latent_intervention.variant` in `src/config.yaml`.
 | A | `pre_additive` / `LatentInterventionPreAdditive` | pushforward of $\varepsilon\sim\mathcal N(0,\sigma^2 I_{128})$ through $z+\Delta_\theta(z+\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — |
 | B | `noise_token` / `LatentInterventionNoiseToken` | pushforward of $\varepsilon\sim\mathcal N(0,I_r)$ through $z+\Delta_\theta(z,\varepsilon,\delta)$ | Monte Carlo, $M$ passes | implicit | — |
 | C | `dist` / `LatentInterventionDist` | $\sum_{\mathbf s'} w_\theta(\mathbf s'\mid z,\delta)\,\mathbb 1_{z+\Delta_\phi(z,\mathbf s')}$ | exact, $k$ passes | learned $w_\theta$ (distilled from $h_S\circ g$) | state $\mathbf s'$ |
-| C-sym | `c_sym_project` / `ProjectedCSym` | projected factual state-effect shifts | exact, all supported transitions | fixed $g(s\mid z)h_S(s'\mid s,\delta)$ | coupled source and target, not guaranteed decoded states |
+| E | `semantic_editor` / `SemanticEditor` | target-conditioned residual locations | exact, all positive target states | fixed $\sum_s g(s\mid z)h_S(s'\mid s,\delta)$ | target conditioning, not guaranteed decoded states |
+| E-OT | `ot_editor` / `OTStructuredEditor` | target-conditioned convex gradients | same as E | same as E | same as E |
 | D | `particles` / `LatentInterventionParticles` | $\sum_{j=1}^d w_j(z,\delta)\,\mathbb 1_{z+\Delta_{\theta,j}(z,\delta)}$ | exact, $d$ passes | learned $w_j$ (or uniform) | none |
 | F1 | `state_flow` / `StateConditionalFlow` | shared-noise transport through $F_\theta(S,U)$ | exact inverse/forward | observed or inferred $S$, then $h_S$ | target state $S'$ |
 | F2 | `distilled_flow` / `DistilledFlowIntervention` | conditional flow $D_\phi(E;z,\delta)$ | sampled | distilled state-flow teacher | none |
@@ -294,8 +302,8 @@ $$h_Z(\cdot\mid z,\delta) = \sum_{\mathbf s'\in\text{top-}k} w(\mathbf s'\mid z,
   three options:
   * *distilled* (implemented): $w_\theta$ is an autoregressive head, like $g$, trained on
     $D_{\mathrm{KL}}(h_S\circ g \,\|\, w_\theta)$;
-  * *Target-only C-sym* (conceptual precursor; see the supported variant below): $w = (h_S\circ g)(\cdot\mid z,\delta)$ exactly,
-    so only $\Delta_\phi$ is trained. See the qualification below;
+  * *Symbolic weights* (`semantic_editor`, in its separate clean protocol): $w = (h_S\circ g)(\cdot\mid z,\delta)$ exactly,
+    so only $\Delta_\phi$ is trained. This editor has no top-$k$ truncation or pretraining;
   * *unit* (planned): $w_\theta$ trained by likelihood on the true $\mathbf s'$.
 * **Mixture.** Keep the top-$k$ states, renormalise their weights, and realise each one.
   `sample()` draws $\mathbf s'$ from $w$ and realises it. `forward()` returns the argmax
@@ -347,14 +355,14 @@ def composed_log_joint(self, z, values, mask, decoder):
 
 ---
 
-### Supported projected C-sym
+### Clean target-only editors
 
-The supported implementation is `c_sym_project` in `src/latent_intervention/csym/`.
-It uses factual state-effect differences and all coupled source–target symbolic
-transitions, with preservation projection inside inference. The preceding
-single-target C-sym description is a conceptual precursor, not the supported API.
-See [the C-sym guide](../experiments/csym_project.md) for its definition, guarantees,
-training/evaluation protocol and experiment history.
+`semantic_editor` implements the symbolic-weight idea in `src/latent_intervention/editor/`.
+`ot_editor` replaces its residual realiser by one target-conditioned convex-gradient
+map, retaining the exact same objective and factual-only selection. Neither uses
+proxy labels, projection, state effects or a teacher. They do not change Plan C's
+existing trainer. See [the editor guide](../experiments/semantic_editor.md) for
+equations, guarantees, commands and the single record of retired experiments.
 
 ## Plan D — Deterministic particle set
 
