@@ -1,0 +1,29 @@
+# Shared factual-only protocol; no fitting or test evaluation runs on import.
+run_id: editor-clean-v1
+dimensions: [768, 256]
+seeds: [42, 43, 44, 45, 46]
+seed: 42
+tier: 1
+threads: 1
+validation_fraction: 0.2
+split_seed: 42
+audit_split_seed: 20261007
+max_epochs: 500
+batch_size: 32
+learning_rate: 0.0003
+weight_decay: 0.00001
+grad_clip: 5.0
+patience: 30
+min_delta: 0.0000001
+scheduler_patience: 10
+scheduler_factor: 0.5
+min_lr: 0.000001
+support_bank_size: 128
+support_seed: 42
+loss:
+  movement: 0.1
+  support: 0.05
+  identity: 1.0
+evaluation_samples: 64
+evaluation_seed: 20260930
+evaluation_batch_size: 32

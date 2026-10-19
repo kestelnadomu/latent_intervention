@@ -89,11 +89,14 @@ latent_intervention:
   #   distilled_flow -> standalone q(Z'|Z,delta) distilled from state_flow
   #   direct_semantic_flow -> standalone q(Z'|Z,delta) trained through frozen g and h_S
   #   oracle_regression -> residual MLP fitted to privileged training-pair Z', not g/h_S
-  #   c_sym_project -> projected factual state effects; standalone protocol below
+  #   semantic_editor | ot_editor -> target-only semantic / OT-structured editing
+  #   ot_gaussian | ot_flow -> modular factual-only OT protocols
   variant: baseline
   tag: null                # optional artifact name; defaults to variant
-  c_sym_project:
-    protocol: configs/hz_csym_project.yaml
+  editor:
+    protocol: configs/hz_editor.yaml
+  ot:
+    protocol: configs/hz_ot.yaml
   d_model: 128
   nhead: 4
   dim_feedforward: 256

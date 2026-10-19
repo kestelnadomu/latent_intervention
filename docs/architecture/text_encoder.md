@@ -31,7 +31,7 @@ These extractions do not change the encoding recipe or invalidate saved latents.
 | $x \in \mathcal X$ | CV text (`cv_factual.csv`, `cv_counterfactual.csv`) |
 | $z = f(x) \in \mathcal Z = \mathbb R^d$ | latent; $x'$ and $z' = f(x')$ for counterfactual texts |
 | $L = 512$ | LangVAE/Nomic input budget in tokens (`encoder.max_len`); Qwen uses `encoder.qwen3_max_len=1024` |
-| $B = 500$ | GPT-2 token budget enforced at generation (`text_length.max_tokens`, `exp/sim/config.yaml`) |
+| $B = 500$ | GPT-2 token budget enforced at generation (`text_length.max_tokens`, `exp/sim_talent/config.yaml`) |
 | $\mathrm{BERT}(\cdot)$, $\mathrm{NomicBERT}(\cdot)$ | frozen transformer; token embeddings in $\mathbb R^{768}$ |
 | $\bar e(x) \in \mathbb R^{768}$ | masked mean pool of the token embeddings |
 | $W \in \mathbb R^{256\times768}$ | LangVAE's trained posterior projection (no bias) |

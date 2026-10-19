@@ -6,6 +6,8 @@ Stages:
     generate-personas              persona pool
     generate-texts                 factual X for every unit
     generate-counterfactual-texts  X' for test units and optionally train units
+    generate-floor-texts           noise-floor texts (per-unit designs: unchanged state, swapped choice)
+    generate-held-out-texts        test units' factual texts in the held-out codebook (codebook_held_out)
     validate-pairs                 validate the complete paired-data contract
     reset-attempts                 clear spent retry budgets so failed IDs can be retried
 
@@ -19,7 +21,12 @@ from __future__ import annotations
 import argparse
 
 from exp.sim.helpers import CONFIG_PATH, load_sim_config
-from exp.sim.stage_cv import stage_generate_counterfactual_texts, stage_generate_texts
+from exp.sim.stage_cv import (
+    stage_generate_counterfactual_texts,
+    stage_generate_floor_texts,
+    stage_generate_held_out_texts,
+    stage_generate_texts,
+)
 from exp.sim.stage_pools import stage_generate_personas, stage_generate_templates
 from exp.sim.stage_reset import stage_reset_attempts
 from exp.sim.stage_simulate import stage_simulate
@@ -31,6 +38,8 @@ STAGES = {
     "generate-personas": stage_generate_personas,
     "generate-texts": stage_generate_texts,
     "generate-counterfactual-texts": stage_generate_counterfactual_texts,
+    "generate-floor-texts": stage_generate_floor_texts,
+    "generate-held-out-texts": stage_generate_held_out_texts,
     "validate-pairs": stage_validate_pairs,
     "reset-attempts": stage_reset_attempts,
 }

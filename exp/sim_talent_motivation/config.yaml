@@ -1,0 +1,112 @@
+# Data generation pipeline configuration — talent-motivation experiment, a sibling of the
+# talent SFM (exp/sim_talent/config.yaml). Run any stage with:
+#   uv run python -m exp.sim.run <stage> --config exp/sim_talent_motivation/config.yaml
+# The talent SFM extended by motivation M: a root with the marginal of T, a parent of Y
+# with the weight of T, verbalized through evidence guidance and outside the structured
+# state S (exp/sim_talent_motivation/talent_motivation.py; design: docs/experiments/data_sim.md).
+# Text generation keeps the talent SFM's recipe; template and persona pools are shared.
+# Sampling params (model, max_tokens, temperature) live in the prompt YAMLs' metadata;
+# for Azure, `model` there must be the deployment name.
+
+# OpenAI-compatible chat endpoint. For Azure OpenAI use the v1 endpoint of your
+# resource; for Mistral: https://api.mistral.ai/v1 with MISTRAL_API_KEY.
+llm:
+  base_url: https://soda-counterfactual-cv.services.ai.azure.com/openai/v1
+  api_key_env: AZURE_OPENAI_API_KEY   # env var holding the key (never put the key itself here)
+
+# 2,800 training pool + 200 dev + 1,000 evaluation units (see design.partition).
+n: 4000
+seed: 1
+
+# Persisted unit split. The test units are the evaluation units (1,000 of 4,000); the
+# remaining 3,000 are split into dev and the training pool by design.partition below.
+split:
+  seed: 42
+  test_fraction: 0.25
+
+# Reference do() query for src/ (load_intervention). Texts follow the per-unit design below,
+# not this fixed query.
+intervention:
+  X: 3
+
+# Per-unit counterfactual design (exp/sim/design.py; docs/experiments/data_sim.md). The
+# simulate stage writes interventions.csv, sim_data_counterfactual_states.csv (every unit
+# under every do(X=k) and target) and partition.csv; sim_data_counterfactual.csv holds the
+# state under each unit's drawn intervention and the text target.
+design:
+  interventions: per_unit   # one non-identity do(X = k) per unit, drawn per unit
+  node: X
+  targets:                  # name -> blocked edges {child: [parent, ...]}; {} = total effect
+    total: {}
+    ps_D: {D: [X]}          # X -> D blocked: D keeps its factual value
+    ps_DU: {D: [X], U: [X]} # both mediator paths blocked: direct effect only
+  text_target: total        # the one counterfactual rendered as text (evaluation units)
+  floor_swap: X             # noise-floor texts: same state, the next country of the same region
+  partition:
+    dev: 200                # of the 3,000 non-evaluation units; the other 2,800 form the pool
+    L: 1000                 # reader labels (nested: a budget m is L_rank <= m)
+    P: 1000                 # evaluation-reader labels, disjoint from L
+    folds: 5                # cross-fitting folds over the pool
+    floor_fraction: 0.2     # evaluation units that get a noise-floor text
+
+# Structured-state schema S: column -> cardinality (values 0..card-1), listed in
+# topological / autoregressive-decoding order. Read by src/schema.py; the generic
+# framework in src/ has no other knowledge of the columns.
+schema:
+  columns:
+    X: 4   # country of origin (region, ordinal by simulated access gap)
+    T: 3   # talent: decoded, never verbalized (codebook hidden)
+    D: 3   # degree
+    U: 3   # university rank tier (globally anchored)
+  auxiliary:   # simulated + verbalized, not in S (ignored by src/)
+    P: 3   # completed projects
+    L: 3   # learning speed
+    H: 3   # solving hard problems
+    A: 3   # sought out for advice
+    M: 3   # motivation: a root, parent of Y only; last, so X..A match the talent SFM per seed
+  outcome:
+    Y: 3   # qualification: simulated, excluded from decoder heads and consistency loss
+
+# Dotted "module:attribute" pointers to the concrete experiment objects. src/
+# imports these via src/schema.py::load_object rather than importing exp/sim/ directly.
+objects:
+  scm: exp.sim_talent_motivation.talent_motivation:build_scm
+  symbolic_kernel: exp.sim_talent_motivation.talent_motivation:build_symbolic_kernel
+
+paths:
+  sim_dir: data/sim_talent_motivation                    # sim_data_{factual,counterfactual,epsilon}.csv
+  templates: data/text/templates.csv                     # shared template pool (tracked: costs API credits)
+  personas: data/text/personas.csv                       # shared persona pool (tracked: costs API credits)
+  texts: data/text_talent_motivation/cv_factual.csv      # generated CV statements (tracked: costs API credits)
+  texts_counterfactual: data/text_talent_motivation/cv_counterfactual.csv  # test IDs only; see generation below
+  texts_floor: data/text_talent_motivation/cv_floor.csv  # noise-floor texts (partition.csv floor units)
+  texts_held_out: data/text_talent_motivation/cv_factual_vb.csv  # evaluation units in codebook_held_out (V_B)
+  pair_index: data/sim_talent_motivation/pair_index.csv  # id, split (test = evaluation units), is_identity
+  render_plan: data/sim_talent_motivation/render_plan.csv  # shared template/persona/quantiles
+
+codebook: exp/sim_talent_motivation/codebook.yaml
+codebook_held_out: exp/sim_talent_motivation/codebook_vb.yaml  # V_B: held-out wording for the reader robustness re-render only
+held_out_fraction: 0.5  # evaluation units rendered in V_B (seeded subset; raising it keeps existing rows)
+prompts:
+  templates: exp/sim/prompts/template_generation.yaml
+  personas: exp/sim/prompts/persona_generation.yaml
+  cv: exp/sim_talent_motivation/prompts/cv_generation.yaml
+pools:
+  seed_statements: exp/sim/seed_statements.yaml
+  job_titles: exp/sim/job_titles.yaml
+
+generation:
+  include_train_counterfactual_texts: false  # counterfactual texts for evaluation units only
+  n_templates: 50    # template pool size (one billed call each; the pool is shared and exists)
+  n_personas: 100    # persona pool size (one billed call each; the pool is shared and exists)
+  limit: null        # max IDs processed per stage run; null = all
+  max_attempts: 3    # total API calls allowed per stage and ID, persisted across resumes
+
+# Token budget for CV texts (exp/sim/text_length.py), counted with the GPT-2
+# tokenizer the LangVAE encoder uses. Over-budget responses are rejected and retried
+# within max_attempts; validate-pairs reports rows over budget. Not part of the
+# generation digest. The M evidence item adds one or two sentences per text.
+text_length:
+  tokenizer: gpt2
+  tokenizer_revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
+  max_tokens: 500

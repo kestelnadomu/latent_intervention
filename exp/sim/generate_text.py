@@ -45,7 +45,7 @@ class GenerationResult:
 # Any OpenAI-compatible chat endpoint works, e.g. Mistral (default) or Azure
 # OpenAI's v1 endpoint (https://<resource>.openai.azure.com/openai/v1/ with an
 # AZURE_OPENAI_API_KEY and the deployment name as `model`). The endpoint is
-# configured in exp/sim/config.yaml (`llm:` section).
+# configured in exp/sim_talent/config.yaml (`llm:` section).
 DEFAULT_MODEL = "mistral-medium-latest"
 DEFAULT_BASE_URL = "https://api.mistral.ai/v1"
 API_KEY_ENV_VARS = ("AZURE_OPENAI_API_KEY", "OPENAI_API_KEY", "MISTRAL_API_KEY")
@@ -83,7 +83,7 @@ def load_codebook(yaml_path: str | Path) -> dict[str, dict[int, str]]:
     Load a codebook mapping tabular columns to {category index: phrase}.
 
     Accepts both a flat {column: {0: "phrase", ...}, ...} YAML and the nested
-    layout of exp/sim/codebook.yaml (columns under a top-level `columns:` key);
+    layout of exp/sim_talent/codebook.yaml (columns under a top-level `columns:` key);
     returns only the column-to-phrase mapping either way.
     """
     data = _load_yaml(yaml_path)
@@ -96,18 +96,20 @@ def load_codebook(yaml_path: str | Path) -> dict[str, dict[int, str]]:
 
 def load_codebook_spec(yaml_path: str | Path) -> dict[str, Any]:
     """
-    Load the full codebook spec (exp/sim/codebook.yaml).
+    Load the full codebook spec (exp/sim_talent/codebook.yaml).
 
     Returns {"columns": {col: {index: phrase}}, "labels": {col: display name},
     "bins": {col: {index: (lo, hi)}}, "choices": {col: {index: [option, ...]}},
-    "evidence": {col: {index: guidance}}, "hidden": [col, ...],
+    "evidence": {col: {index: [guidance, ...]}}, "hidden": [col, ...],
     "forbidden_terms": [term, ...]}. Everything except `columns` is optional in
     the YAML and defaults to empty:
 
     - `bins`: a concrete number is sampled inside the level's range;
     - `choices`: a concrete option (e.g. a country) is picked from the level's list;
     - `evidence`: the column is not stated as a fact but rendered as writing
-      guidance in a separate `{evidence_guidance}` prompt block;
+      guidance in a separate `{evidence_guidance}` prompt block. A level holds one
+      guidance string or a list of variants of the same strength; with variants, the
+      render plan picks one per unit (see ``exp.sim.render.varied_evidence``);
     - `hidden`: schema columns that are decoded but never verbalized (absent
       from `columns`);
     - `forbidden_terms`: words the generated text must avoid (reported by
@@ -137,10 +139,14 @@ def load_codebook_spec(yaml_path: str | Path) -> dict[str, Any]:
             if not isinstance(options, list) or not options:
                 raise ValueError(f"choices for {col}={k} must be a non-empty list")
             choices[str(col)][int(k)] = [str(option) for option in options]
-    evidence = {
-        str(col): {int(k): str(v) for k, v in levels.items()}
-        for col, levels in _known("evidence").items()
-    }
+    evidence: dict[str, dict[int, list[str]]] = {}
+    for col, levels in _known("evidence").items():
+        evidence[str(col)] = {}
+        for k, guidance in levels.items():
+            variants = guidance if isinstance(guidance, list) else [guidance]
+            if not variants or not all(isinstance(v, str) and v.strip() for v in variants):
+                raise ValueError(f"evidence for {col}={k} must be a string or a non-empty list of strings")
+            evidence[str(col)][int(k)] = [str(v) for v in variants]
     overlap = (set(bins) & set(choices)) | ((set(bins) | set(choices)) & set(evidence))
     if overlap:
         raise ValueError(f"columns can be only one of bins/choices/evidence: {sorted(overlap)}")
