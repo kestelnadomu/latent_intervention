@@ -38,6 +38,16 @@ data/latents/**
 !data/latents/talent/langvae_ft/
 !data/latents/talent/langvae_ft/z_pairs.pt
 !data/latents/talent/langvae_ft/z_pairs.info.json
+# Extended-DAG corpus: only complete published 768D artifacts, never staging files.
+!data/latents/talent_motivation/
+!data/latents/talent_motivation/embeddinggemma_768/
+!data/latents/talent_motivation/embeddinggemma_768/z_pairs.pt
+!data/latents/talent_motivation/embeddinggemma_768/z_pairs.info.json
+!data/latents/talent_motivation/embeddinggemma_768/z_floor.pt
+!data/latents/talent_motivation/embeddinggemma_768/z_floor.info.json
+!data/latents/talent_motivation/embeddinggemma_768/z_factual_vb.pt
+!data/latents/talent_motivation/embeddinggemma_768/z_factual_vb.info.json
+!data/latents/talent_motivation/embeddinggemma_768/manifest.json
 # Keep published semantic decoders and the oracle regression reference portable.
 # Trials, archives, legacy unselected h_Z models, encoder checkpoints and temporary files stay local.
 models/**
@@ -58,6 +68,13 @@ models/**
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.info.json
 # Published training reports and the small all-encoder benchmark audit bundle.
 reports/**
+!reports/talent_motivation/
+!reports/talent_motivation/encoding/
+!reports/talent_motivation/encoding/*/
+!reports/talent_motivation/encoding/*/data_validation.json
+!reports/talent_motivation/encoding/*/preflight.json
+!reports/talent_motivation/encoding/*/protocol.json
+!reports/talent_motivation/encoding/*/status.json
 !reports/talent/
 !reports/talent/*/
 !reports/talent/*/g-independent/
@@ -227,8 +244,73 @@ reports/**
 !reports/talent/editor_benchmarks/*/comparison.md
 !reports/talent/editor_benchmarks/*/comparison.json
 
+# Extended-DAG independent readers: six deployment models and compact fit records.
+!models/talent_motivation/
+!models/talent_motivation/embeddinggemma_768/
+!models/talent_motivation/embeddinggemma_768/g-independent/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/semantic_decoder.pt
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/semantic_decoder.info.json
+!reports/talent_motivation/reader_benchmarks/
+!reports/talent_motivation/reader_benchmarks/*/
+!reports/talent_motivation/reader_benchmarks/*/protocol.json
+!reports/talent_motivation/reader_benchmarks/*/preflight.json
+!reports/talent_motivation/reader_benchmarks/*/status.json
+!reports/talent_motivation/reader_benchmarks/*/results.json
+!reports/talent_motivation/reader_benchmarks/*/published.json
+!reports/talent_motivation/reader_benchmarks/*/summary.md
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/status.json
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/search.json
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/selection.json
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/result.json
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/search/
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/search/trial-*/
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/search/trial-*/training.json
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/final/
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/final/seed-*/
+!reports/talent_motivation/reader_benchmarks/*/S[1-6]/final/seed-*/training.json
+
 # Overleaf repo
 overleaf*
+
+# Five-method misspecification experiment: only seed-42 deployment artifacts.
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-semantic_editor/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-ot_editor/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-state_flow/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-ot_flow/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-ot_gaussian/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-*/runs/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-*/runs/*/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-*/runs/*/*/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-*/runs/*/*/seed-42/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-*/runs/*/*/seed-42/selected/
+!models/talent_motivation/embeddinggemma_768/g-independent/S[1-6]/h-*/runs/*/*/seed-42/selected/latent_intervention.pt
+!models/talent_motivation/embeddinggemma_768/g-independent/evaluation_reader/
+!models/talent_motivation/embeddinggemma_768/g-independent/evaluation_reader/runs/
+!models/talent_motivation/embeddinggemma_768/g-independent/evaluation_reader/runs/*/
+!models/talent_motivation/embeddinggemma_768/g-independent/evaluation_reader/runs/*/seed-42/
+!models/talent_motivation/embeddinggemma_768/g-independent/evaluation_reader/runs/*/seed-42/semantic_decoder.pt
+!reports/talent_motivation/hz_misspecification/
+!reports/talent_motivation/hz_misspecification/*/
+!reports/talent_motivation/hz_misspecification/*/protocol.json
+!reports/talent_motivation/hz_misspecification/*/preflight.json
+!reports/talent_motivation/hz_misspecification/*/selection.json
+!reports/talent_motivation/hz_misspecification/*/status.json
+!reports/talent_motivation/hz_misspecification/*/results.json
+!reports/talent_motivation/hz_misspecification/*/summary.md
+!reports/talent_motivation/hz_misspecification/*/fits/
+!reports/talent_motivation/hz_misspecification/*/fits/**/
+!reports/talent_motivation/hz_misspecification/*/fits/**/training.json
+!reports/talent_motivation/hz_misspecification/*/evaluation_reader/
+!reports/talent_motivation/hz_misspecification/*/evaluation_reader/selection.json
+!reports/talent_motivation/hz_misspecification/*/evaluation_reader/search/
+!reports/talent_motivation/hz_misspecification/*/evaluation_reader/search/trial-*/
+!reports/talent_motivation/hz_misspecification/*/evaluation_reader/search/trial-*/training.json
+!reports/talent_motivation/hz_misspecification/*/evaluation/
+!reports/talent_motivation/hz_misspecification/*/evaluation/**/
+!reports/talent_motivation/hz_misspecification/*/evaluation/references.json
+!reports/talent_motivation/hz_misspecification/*/evaluation/**/metrics.json
 
 # private notes
 _notes/

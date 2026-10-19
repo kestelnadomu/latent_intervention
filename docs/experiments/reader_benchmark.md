@@ -1,6 +1,7 @@
 # Reader robustness to held-out verbalizations
 
-Status: design draft, not implemented. This is an alternate version of the all-encoder
+Status: S1–S6 independent-reader fitting is implemented; held-out-wording evaluation,
+evaluation readers and cross-fitting remain future work. This is an alternate version of the all-encoder
 decoder benchmark ([decoder_benchmark.md](decoder_benchmark.md), run `g-all-encoders-v1`),
 reduced to a robustness check of the reader. It uses the notation of
 [contribution.md](../contribution.md) and is one of three component benchmarks of the
@@ -18,6 +19,49 @@ benchmarks.
 | $\mathcal V_A$, $\mathcal V_B$ | the training verbalization of the codebook and a held-out paraphrase of it | – |
 
 The autoregressive head of v1 is dropped: it showed no benefit in `g-all-encoders-v1`.
+
+### Current fitting-only run: S1–S6
+
+`configs/reader_s1_s6.yaml` uses the new `talent_motivation` Gemma-768 embeddings,
+with one independently fitted reader per state space in `wrong_symbolic_model.md`.
+Only that state's labels enter the shared trunk's training; omitted heads are not
+trained and subsequently hidden. S6 includes M explicitly; P/L/H/A and Y never
+enter any reader's targets.
+
+- Fit on the 1,000 positive `L_rank` units, select on the 200 `dev` units.
+  `L_rank == 0` is not in L. The disjoint P pool, remaining pool and 1,000 official
+  test units are excluded. Only factual V_A inputs enter fitting and selection.
+- Same 20 candidates as the original g benchmark, separately selected per state
+  space by development joint NLL; 500-epoch ceiling, patience 30, plateau scheduler.
+  Final seeds 42–46; predeclared deployment seed 42, never the best seed.
+- 120 search fits plus 30 final fits; six concurrent cases, one numerical thread
+  each. The existing independent model and numerical trainer are unchanged.
+- Atomic best checkpoints and reports, split IDs, config/input/source hashes,
+  exclusive locks and reload verification. Resume skips verified complete fits;
+  an interrupted fit restarts deterministically from its seed (not optimizer resume).
+- **No official-test or V_B evaluation is automatically launched.** No evaluation
+  readers, cross-fitting, label-budget sweep, h_S fitting or h_Z training is run.
+
+```bash
+# Read-only inputs / no optimization; saves preflight and provenance records.
+.venv/bin/python -m exp.benchmarks.reader.run preflight
+# Detached, safe to close the terminal. Re-run to resume after interruption.
+bash scripts/run_reader_s1_s6.sh
+# Progress, including active epochs.
+.venv/bin/python -m exp.benchmarks.reader.run status
+```
+
+Run ID: `g-independent-s1-s6-v1`. Reports and development-only summary:
+`reports/talent_motivation/reader_benchmarks/g-independent-s1-s6-v1/`.
+Published models: `models/talent_motivation/embeddinggemma_768/g-independent/S1/semantic_decoder.pt`
+(likewise S2–S6). All five final checkpoints and search checkpoints remain under
+each state's `runs/<run-id>/` directory. Only published models and compact reports
+are Git-eligible; trial/seed copies, progress files, source snapshots and logs stay local.
+The standard semantic-decoder loader reads these checkpoints with their saved schema;
+downstream pipelines still need their new state-space/protocol adapters.
+
+Development scores are selection diagnostics, not test estimates. Joint NLL must
+not rank S1–S6 against each other: they predict different sets of variables.
 
 ## Question
 

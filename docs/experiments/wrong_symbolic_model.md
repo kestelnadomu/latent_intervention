@@ -1,6 +1,8 @@
 # Experiment: assuming a wrong symbolic model
 
-Status: design draft. Nothing here is implemented yet; the code it requires is listed in
+Status: broader study design. The first five-method, true-factual-state regime is prepared
+in the [misspecification workflow](hz_misspecification.md); its scope is narrower than the
+complete end-to-end study below. Remaining extensions are listed in
 [Required changes](#required-changes).
 
 This doc defines the conditions, the metrics and the **end-to-end** experiment. The DAG, the
