@@ -1,0 +1,103 @@
+{
+  "columns": [
+    "X",
+    "T",
+    "U"
+  ],
+  "completed_at": "2026-10-17T19:56:05.797765+00:00",
+  "deployment_seed": 42,
+  "final_runs": [
+    {
+      "best_epoch": 121,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+      "checkpoint_sha256": "cab4fdaa3e01c5dd9eb2c0aefedb2cd33244824b9731a2f22094124ab46c0c2f",
+      "epochs_run": 151,
+      "seed": 42,
+      "validation_joint_nll": 0.5204899907112122
+    },
+    {
+      "best_epoch": 119,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+      "checkpoint_sha256": "d5ba3230f2c80ad78431a78d3700add3fb990f9b2b3aeab659cc20e017f505d3",
+      "epochs_run": 149,
+      "seed": 43,
+      "validation_joint_nll": 0.5167949795722961
+    },
+    {
+      "best_epoch": 104,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+      "checkpoint_sha256": "08073f4f9c9ccba709c8231752db828af78702792501e735fed02d9f349b9ccb",
+      "epochs_run": 134,
+      "seed": 44,
+      "validation_joint_nll": 0.5318193286657333
+    },
+    {
+      "best_epoch": 103,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+      "checkpoint_sha256": "b8adbc5f10ac2708aa73691482aa5637c7da0d8a7753c978da6a63feab919002",
+      "epochs_run": 133,
+      "seed": 45,
+      "validation_joint_nll": 0.5304547548294067
+    },
+    {
+      "best_epoch": 119,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+      "checkpoint_sha256": "623ab4fc0611bd0b5df9ee559e06bf470af7e70966e84fbf25159f733f5badc1",
+      "epochs_run": 149,
+      "seed": 46,
+      "validation_joint_nll": 0.5103020668029785
+    }
+  ],
+  "rule": "minimum development joint NLL; seed fixed before fitting",
+  "seconds": 727.24245429039,
+  "selected_trial": {
+    "epochs_run": 151,
+    "seconds": 14.507932290434837,
+    "settings": {
+      "dropout": 0.3,
+      "hidden_dim": 128,
+      "lr": 0.001,
+      "weight_decay": 0.0001
+    },
+    "trial": 10,
+    "validation_joint_nll": 0.5204899907112122
+  },
+  "state_space": "S4",
+  "test_evaluation": false,
+  "validation_joint_nll": {
+    "mean": 0.5219722241163254,
+    "std": 0.009139368741323395
+  },
+  "validation_marginals": {
+    "T": {
+      "accuracy": {
+        "mean": 0.8500000238418579,
+        "std": 0.006123718516919305
+      },
+      "ece": {
+        "mean": 0.05696841272711754,
+        "std": 0.00536934404953224
+      }
+    },
+    "U": {
+      "accuracy": {
+        "mean": 0.9569999814033509,
+        "std": 0.0027386101757811525
+      },
+      "ece": {
+        "mean": 0.03075975060462952,
+        "std": 0.00999220551620248
+      }
+    },
+    "X": {
+      "accuracy": {
+        "mean": 0.9950000047683716,
+        "std": 0.0
+      },
+      "ece": {
+        "mean": 0.006930430740118026,
+        "std": 0.0004691282066239592
+      }
+    }
+  }
+}
