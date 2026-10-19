@@ -1,14 +1,42 @@
 # Experiments
 
-Study design only. **Notation lives in `problem_formulation.md`; model definitions and the
-training objective live in `architecture/`** — $f$ (frozen encoder), $g$ (semantic kernel), $h_S$ (symbolic
+Study designs and experiment records. **Notation lives in `problem_formulation.md`;
+model definitions and the training objective live in `architecture/`** — $f$ (frozen encoder), $g$ (semantic kernel), $h_S$ (symbolic
 counterfactual kernel), $h_Z$ (latent editor, the method), and the consistency objective
 $D_{\mathrm{KL}}(h_S \circ g \,\|\, g \circ h_Z)$. Symbols are used here as defined there.
 
-The one commitment that drives every study design below: **$Z'$ never enters a loss.** It is the
-evaluation target only. $g$ exists precisely because $Z'$ is unavailable outside the simulator;
-supervising on $Z'$ would make the method untransferable and $g$ redundant
-(see `notes/leo/idea.md`).
+The one commitment that drives the **main $h_Z$ method and study designs below**:
+**$Z'$ never enters their training losses.** It is their evaluation target only.
+$g$ exists precisely because $Z'$ is unavailable outside the simulator;
+supervising $h_Z$ on $Z'$ would make that method untransferable and $g$ redundant
+(see `notes/leo/idea.md`). A separately labelled, oracle-supervised text-decoder
+comparator is outside this commitment and cannot be presented as the main method.
+
+## Text-reconstruction experiment records
+
+The optional `D_text` decoder reconstructs CV text from frozen embeddings; it
+does not replace `g` or change `h_Z`. The earlier decoder experiments used only
+factual supervision. The `Z'`-free loss restriction above defines the main
+`h_Z` method. The counterfactual-exposed `D_text` comparator is a separately
+labelled, privileged-supervision experiment, not a silent change to that method.
+Both 600-update comparison arms completed and reload-verified on 2026-10-17;
+their tune-only comparison began on 2026-10-19 and has no result recorded here
+yet. This documentation-first branch does not include the new implementation,
+training data, or model weights; artifact paths below identify local records.
+
+- [EmbeddingGemma CV reconstruction workflow](experiments/text_realizer.md):
+  isolated implementation and runbook.
+- [270M baseline and completed 1B pilot results](experiments/text_realizer_gemma1b_results.md):
+  measured reconstruction/factual fidelity, conditioning controls, explanations
+  for the negative scaling result, and preserved artifact references (2026-10-16).
+- [Factual-only 270M draft-correction pilot](experiments/text_corrector.md) and
+  [completed results](experiments/text_corrector_results.md): isolated vector-only
+  correction, factual-aware selection, negative development-only comparison,
+  and explicit limits on counterfactual supervision (2026-10-17).
+- [Counterfactual-exposed 270M decoder pilot plan](experiments/text_realizer_counterfactual_exposure_plan.md):
+  verified aligned training pairs, privileged-supervision boundary, isolated
+  three-arm comparison, predeclared advancement gates, passing GPU preflight,
+  completed training, and ongoing tune-only evaluation (2026-10-19).
 
 ---
 
