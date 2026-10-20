@@ -15,13 +15,6 @@ def test_result_tracking_allowlist(tmp_path):
     hz_model = f"{model}/h-state_flow/benchmarks/test-run"
     preservation = "reports/talent/hz_preservation/test-run"
     portable = {
-        "models/talent/embeddinggemma_256/g-independent/h-c_sym_project/latent_intervention.pt",
-        "reports/talent/embeddinggemma_256/g-independent/h-c_sym_project/evaluation.json",
-        f"{model}/h-c_sym_project/latent_intervention.pt",
-        f"{model}/h-c_sym_project/latent_intervention.info.json",
-        f"{model}/h-c_sym_project/audit_readers.pt",
-        *(f"{report}/h-c_sym_project/{name}.json" for name in
-          ("protocol", "training", "probes", "audit", "evaluation", "original_evaluation", "migration")),
         f"{hz_model}/selected/latent_intervention.pt",
         f"{hz_model}/selected/latent_intervention.info.json",
         *(
@@ -80,6 +73,22 @@ def test_result_tracking_allowlist(tmp_path):
         f"{bundle}/source/uv.lock",
     }
     local = {
+        "archives/editor-cleanup-20261016T155004Z/archive.json",
+        f"{model}/h-c_sym_project/latent_intervention.pt",
+        f"{model}/h-c_sym_project/latent_intervention.info.json",
+        f"{model}/h-c_sym_project/audit_readers.pt",
+        *(
+            f"{report}/h-c_sym_project/{name}.json"
+            for name in (
+                "protocol",
+                "training",
+                "probes",
+                "audit",
+                "evaluation",
+                "original_evaluation",
+                "migration",
+            )
+        ),
         "models/talent/embeddinggemma_128/g-independent/h-c_sym_project/latent_intervention.pt",
         "reports/talent/embeddinggemma_128/g-independent/h-c_sym_project/evaluation.json",
         f"{model}/h-csym-new-run/latent_intervention.pt",

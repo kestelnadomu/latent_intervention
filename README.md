@@ -547,14 +547,20 @@ The modules `benchmark_matrix`, `training`/`validation`, `evaluation`, and `repo
 `src/latent_intervention/` separate planning, fitting, evaluation, and reporting; only small
 optional epoch-control hooks were added to the established trainers.
 
-### Projected C-sym
+### Clean semantic editors
 
-`c_sym_project` is the supported standalone factual state-effect editor, with
-mandatory preservation projection and portable 256D/768D checkpoints (768D is
-the lead configuration). It needs frozen `g` and `h_S`, but no flow teacher or
-paired counterfactual training embeddings. Existing nine-family benchmarks are unchanged.
-See [the C-sym guide](docs/experiments/csym_project.md) for commands, guarantees,
-results, provenance and the single record of retired experimental variants.
+`semantic_editor` and the redesigned `ot_editor` use the same target-only symbolic
+mixture and factual-validation objective. They use visible states, frozen `g` and
+analytic `h_S`, without proxy labels, projection, teachers or paired training
+counterfactuals. See [the editor guide](docs/experiments/semantic_editor.md) for
+the modular implementation, prepared 20-fit queue, limitations and retirement history.
+
+### Factual-only optimal transport
+
+`ot_gaussian` and `ot_flow` provide non-oracle transport baselines for
+EmbeddingGemma 256D/768D. Their separate protocol and four-case detached launcher
+leave the existing benchmark unchanged; audits and test evaluation are explicit
+separate steps. See [the OT guide](docs/experiments/ot_baselines.md).
 
 ## Publish
 

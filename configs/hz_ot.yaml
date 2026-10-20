@@ -1,0 +1,44 @@
+# Individual fits only. No hyperparameter search or test evaluation is launched.
+dimensions: [768, 256]
+run_id: ot-gemma-v2
+tier: 1
+seed: 42
+threads: 1
+validation_fraction: 0.2
+split_seed: 42
+audit_split_seed: 20261007
+max_epochs: 500
+batch_size: 64
+learning_rate: 0.0003
+patience: 30
+min_delta: 1.0e-7
+grad_clip: 5.0
+scheduler_patience: 10
+scheduler_factor: 0.5
+min_lr: 1.0e-6
+smoothing_std: 0.01
+state_embed_dim: 16
+gaussian:
+  ridge: 1.0
+  shrinkage: 32.0
+  variance_floor: 1.0e-4
+flow:
+  ode_steps: 64
+  ode_max_steps: 256
+  ode_tolerance: 1.0e-4
+sinkhorn:
+  epsilon: 0.05
+  tolerance: 1.0e-6
+  max_iterations: 100000  # early convergence; sparse validation pairs can need >60k
+probe:
+  max_epochs: 150
+  patience: 15
+  batch_size: 128
+  guide_lr: 0.003  # linear warm start for independent audit readers, NOT a guide
+  auditor_lr: 0.0003
+  auditor_hidden: [96, 64]
+  auditor_skip: true
+  auditor_warm_start: true
+evaluation_samples: 64
+evaluation_batch_size: 32
+evaluation_seed: 20260930
