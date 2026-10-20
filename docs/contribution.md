@@ -1,91 +1,214 @@
 # Contribution and positioning
 
-Notation as in [problem_formulation.md](problem_formulation.md).
+Literature overview: [background.md](background.md). Architectures:
+[architecture/latent_intervention.md](architecture/latent_intervention.md).
 
-## Contribution statement (this project: SCM counterfactuals)
+**Notation (provisional, this doc only).** Greek letters for functions, Latin letters for
+variables. The other docs still use the old names (right column).
 
-> Given a frozen encoder $f$ and a semantic decoder $g$ that grounds its latents in a
-> structured state space $\mathcal S$, we learn a latent editor $h_Z$ that reproduces an SCM's
-> counterfactual $h_S$ (abduction–action–prediction) in latent space:
-> $g \circ h_Z = h_S \circ g$ in distribution. Among the many latents that decode to the
-> counterfactual state, it selects a minimal, on-manifold one. Training needs only factual
-> latents and $h_S$, and no paired counterfactual data. At inference $h_Z$ needs only $z$ and
-> $\delta$: no SCM and no counterfactual source input. The editor must *inject* the
-> intervention's downstream (mediator) effects, because no computation in the representation
-> propagates them.
+| here | meaning | elsewhere |
+|---|---|---|
+| $x, z, \mathbf s, u$ | text, latent, structured state, residual (what $z$ carries beyond $\mathbf s$) | same |
+| $\mathbf s', z'$ | target state, edited latent | same |
+| $\varphi$ | frozen text encoder | $f$ |
+| $\psi(\mathbf s\mid z)$ | reader (semantic decoder) | $g$ |
+| $\omega_S(\mathbf s'\mid\mathbf s)$ | user-defined operator on states | $h_S$ |
+| $\rho$, $\rho^{-1}$ | renderer, and abduction of the residual | $F_\theta$, $F_\theta^{-1}$ (F1); $z+\Delta_\phi$ (C) |
+| $\omega_Z(z'\mid z)$ | resulting operator on latents | $h_Z$ |
+| $\pi$ | downstream predictor or decoder | $p$ |
+| $\Gamma$ | $\psi$'s confusion on real latents | — |
 
-The components that carry the claim:
+## Contribution statement
 
-- **High-level model = SCM of the data-generating process.** $h_S$ is a rung-3 counterfactual
-  with exogenous noise, not an algorithm the network computes. Hence mediator injection:
-  under $do(\texttt X)$, $h_Z$ must also move $\texttt D, \texttt U$. Swapping an
-  $\texttt X$-subspace alone gives a controlled direct effect, not the total-effect
-  counterfactual.
-- **Source-free and amortised.** The SCM is internalised in $h_Z$'s weights.
-- **Distributional.** Forward KL against $h_S \circ g$ covers $g$'s grounding uncertainty and
-  multimodal counterfactuals (see [architecture/latent_intervention.md](architecture/latent_intervention.md)).
-- **No paired training data.** The target $M_\delta^\top g(\cdot \mid z)$ needs factual latents
-  only. Paired counterfactual texts serve evaluation (recovery of $Z'$) only.
+> We control the representation of a frozen text encoder through a **symbolic operator that the
+> user defines**. A reader $\psi$ infers a structured state from the latent, the operator
+> $\omega_S$ transforms the state, and a renderer $\rho$ writes the target state back into the
+> latent while keeping everything the state does not describe. $\psi$ and $\rho$ are learned
+> once, from factual (latent, state) pairs only. No training step sees $\omega_S$, an
+> intervention, or counterfactual data, so the operator can be exchanged at inference without
+> retraining. SCM counterfactuals for counterfactual fairness are the running instance.
 
-## General form (next project: arbitrary symbolic operators)
+Colours in the charts: grey = frozen, blue = learned once from factual data, orange =
+user-defined and exchangeable.
 
-Nothing in the construction requires $h_S$ to be an SCM counterfactual. The general statement:
+### Conceptual signal–residual split
 
-> Given a frozen encoder $f$, a semantic decoder $g$, and any (possibly stochastic,
-> non-invertible) symbolic operator $h_S: \mathcal S \to \Delta(\mathcal S)$, learn a latent
-> module $h_Z$ that **lifts $h_S$ through $g$**, i.e. $g \circ h_Z = h_S \circ g$, choosing
-> a minimal, on-manifold lift. SCM counterfactuals are one instance.
+```mermaid
+flowchart LR
+  x((x)) --> phi["φ: frozen encoder"] --> z((z))
+  z --> split["split"] --> s((s))
+  split --> u((u))
+  s --> omega["ω_S: operate (user-defined)"] --> sp((s'))
+  u --> r["ρ: render"]
+  sp --> r --> zp((z'))
+  zp --> pi["π: downstream predictor / decoding"]
+  classDef frozen fill:#e5e7eb,stroke:#6b7280,color:#111
+  classDef learned fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef user fill:#fde2c4,stroke:#c2410c,color:#111
+  class phi,pi frozen
+  class split,r learned
+  class omega user
+```
 
-What changes when we generalise:
+Conceptually, $z$ splits into a state $\mathbf s$ and a residual $u$; only the state is operated
+on. In practice the split is not observed: $\mathbf s$ is inferred with uncertainty, and $u$ is
+either abducted explicitly (implementation 1) or left implicit in $z$ (implementation 2).
 
-- **Mediator injection** becomes: the representation contains no computation implementing
-  $h_S$, so the module *is* the implementation, not a patch that downstream circuitry
-  propagates.
-- **Lift selection** becomes the central identifiability question: every $z' \in g^{-1}(\mathbf s')$
-  satisfies the square.
-- **Non-invertibility** matters. $do(\cdot)$ is idempotent, so interventions form a monoid,
-  not a group, and group-equivariant frameworks do not apply.
-- **Evidence needs several $h_S$ instances**: e.g. a deterministic rule (attribute swap,
-  ordinal increment), a stochastic non-causal kernel, and the SCM counterfactual. The kernel
-  is pluggable via `objects.symbolic_kernel`, so this is mostly data work.
+### Implementation 1: read–abduct–render (state-conditioned flow, F1)
+
+```mermaid
+flowchart LR
+  x((x)) --> phi["φ: frozen encoder"] --> z((z))
+  z --> psi["ψ: read"] --> s(("s ~ ψ(· | z)"))
+  s --> omega["ω_S: operate (user-defined)"] --> sp(("s' ~ ω_S(· | s)"))
+  z --> abd["ρ⁻¹: abduct residual"] --> u((u))
+  s --> abd
+  u --> r["ρ: render"]
+  sp --> r --> zp((z'))
+  zp --> pi["π: downstream predictor / decoding"]
+  classDef frozen fill:#e5e7eb,stroke:#6b7280,color:#111
+  classDef learned fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef user fill:#fde2c4,stroke:#c2410c,color:#111
+  class phi,pi frozen
+  class psi,abd,r learned
+  class omega user
+```
+
+$\psi$ and $\rho$ (with its abduction) are learned once from factual $(z,\mathbf s)$; $\omega_S$
+is the only part that changes between uses.
+
+Given the states, abduction $u=\rho^{-1}(z;\mathbf s)$ and rendering $z'=\rho(u;\mathbf s')$ are
+deterministic; all spread in $z'$ comes from $\mathbf s\sim\psi$ and $\mathbf s'\sim\omega_S$.
+The residual is preserved by construction ($\mathbf s'=\mathbf s \Rightarrow z'=z$ exactly).
+
+### Implementation 2: state realiser (C-sym, planned)
+
+```mermaid
+flowchart LR
+  x((x)) --> phi["φ: frozen encoder"] --> z((z))
+  z --> psi["ψ: read"] --> s(("s ~ ψ(· | z)"))
+  s --> omega["ω_S: operate (user-defined)"] --> sp(("s' ~ ω_S(· | s)"))
+  z --> r["ρ: render"] --> zp((z'))
+  sp --> r
+  zp --> pi["π: downstream predictor / decoding"]
+  classDef frozen fill:#e5e7eb,stroke:#6b7280,color:#111
+  classDef learned fill:#dbeafe,stroke:#2563eb,color:#111
+  classDef user fill:#fde2c4,stroke:#c2410c,color:#111
+  class phi,pi frozen
+  class psi,r learned
+  class omega user
+```
+
+There is no explicit residual: $z$ itself is the context, $z' = z + \Delta_\theta(z,\mathbf s')$.
+Preservation therefore holds only through a proximity penalty, not by construction, and the
+realiser is trained so that $\psi$ reads $\mathbf s'$ (see the constraints below).
+
+
+## Formulation
+
+$$\omega_Z(\cdot\mid z;\,\omega_S) \;=\; \sum_{\mathbf s} \psi(\mathbf s\mid z) \sum_{\mathbf s'} \omega_S(\mathbf s'\mid \mathbf s)\;
+\rho\big(\cdot \mid u(z,\mathbf s),\,\mathbf s'\big)$$
+
+* **Read.** $\psi(\mathbf s\mid z)$ is a distribution: the state is inferred, not observed, and
+  some variables (talent $\texttt T$) are never stated in the text.
+* **Operate.** $\omega_S: \mathcal S\to\Delta(\mathcal S)$ is any kernel on states: an SCM
+  counterfactual, a path-specific counterfactual, an erasure, a deterministic rule. Dependencies
+  between variables (mediators under $do(\cdot)$) are handled here, symbolically, so the latent
+  side never has to learn causal propagation.
+* **Render.** $\rho$ puts a state into the latent and keeps the residual $u$. Instances:
+  * state-conditioned flow (F1, implemented): $u = F_\theta^{-1}(z;\mathbf s)$,
+    $z' = F_\theta(u;\mathbf s')$, fitted by conditional likelihood $p_\theta(z\mid\mathbf s)$;
+  * state realiser (C-sym, planned): $z' = z + \Delta_\theta(z,\mathbf s')$ with weights from
+    $\omega_S\circ\psi$.
+
+### Requirements on the renderer
+
+These replace the earlier commuting-square constraint $\psi\circ\omega_Z = \omega_S\circ\psi$.
+
+* **R1 Fidelity.** A rendered latent for state $\mathbf s'$ looks like a real latent with state
+  $\mathbf s'$: $\rho(\cdot\mid u,\mathbf s')$ with $u$ from the base law matches
+  $p(z\mid\mathbf s')$. Consequence:
+  $$\psi\circ\omega_Z \;=\; \Gamma\,(\omega_S\circ\psi),\qquad
+  \Gamma(\tilde{\mathbf s}\mid\mathbf s') = \mathbb E_{z\sim p(z\mid\mathbf s')}\big[\psi(\tilde{\mathbf s}\mid z)\big],$$
+  where $\Gamma$ is $\psi$'s confusion on *real* latents. The edited latent is read exactly as
+  well as a real one, no better. The strict square ($\Gamma = I$) is unattainable for hidden
+  variables and, if forced, rewards off-manifold (adversarial) edits.
+* **R2 Preservation.** Everything outside $\mathbf s$ is kept: $\mathbf s' = \mathbf s \Rightarrow
+  z' = z$, and the residual $u$ is shared across states. Shared $u$ is not identified by factual
+  data (Nasr-Esfahany et al. 2023); it is an assumption, tested on paired counterfactual latents.
+* **R3 Operator-agnostic training.** $\psi$ and $\rho$ see only factual $(z,\mathbf s)$. The
+  renderer must cover every target state an operator can produce; that state support, not a set
+  of trained interventions, defines which $\omega_S$ are usable.
+
+### Evaluation
+
+* **Fidelity:** $\psi\circ\omega_Z$ against $\Gamma\,(\omega_S\circ\psi)$, with $\Gamma$
+  estimated on *factual* latents of each state (R1), not against $\omega_S\circ\psi$ alone. This
+  needs no counterfactual text. The reader used here is independent of the one in the
+  pipeline. Support distance to real latents of state $\mathbf s'$.
+* **Preservation and recovery:** identity at $\mathbf s'=\mathbf s$; energy score and distance to
+  paired $\varphi(x')$.
+* **Operator exchange:** several $\omega_S$ with one trained $\rho$ (below).
+* **Use:** downstream predictor $\pi(Z)$ vs. $\pi(\omega_Z(Z))$ vs. $\pi(Z')$ (downstream
+  benchmark).
+
+## What this changes relative to the earlier statement
+
+| Earlier | Now |
+|---|---|
+| Learn $h_Z$ such that $g\circ h_Z = h_S\circ g$ | Read → operate → render; consistency holds up to $\psi$'s own confusion (R1) |
+| $h_Z$ internalises the SCM; source-free and amortised in the intervention | $\omega_S$ is the control input at inference; amortising one fixed $\omega_S$ (F2) is optional |
+| $h_Z$ must inject mediator effects | Mediators are propagated symbolically by $\omega_S$; $\rho$ renders joint states |
+| Lift selection: which $z'\in g^{-1}(\mathbf s')$? | Rendering identifiability: is shared $u$ the right alignment across states? |
+| SCM counterfactuals now, general operators later | General operators now; SCM counterfactual is the running instance |
+
+Unchanged: paired counterfactual texts are used for evaluation only.
+
+## Evidence needed
+
+One trained $\psi$ and $\rho$, several operators:
+
+1. **SCM total effect**, $do(\texttt X = x)$ (current experiment; paired texts exist).
+2. **Path-specific counterfactual**: $\texttt X$ changed, $\texttt D, \texttt U$ held at factual
+   values (direct effect). Paired texts can be simulated with the same SCM.
+3. **Erasure**: $\texttt X$ replaced by a draw from its marginal; compare with LEACE.
+4. **Deterministic rule**, e.g. an ordinal increment of $\texttt U$, with no causal reading.
+
+The kernel is pluggable via `objects.symbolic_kernel`. Instances 3 and 4 have no paired ground
+truth, so they rely on fidelity (R1) and preservation (R2) diagnostics.
 
 ## Neighbouring work
 
+Per-paper details and relevance ranking: [background.md](background.md).
+
 | Line of work | Same | Different |
 |---|---|---|
-| Causal abstraction, interchange interventions, IIT (Geiger et al. 2021, 2022) | commuting square between a symbolic model and a neural representation | high-level model is an algorithm the network *computes*; the network's own layers do the propagating |
-| DAS / Boundless DAS (Geiger et al. 2023; Wu et al. 2023) | learned intervention subspace, counterfactual objective | needs a **source input** at intervention time; point-wise (IIA), not distributional |
-| ReFT / LoReFT (Wu et al. 2024) | source-free learned edit of a frozen representation | trained on task labels, not on a symbolic model's counterfactuals; candidate **parameterisation** for $h_Z$ on the residual stream |
-| RAVEL (Huang et al. 2024) | evaluating targeted edits (Cause / Isolate) | evaluation benchmark, not a method; adopt its scores |
-| Causal Proxy Models (Wu et al. 2022), CEBaB, LIBERTy | counterfactual text supervision via causal models | explain/mimic a black box; need counterfactual inputs |
-| Deep SCM \cite{pawlowski_dscm_2020}, CausalVAE, VACA \cite{sanchezmartin_vaca_2022} | SCM counterfactuals in a learned latent space | SCM built *into* the representation; ours is post hoc on a frozen $f$ |
-| MDP homomorphisms (van der Pol et al. 2020), neural algorithmic reasoning (Veličković et al.) | lifting an abstract transition/algorithm into latent space | encoder trained *jointly* so the square commutes; ours fits the operator into an existing representation |
-| Equivariant / symmetry-based representations (Higgins et al. 2018) | latent operator mirroring a symbolic one | assumes invertible group actions |
+| Causal abstraction, IIT (Geiger et al. 2021, 2022) | aligning a symbolic model with a neural representation | symbolic model is the network's own computation; downstream layers propagate edits. Ours is an external operator |
+| DAS / Boundless DAS (Geiger et al. 2023; Wu et al. 2023) | learned alignment of subspaces with symbolic variables | needs a **source input** at intervention time; point-wise |
+| ReFT / LoReFT (Wu et al. 2024) | learned edit of a frozen representation | one edit per task, trained on labels; ours learns one renderer and takes the edit from $\omega_S$ |
+| Activation steering, RepE (Rimsky et al. 2024; Zou et al. 2023) | control of a frozen representation | specified by examples (contrast pairs), additive, one concept at a time |
+| Concept erasure (Ravfogel et al. 2020; Belrose et al. 2023) | provable representation control | one fixed operator (erasure), linear; for us erasure is one $\omega_S$ |
+| Deep SCM (Pawlowski et al. 2020), VACA | abduction and rendering with a conditional generative model | parents are observed labels; one fixed SCM. Ours: state inferred by $\psi$, operator exchangeable |
+| StyleFlow (Abdal et al. 2021) | conditional flow over a frozen latent space; invert, then regenerate | attributes edited independently by hand; no operator on states |
+| Concept bottleneck models (Koh et al. 2020) | editable symbolic state between input and output | trained end-to-end; edits on the state, not on the representation |
+| MDP homomorphisms (van der Pol et al. 2020), neural algorithmic reasoning | abstract operator executed in latent space | encoder trained jointly with the operator |
+| Equivariant representations (Higgins et al. 2018) | latent operator mirroring a symbolic one | invertible group actions; $do(\cdot)$ and erasure are not invertible |
+| RAVEL (Huang et al. 2024), CEBaB, LIBERTy | evaluating targeted edits / counterfactual text | benchmarks, not methods; adopt Cause/Isolate scores |
 
-The shared differentiator across the table: **post hoc** (frozen, pretrained $f$), **source-free**,
-**distributional**, with **a symbolic model of the world** rather than of the network's computation.
+Shared differentiator: **post hoc** on a frozen encoder, **operator-agnostic training**, a
+**symbolic control interface**, and an **inferred** state.
 
-## Constraints that follow from the positioning
+## Constraints that follow
 
-- **$g$ is a probe, which is a weakness.** A probe can read information the model does not use,
-  and it can be fooled by off-manifold edits. Defend with the VAE prior, an ensemble of $g$,
-  the identity check ($\mathbf S' = \mathbf S \Rightarrow z' \approx z$), and $Z'$ recovery.
-- **Restrict the editor.** With an unconstrained nonlinear map the square becomes trivially
-  satisfiable (the *non-linear representation dilemma*, Sutter et al. 2025). Low rank
-  (LoReFT-style), minimal shift, and the prior are what make a successful lift meaningful.
-- **Beware interpretability illusions** (Makelov et al. 2023): high consistency may come from
-  activating dormant pathways in $g$ rather than from moving $z$ to a real counterfactual.
-- **Baselines**: a DAS-style subspace swap built from the paired counterfactual latents
-  (needs a source, so it is an upper-bound baseline, not a competitor), and a constant
-  direction $z' = z + v_\delta$.
-
-## References to add to `references.bib`
-
-Not yet in the bib; verify titles and venues before citing:
-Geiger et al. 2021 (causal abstractions of neural networks), Geiger et al. 2022 (IIT),
-Geiger, Wu, Potts, Icard & Goodman 2023 (DAS), Wu et al. 2023 (Boundless DAS),
-Wu et al. 2024 (ReFT), Huang et al. 2024 (RAVEL), Wu et al. 2022 (Causal Proxy Models),
-Makelov et al. 2023 (interpretability illusions), Sutter et al. 2025 (non-linear
-representation dilemma), van der Pol et al. 2020 (MDP homomorphisms), Higgins et al. 2018
-(definition of disentangled representations), Veličković et al. (neural algorithmic reasoning),
-Yang et al. 2021 (CausalVAE).
+- **Reading is uncertain.** $\psi$ is a probe: it can read information the model does not use,
+  and it is imperfect on hidden variables. Its uncertainty must reach $\omega_S$ (sample
+  $\mathbf s\sim\psi(\cdot\mid z)$, not argmax; open for F1).
+- **Render by likelihood, not against $\psi$.** A renderer trained so that $\psi$ reads
+  $\mathbf s'$ (C's realiser) is pushed towards $\Gamma = I$, i.e. off-manifold edits; with a
+  free nonlinear map this is trivially satisfiable (non-linear representation dilemma, Sutter et
+  al. 2025) and prone to interpretability illusions (Makelov et al. 2023). F1 avoids this by
+  never using $\psi$ in training.
+- **State support bounds the operators.** $\rho$ is reliable only for states seen in training.
+- **Baselines:** a constant direction $z' = z + v$ per operator (steering-style); DAS-style swap
+  with a source latent (upper bound, needs paired data); oracle regression on paired $Z'$
+  (reference); LEACE for the erasure instance.

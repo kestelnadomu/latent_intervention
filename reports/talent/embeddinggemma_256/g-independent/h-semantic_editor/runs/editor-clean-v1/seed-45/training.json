@@ -1,0 +1,5429 @@
+{
+  "capacity": {
+    "buffer_bytes": 2081,
+    "buffer_values": 517,
+    "inference_active": 199552,
+    "relative_difference": 0.0,
+    "target": 199552,
+    "tier": 1,
+    "training_only": 0,
+    "training_total": 199552
+  },
+  "checkpoint_sha256": "7c46109cc4e6a79b4a939e47c1bdf855b6214d7475aa50bcfa5a93ab80bd4943",
+  "dimension": 256,
+  "early_stopped": true,
+  "elapsed_seconds": 1861.661798119545,
+  "epochs_completed": 238,
+  "frozen_auxiliary_parameters": {
+    "g": 51085,
+    "h_s": 0
+  },
+  "history": [
+    {
+      "elapsed_seconds": 7.803329661488533,
+      "epoch": 1,
+      "gradient_norm_max": 35.09846496582031,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.03208679538802777,
+        "movement": 0.08330130193775405,
+        "objective": 2.288421743842473,
+        "semantic_kl": 2.209137347638607,
+        "support": 0.7773494124412537
+      },
+      "validation": {
+        "identity": 0.010606923727318645,
+        "movement": 0.09651902437210083,
+        "objective": 0.39501763775758447,
+        "semantic_kl": 0.33481545448303224,
+        "support": 0.79886714220047
+      }
+    },
+    {
+      "elapsed_seconds": 7.803191766142845,
+      "epoch": 2,
+      "gradient_norm_max": 7.940578937530518,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.006781878429533058,
+        "movement": 0.09988478548824788,
+        "objective": 0.24137432217139107,
+        "semantic_kl": 0.1856383790075779,
+        "support": 0.7793117237091064
+      },
+      "validation": {
+        "identity": 0.004442718842765317,
+        "movement": 0.10596137940883636,
+        "objective": 0.16366925130202434,
+        "semantic_kl": 0.10847218424081802,
+        "support": 0.8031642055511474
+      }
+    },
+    {
+      "elapsed_seconds": 7.809998989105225,
+      "epoch": 3,
+      "gradient_norm_max": 3.6934573650360107,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0032185657484735952,
+        "movement": 0.10001976624131202,
+        "objective": 0.1156133524639811,
+        "semantic_kl": 0.0634665859490633,
+        "support": 0.7785244828462601
+      },
+      "validation": {
+        "identity": 0.002359992766287178,
+        "movement": 0.10391194343566895,
+        "objective": 0.0969845704077743,
+        "semantic_kl": 0.04416448712348938,
+        "support": 0.8013779234886169
+      }
+    },
+    {
+      "elapsed_seconds": 7.805326387286186,
+      "epoch": 4,
+      "gradient_norm_max": 1.5542436838150024,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0025239112167579464,
+        "movement": 0.09873530320823193,
+        "objective": 0.0811347945085687,
+        "semantic_kl": 0.029863169137388467,
+        "support": 0.7774836766719818
+      },
+      "validation": {
+        "identity": 0.00188946332084015,
+        "movement": 0.09886467158794403,
+        "objective": 0.07982985670911148,
+        "semantic_kl": 0.028141376972198488,
+        "support": 0.7982509851455688
+      }
+    },
+    {
+      "elapsed_seconds": 7.785696551203728,
+      "epoch": 5,
+      "gradient_norm_max": 1.9505409002304077,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0022552364482289126,
+        "movement": 0.09420440018177033,
+        "objective": 0.07281241762961503,
+        "semantic_kl": 0.02241665375418961,
+        "support": 0.7744017481803894
+      },
+      "validation": {
+        "identity": 0.0018023712921421975,
+        "movement": 0.09480776667594909,
+        "objective": 0.07419458472612314,
+        "semantic_kl": 0.023114414662122728,
+        "support": 0.7959404420852662
+      }
+    },
+    {
+      "elapsed_seconds": 7.785376280546188,
+      "epoch": 6,
+      "gradient_norm_max": 1.3373169898986816,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.002073824314636504,
+        "movement": 0.09014737389981747,
+        "objective": 0.06829552539834133,
+        "semantic_kl": 0.018630941128358246,
+        "support": 0.7715204513072967
+      },
+      "validation": {
+        "identity": 0.001668980405665934,
+        "movement": 0.09040178060531616,
+        "objective": 0.07062417267356068,
+        "semantic_kl": 0.020257287323474885,
+        "support": 0.7931545376777649
+      }
+    },
+    {
+      "elapsed_seconds": 7.798830524086952,
+      "epoch": 7,
+      "gradient_norm_max": 1.2669583559036255,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0018883891572129892,
+        "movement": 0.08595934808254242,
+        "objective": 0.06460969096989157,
+        "semantic_kl": 0.01570151822641492,
+        "support": 0.7684769755601883
+      },
+      "validation": {
+        "identity": 0.0015501467592548578,
+        "movement": 0.0867578348517418,
+        "objective": 0.06908879840443843,
+        "semantic_kl": 0.019332805722951887,
+        "support": 0.7906012487411499
+      }
+    },
+    {
+      "elapsed_seconds": 7.785783559083939,
+      "epoch": 8,
+      "gradient_norm_max": 1.3964515924453735,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.001870519633463898,
+        "movement": 0.08331655409187079,
+        "objective": 0.06297351401305137,
+        "semantic_kl": 0.014456862271763384,
+        "support": 0.7662895339727401
+      },
+      "validation": {
+        "identity": 0.0016200530936475842,
+        "movement": 0.08420059233903884,
+        "objective": 0.06913336823484861,
+        "semantic_kl": 0.019644074589014054,
+        "support": 0.7889836263656617
+      }
+    },
+    {
+      "elapsed_seconds": 7.7966578155756,
+      "epoch": 9,
+      "gradient_norm_max": 0.9807438254356384,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0017583741063147728,
+        "movement": 0.08064554195851087,
+        "objective": 0.06160589010658562,
+        "semantic_kl": 0.013579649347811938,
+        "support": 0.7640662491321564
+      },
+      "validation": {
+        "identity": 0.0014569232449866832,
+        "movement": 0.08163476884365081,
+        "objective": 0.06771201827982441,
+        "semantic_kl": 0.018762121647596358,
+        "support": 0.7865899300575256
+      }
+    },
+    {
+      "elapsed_seconds": 7.787289187312126,
+      "epoch": 10,
+      "gradient_norm_max": 1.0096677541732788,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0016766898989128392,
+        "movement": 0.07859111037105322,
+        "objective": 0.05952834194837236,
+        "semantic_kl": 0.01188922714907676,
+        "support": 0.7620662772655487
+      },
+      "validation": {
+        "identity": 0.0014831853122450412,
+        "movement": 0.07855200171470642,
+        "objective": 0.06587494527408853,
+        "semantic_kl": 0.0173089037835598,
+        "support": 0.784553120136261
+      }
+    },
+    {
+      "elapsed_seconds": 7.784543886780739,
+      "epoch": 11,
+      "gradient_norm_max": 1.1024792194366455,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0015483612033575956,
+        "movement": 0.07695249568670988,
+        "objective": 0.05889350537090006,
+        "semantic_kl": 0.011633033696562052,
+        "support": 0.7603372180461884
+      },
+      "validation": {
+        "identity": 0.0013460202631540596,
+        "movement": 0.07845259517431259,
+        "objective": 0.06542665485711768,
+        "semantic_kl": 0.01706173852086067,
+        "support": 0.7834727311134339
+      }
+    },
+    {
+      "elapsed_seconds": 7.796621263027191,
+      "epoch": 12,
+      "gradient_norm_max": 0.7469456195831299,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0015343839275575811,
+        "movement": 0.07513600882142782,
+        "objective": 0.057644019939091025,
+        "semantic_kl": 0.010663484907709062,
+        "support": 0.7586510044336319
+      },
+      "validation": {
+        "identity": 0.0012127704150043427,
+        "movement": 0.07465520709753036,
+        "objective": 0.06266969428723679,
+        "semantic_kl": 0.014946669638156891,
+        "support": 0.7808946704864502
+      }
+    },
+    {
+      "elapsed_seconds": 7.78050309419632,
+      "epoch": 13,
+      "gradient_norm_max": 1.0948188304901123,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.001444866803211549,
+        "movement": 0.07429634634405374,
+        "objective": 0.05745744839377461,
+        "semantic_kl": 0.010712020099163055,
+        "support": 0.7574185371398926
+      },
+      "validation": {
+        "identity": 0.0012847709847847,
+        "movement": 0.07532260537147523,
+        "objective": 0.064266081404523,
+        "semantic_kl": 0.016429242305457593,
+        "support": 0.7803961515426636
+      }
+    },
+    {
+      "elapsed_seconds": 7.778824836015701,
+      "epoch": 14,
+      "gradient_norm_max": 0.9597497582435608,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0014398499994184798,
+        "movement": 0.07304173789918422,
+        "objective": 0.05624487991972082,
+        "semantic_kl": 0.009705236493609846,
+        "support": 0.7559123927354813
+      },
+      "validation": {
+        "identity": 0.0011297512357123197,
+        "movement": 0.07468846917152405,
+        "objective": 0.06354983869241551,
+        "semantic_kl": 0.01598772346973419,
+        "support": 0.7792703413963318
+      }
+    },
+    {
+      "elapsed_seconds": 7.791372552514076,
+      "epoch": 15,
+      "gradient_norm_max": 1.2577606439590454,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0013425926576923221,
+        "movement": 0.07233321830630303,
+        "objective": 0.055512755396924504,
+        "semantic_kl": 0.009192524747923016,
+        "support": 0.7548863232135773
+      },
+      "validation": {
+        "identity": 0.0011910792987328022,
+        "movement": 0.07346558094024658,
+        "objective": 0.0618755296568852,
+        "semantic_kl": 0.014431550949811935,
+        "support": 0.7781268262863159
+      }
+    },
+    {
+      "elapsed_seconds": 7.7808863669633865,
+      "epoch": 16,
+      "gradient_norm_max": 0.8948326110839844,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0013120979190907292,
+        "movement": 0.07146696384996176,
+        "objective": 0.05541262465334599,
+        "semantic_kl": 0.009265992301516235,
+        "support": 0.7537567609548569
+      },
+      "validation": {
+        "identity": 0.0010458518017549068,
+        "movement": 0.07302800714969634,
+        "objective": 0.0620971552033443,
+        "semantic_kl": 0.014888180568814278,
+        "support": 0.7772064423561096
+      }
+    },
+    {
+      "elapsed_seconds": 7.786611035466194,
+      "epoch": 17,
+      "gradient_norm_max": 0.8062314987182617,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0012499058952931672,
+        "movement": 0.07094366259872914,
+        "objective": 0.05413643653117162,
+        "semantic_kl": 0.008152978410944343,
+        "support": 0.7527837193012238
+      },
+      "validation": {
+        "identity": 0.0010663718334399165,
+        "movement": 0.07221190840005874,
+        "objective": 0.060033530575688936,
+        "semantic_kl": 0.012923646606504918,
+        "support": 0.7764464259147644
+      }
+    },
+    {
+      "elapsed_seconds": 7.7879911214113235,
+      "epoch": 18,
+      "gradient_norm_max": 1.1271259784698486,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0012318612846016121,
+        "movement": 0.06995303101837635,
+        "objective": 0.054621062629523806,
+        "semantic_kl": 0.008817871594801545,
+        "support": 0.7515205329656601
+      },
+      "validation": {
+        "identity": 0.0010351023031398654,
+        "movement": 0.07373879730701446,
+        "objective": 0.06197103180270642,
+        "semantic_kl": 0.014759916923940181,
+        "support": 0.7760426568984985
+      }
+    },
+    {
+      "elapsed_seconds": 7.80207833647728,
+      "epoch": 19,
+      "gradient_norm_max": 0.9251076579093933,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0011653087103861894,
+        "movement": 0.06979344993829727,
+        "objective": 0.05360492531509433,
+        "semantic_kl": 0.007918343557976186,
+        "support": 0.7508385610580445
+      },
+      "validation": {
+        "identity": 0.0010673742374638095,
+        "movement": 0.06939990937709808,
+        "objective": 0.05930829984752927,
+        "semantic_kl": 0.012603572607040404,
+        "support": 0.7739472413063049
+      }
+    },
+    {
+      "elapsed_seconds": 7.794761091470718,
+      "epoch": 20,
+      "gradient_norm_max": 1.1685255765914917,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0011985761802739958,
+        "movement": 0.06895727191120386,
+        "objective": 0.05372650079895776,
+        "semantic_kl": 0.008142286497168243,
+        "support": 0.7497982186079025
+      },
+      "validation": {
+        "identity": 0.0011394015682162717,
+        "movement": 0.07149287670850754,
+        "objective": 0.05953712645743508,
+        "semantic_kl": 0.01252662044018507,
+        "support": 0.7744363355636597
+      }
+    },
+    {
+      "elapsed_seconds": 7.812338143587112,
+      "epoch": 21,
+      "gradient_norm_max": 0.9799101948738098,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.001086040662151243,
+        "movement": 0.06863917171955108,
+        "objective": 0.0527438200810146,
+        "semantic_kl": 0.007340969764627516,
+        "support": 0.7490578496456146
+      },
+      "validation": {
+        "identity": 0.0009905779495602474,
+        "movement": 0.07022158354520798,
+        "objective": 0.057907135112560355,
+        "semantic_kl": 0.011248633861541749,
+        "support": 0.7729152989387512
+      }
+    },
+    {
+      "elapsed_seconds": 7.802402079105377,
+      "epoch": 22,
+      "gradient_norm_max": 0.593910276889801,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0010435099932722448,
+        "movement": 0.06796955939382315,
+        "objective": 0.05179478232798946,
+        "semantic_kl": 0.006554133254103363,
+        "support": 0.7480036628246307
+      },
+      "validation": {
+        "identity": 0.000978388189105317,
+        "movement": 0.06956884413957595,
+        "objective": 0.05671531585487537,
+        "semantic_kl": 0.010161759741604328,
+        "support": 0.7723656702041626
+      }
+    },
+    {
+      "elapsed_seconds": 7.8014854192733765,
+      "epoch": 23,
+      "gradient_norm_max": 0.7355545163154602,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.000988735427466549,
+        "movement": 0.06750174354761838,
+        "objective": 0.05145477751720823,
+        "semantic_kl": 0.006350980557035655,
+        "support": 0.7472977435588837
+      },
+      "validation": {
+        "identity": 0.0009142114175483585,
+        "movement": 0.06858539402484894,
+        "objective": 0.056054099696688356,
+        "semantic_kl": 0.009727561287581921,
+        "support": 0.7710757517814636
+      }
+    },
+    {
+      "elapsed_seconds": 7.789413556456566,
+      "epoch": 24,
+      "gradient_norm_max": 1.7104604244232178,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0010891390794445165,
+        "movement": 0.06745690241456032,
+        "objective": 0.0534413553678919,
+        "semantic_kl": 0.008266865611076354,
+        "support": 0.7467932087182999
+      },
+      "validation": {
+        "identity": 0.0009453368338290602,
+        "movement": 0.06975137233734131,
+        "objective": 0.058112489372724674,
+        "semantic_kl": 0.011620945706963539,
+        "support": 0.7714213919639588
+      }
+    },
+    {
+      "elapsed_seconds": 7.7930993139743805,
+      "epoch": 25,
+      "gradient_norm_max": 0.9551371335983276,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0009848652952736364,
+        "movement": 0.06709283784031868,
+        "objective": 0.05215513218337802,
+        "semantic_kl": 0.0071569323306903245,
+        "support": 0.7460810154676437
+      },
+      "validation": {
+        "identity": 0.0008347391756251454,
+        "movement": 0.06978620171546936,
+        "objective": 0.057295896735973656,
+        "semantic_kl": 0.010944177508354186,
+        "support": 0.7707671976089477
+      }
+    },
+    {
+      "elapsed_seconds": 7.796139940619469,
+      "epoch": 26,
+      "gradient_norm_max": 1.0951037406921387,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0009233662274756313,
+        "movement": 0.06668890032917262,
+        "objective": 0.05103837325173401,
+        "semantic_kl": 0.006187222637236118,
+        "support": 0.7451778870820999
+      },
+      "validation": {
+        "identity": 0.00073604270524811,
+        "movement": 0.06818912625312805,
+        "objective": 0.055113765832851644,
+        "semantic_kl": 0.009098363667726516,
+        "support": 0.7692089366912842
+      }
+    },
+    {
+      "elapsed_seconds": 7.790668308734894,
+      "epoch": 27,
+      "gradient_norm_max": 1.0839518308639526,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0008719249801972856,
+        "movement": 0.06641850180923939,
+        "objective": 0.051530515079040266,
+        "semantic_kl": 0.006789735360071063,
+        "support": 0.7445400911569595
+      },
+      "validation": {
+        "identity": 0.0008004959247773513,
+        "movement": 0.06744933873414993,
+        "objective": 0.05453938773495611,
+        "semantic_kl": 0.008554973900318145,
+        "support": 0.7687796807289123
+      }
+    },
+    {
+      "elapsed_seconds": 7.796565547585487,
+      "epoch": 28,
+      "gradient_norm_max": 1.0679221153259277,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0008372232053756723,
+        "movement": 0.06599217738956213,
+        "objective": 0.050742627169597154,
+        "semantic_kl": 0.006118857767432928,
+        "support": 0.7437465691566467
+      },
+      "validation": {
+        "identity": 0.0007780265714973212,
+        "movement": 0.06840212613344193,
+        "objective": 0.05429950400255621,
+        "semantic_kl": 0.00825386494398117,
+        "support": 0.7685479974746704
+      }
+    },
+    {
+      "elapsed_seconds": 7.791480585932732,
+      "epoch": 29,
+      "gradient_norm_max": 0.7986773252487183,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0008099540401560376,
+        "movement": 0.06569680463522673,
+        "objective": 0.049825936960925646,
+        "semantic_kl": 0.005297341777477414,
+        "support": 0.7429792135953903
+      },
+      "validation": {
+        "identity": 0.0007784328534035012,
+        "movement": 0.06749500244855881,
+        "objective": 0.05524902782577556,
+        "semantic_kl": 0.009349964261054992,
+        "support": 0.7674226093292237
+      }
+    },
+    {
+      "elapsed_seconds": 7.7940304428339005,
+      "epoch": 30,
+      "gradient_norm_max": 0.5506596565246582,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0008117097046583024,
+        "movement": 0.06556035686284303,
+        "objective": 0.04940920034874073,
+        "semantic_kl": 0.004927449123933911,
+        "support": 0.7422801166772842
+      },
+      "validation": {
+        "identity": 0.0007745789911132306,
+        "movement": 0.06643574535846711,
+        "objective": 0.054185921738622723,
+        "semantic_kl": 0.00844465870410204,
+        "support": 0.7664621901512146
+      }
+    },
+    {
+      "elapsed_seconds": 7.792484730482101,
+      "epoch": 31,
+      "gradient_norm_max": 0.9083951711654663,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007661539405707982,
+        "movement": 0.06522053841501474,
+        "objective": 0.04989693224394068,
+        "semantic_kl": 0.005523794488981366,
+        "support": 0.7416985994577407
+      },
+      "validation": {
+        "identity": 0.0008250304276589304,
+        "movement": 0.06850706428289413,
+        "objective": 0.054838773515308276,
+        "semantic_kl": 0.008809793666005135,
+        "support": 0.7670648598670959
+      }
+    },
+    {
+      "elapsed_seconds": 7.797321707010269,
+      "epoch": 32,
+      "gradient_norm_max": 0.7382385730743408,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0007673719956782895,
+        "movement": 0.06531386975198984,
+        "objective": 0.049929815347610165,
+        "semantic_kl": 0.005569737949408591,
+        "support": 0.7412263685464859
+      },
+      "validation": {
+        "identity": 0.0006631654006196186,
+        "movement": 0.06698585242033005,
+        "objective": 0.05343039418652189,
+        "semantic_kl": 0.00779008099809289,
+        "support": 0.7655712509155274
+      }
+    },
+    {
+      "elapsed_seconds": 7.804029643535614,
+      "epoch": 33,
+      "gradient_norm_max": 0.8639898300170898,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0007593526111659906,
+        "movement": 0.06502505976706743,
+        "objective": 0.04923790288648804,
+        "semantic_kl": 0.004941773505415767,
+        "support": 0.7406854158639908
+      },
+      "validation": {
+        "identity": 0.0006950191766372882,
+        "movement": 0.06541561245918275,
+        "objective": 0.05293588685098804,
+        "semantic_kl": 0.007488156259059906,
+        "support": 0.7642230033874512
+      }
+    },
+    {
+      "elapsed_seconds": 7.805344954133034,
+      "epoch": 34,
+      "gradient_norm_max": 0.7908697724342346,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007418988178040034,
+        "movement": 0.06495224840939046,
+        "objective": 0.04939088718253404,
+        "semantic_kl": 0.005147264918778091,
+        "support": 0.7401299721002579
+      },
+      "validation": {
+        "identity": 0.0007211275785812177,
+        "movement": 0.06696534365415573,
+        "objective": 0.0533842796474346,
+        "semantic_kl": 0.00773926854133606,
+        "support": 0.764546983242035
+      }
+    },
+    {
+      "elapsed_seconds": 7.799315705895424,
+      "epoch": 35,
+      "gradient_norm_max": 0.8062312602996826,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0007576769562486341,
+        "movement": 0.06484145164489746,
+        "objective": 0.049293162277904506,
+        "semantic_kl": 0.005070735448971391,
+        "support": 0.7396120941638946
+      },
+      "validation": {
+        "identity": 0.0006919810973340646,
+        "movement": 0.0661797520518303,
+        "objective": 0.0527439185284311,
+        "semantic_kl": 0.007248247265815735,
+        "support": 0.7637142992019653
+      }
+    },
+    {
+      "elapsed_seconds": 7.807118520140648,
+      "epoch": 36,
+      "gradient_norm_max": 0.8166077136993408,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.000771463449562851,
+        "movement": 0.06467272520065308,
+        "objective": 0.04952960712880171,
+        "semantic_kl": 0.005329509065486491,
+        "support": 0.7392272418737411
+      },
+      "validation": {
+        "identity": 0.0006674356004805304,
+        "movement": 0.06635649025440216,
+        "objective": 0.0524605872585089,
+        "semantic_kl": 0.006968672852963209,
+        "support": 0.7637765955924988
+      }
+    },
+    {
+      "elapsed_seconds": 7.794382244348526,
+      "epoch": 37,
+      "gradient_norm_max": 0.9322503209114075,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0007470233259049339,
+        "movement": 0.06457166533917189,
+        "objective": 0.04950560267924118,
+        "semantic_kl": 0.005353395550046116,
+        "support": 0.7389603453874588
+      },
+      "validation": {
+        "identity": 0.0006725528242532163,
+        "movement": 0.06606735289096832,
+        "objective": 0.05241067870729603,
+        "semantic_kl": 0.006970396302640438,
+        "support": 0.7632198858261109
+      }
+    },
+    {
+      "elapsed_seconds": 7.790369734168053,
+      "epoch": 38,
+      "gradient_norm_max": 0.7456576824188232,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0006932694200186987,
+        "movement": 0.06446160335093737,
+        "objective": 0.048916326355258284,
+        "semantic_kl": 0.004848214511293918,
+        "support": 0.7385736417770385
+      },
+      "validation": {
+        "identity": 0.0006539662118302659,
+        "movement": 0.06454292029142379,
+        "objective": 0.05210026190162171,
+        "semantic_kl": 0.006869118195027113,
+        "support": 0.762457709312439
+      }
+    },
+    {
+      "elapsed_seconds": 7.795785009860992,
+      "epoch": 39,
+      "gradient_norm_max": 0.8805299401283264,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007397269137216739,
+        "movement": 0.06433387279510498,
+        "objective": 0.04880280233416838,
+        "semantic_kl": 0.004716646489687264,
+        "support": 0.7382608330249787
+      },
+      "validation": {
+        "identity": 0.0006534145298064686,
+        "movement": 0.06553771913051605,
+        "objective": 0.052765690666681624,
+        "semantic_kl": 0.0074452835321426394,
+        "support": 0.7622644138336182
+      }
+    },
+    {
+      "elapsed_seconds": 7.80066804587841,
+      "epoch": 40,
+      "gradient_norm_max": 1.3294962644577026,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007126872804516135,
+        "movement": 0.06440398078411817,
+        "objective": 0.04942738903495829,
+        "semantic_kl": 0.005387252958025783,
+        "support": 0.7377410143613815
+      },
+      "validation": {
+        "identity": 0.0006787833839189261,
+        "movement": 0.06485058575868606,
+        "objective": 0.05372675164486282,
+        "semantic_kl": 0.008471935354173184,
+        "support": 0.761819486618042
+      }
+    },
+    {
+      "elapsed_seconds": 7.797013968229294,
+      "epoch": 41,
+      "gradient_norm_max": 1.3372653722763062,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007608879282282173,
+        "movement": 0.06460946213454008,
+        "objective": 0.05032274362902654,
+        "semantic_kl": 0.006213174001313746,
+        "support": 0.7377547097206115
+      },
+      "validation": {
+        "identity": 0.0007500049160444178,
+        "movement": 0.06524604558944702,
+        "objective": 0.05260725562513107,
+        "semantic_kl": 0.007251050490885973,
+        "support": 0.7616319131851196
+      }
+    },
+    {
+      "elapsed_seconds": 7.798756182193756,
+      "epoch": 42,
+      "gradient_norm_max": 0.7766160368919373,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.000723536835974037,
+        "movement": 0.06417672514915466,
+        "objective": 0.0487551474179979,
+        "semantic_kl": 0.004741948936134577,
+        "support": 0.7374397826194763
+      },
+      "validation": {
+        "identity": 0.0007322141327313148,
+        "movement": 0.06502332895994187,
+        "objective": 0.052071557315473915,
+        "semantic_kl": 0.006769855283200741,
+        "support": 0.7613431000709534
+      }
+    },
+    {
+      "elapsed_seconds": 7.791855007410049,
+      "epoch": 43,
+      "gradient_norm_max": 0.8593425154685974,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0006639438513771322,
+        "movement": 0.06415358740836381,
+        "objective": 0.048189088923867106,
+        "semantic_kl": 0.004269139617681503,
+        "support": 0.7368129342794418
+      },
+      "validation": {
+        "identity": 0.0006041863662539981,
+        "movement": 0.06479549437761306,
+        "objective": 0.05266340730985394,
+        "semantic_kl": 0.007550559286028147,
+        "support": 0.7605822443962097
+      }
+    },
+    {
+      "elapsed_seconds": 7.802847340703011,
+      "epoch": 44,
+      "gradient_norm_max": 1.2196904420852661,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.000762039050303885,
+        "movement": 0.06405561991035938,
+        "objective": 0.050586081201520305,
+        "semantic_kl": 0.00658331454033032,
+        "support": 0.7367033123970032
+      },
+      "validation": {
+        "identity": 0.000796417229284998,
+        "movement": 0.06754844069480896,
+        "objective": 0.053238445289840466,
+        "semantic_kl": 0.007544297948479653,
+        "support": 0.7628577208518982
+      }
+    },
+    {
+      "elapsed_seconds": 7.791804671287537,
+      "epoch": 45,
+      "gradient_norm_max": 1.4013214111328125,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007241958667976207,
+        "movement": 0.06432282611727715,
+        "objective": 0.04928534219036674,
+        "semantic_kl": 0.005269427080638707,
+        "support": 0.7371887326240539
+      },
+      "validation": {
+        "identity": 0.000653279093967285,
+        "movement": 0.06608833581209182,
+        "objective": 0.05264874350832542,
+        "semantic_kl": 0.007318084537982941,
+        "support": 0.7613709259033203
+      }
+    },
+    {
+      "elapsed_seconds": 7.797678932547569,
+      "epoch": 46,
+      "gradient_norm_max": 1.1789981126785278,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007242415463407246,
+        "movement": 0.06414177738130093,
+        "objective": 0.049289378683999616,
+        "semantic_kl": 0.005328855630941689,
+        "support": 0.7364420753717422
+      },
+      "validation": {
+        "identity": 0.0006814536769525148,
+        "movement": 0.06590214431285858,
+        "objective": 0.05218335251702229,
+        "semantic_kl": 0.006871753707528115,
+        "support": 0.760798614025116
+      }
+    },
+    {
+      "elapsed_seconds": 7.796855166554451,
+      "epoch": 47,
+      "gradient_norm_max": 0.8378347158432007,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0007402161417913824,
+        "movement": 0.06427169971168041,
+        "objective": 0.04847552122151602,
+        "semantic_kl": 0.004509274379815906,
+        "support": 0.7359772145748138
+      },
+      "validation": {
+        "identity": 0.0007090473244898021,
+        "movement": 0.06622922629117965,
+        "objective": 0.051298153407406066,
+        "semantic_kl": 0.005947154313325882,
+        "support": 0.7603805828094482
+      }
+    },
+    {
+      "elapsed_seconds": 7.788573905825615,
+      "epoch": 48,
+      "gradient_norm_max": 0.7516846656799316,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0006387240985982987,
+        "movement": 0.06368236806243659,
+        "objective": 0.047742793722228796,
+        "semantic_kl": 0.003966334469150751,
+        "support": 0.7353899669647217
+      },
+      "validation": {
+        "identity": 0.0007135275969631039,
+        "movement": 0.06292034968733788,
+        "objective": 0.05232400102860993,
+        "semantic_kl": 0.007380716018378735,
+        "support": 0.758754448890686
+      }
+    },
+    {
+      "elapsed_seconds": 7.806449234485626,
+      "epoch": 49,
+      "gradient_norm_max": 0.8058580756187439,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.000626043323505427,
+        "movement": 0.06370267421007156,
+        "objective": 0.04799962196879437,
+        "semantic_kl": 0.004247379042208194,
+        "support": 0.7351186436414718
+      },
+      "validation": {
+        "identity": 0.0005560583257465623,
+        "movement": 0.0645803987979889,
+        "objective": 0.05114562794280937,
+        "semantic_kl": 0.00616235988214612,
+        "support": 0.7593833971023559
+      }
+    },
+    {
+      "elapsed_seconds": 7.801824361085892,
+      "epoch": 50,
+      "gradient_norm_max": 0.7494333386421204,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.000630379272076096,
+        "movement": 0.0634832040593028,
+        "objective": 0.04750886429139486,
+        "semantic_kl": 0.003788834079168737,
+        "support": 0.7348266106843948
+      },
+      "validation": {
+        "identity": 0.000717089109821245,
+        "movement": 0.06413287356495857,
+        "objective": 0.05123639078135603,
+        "semantic_kl": 0.00616999501362443,
+        "support": 0.7587203860282898
+      }
+    },
+    {
+      "elapsed_seconds": 7.7944081872701645,
+      "epoch": 51,
+      "gradient_norm_max": 0.7287797331809998,
+      "learning_rate": 0.0003,
+      "selected": true,
+      "train": {
+        "identity": 0.0006352013181758892,
+        "movement": 0.06371774595230818,
+        "objective": 0.04773079981048162,
+        "semantic_kl": 0.004000416181515903,
+        "support": 0.7344681543111801
+      },
+      "validation": {
+        "identity": 0.0006204145660740324,
+        "movement": 0.06517572104930877,
+        "objective": 0.050777998100791595,
+        "semantic_kl": 0.005680021643638611,
+        "support": 0.7591997957229615
+      }
+    },
+    {
+      "elapsed_seconds": 7.791221886873245,
+      "epoch": 52,
+      "gradient_norm_max": 0.5661447644233704,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0006182935210924662,
+        "movement": 0.06332260642200709,
+        "objective": 0.047547452021953845,
+        "semantic_kl": 0.003887009609024972,
+        "support": 0.7341977649927139
+      },
+      "validation": {
+        "identity": 0.0006622954315389507,
+        "movement": 0.06372235983610153,
+        "objective": 0.05110975558747305,
+        "semantic_kl": 0.006158415209501982,
+        "support": 0.7583361792564393
+      }
+    },
+    {
+      "elapsed_seconds": 7.795858561992645,
+      "epoch": 53,
+      "gradient_norm_max": 1.5504454374313354,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0006535853759347928,
+        "movement": 0.06420051641762256,
+        "objective": 0.05001375511865686,
+        "semantic_kl": 0.0062182078626938165,
+        "support": 0.7344382047653198
+      },
+      "validation": {
+        "identity": 0.0018534736620495096,
+        "movement": 0.06967129230499268,
+        "objective": 0.10363743117323611,
+        "semantic_kl": 0.056775350123643875,
+        "support": 0.7608295631408691
+      }
+    },
+    {
+      "elapsed_seconds": 7.806992217898369,
+      "epoch": 54,
+      "gradient_norm_max": 3.117417097091675,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0030789287800840515,
+        "movement": 0.08669935103505849,
+        "objective": 0.07805793815133492,
+        "semantic_kl": 0.028591747507452966,
+        "support": 0.754346535205841
+      },
+      "validation": {
+        "identity": 0.0016919281904119998,
+        "movement": 0.08896818906068801,
+        "objective": 0.07099482460063883,
+        "semantic_kl": 0.02148415505886078,
+        "support": 0.7784384489059448
+      }
+    },
+    {
+      "elapsed_seconds": 7.8028756976127625,
+      "epoch": 55,
+      "gradient_norm_max": 2.513226270675659,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.001734653195416176,
+        "movement": 0.08072507243603468,
+        "objective": 0.06349017452081068,
+        "semantic_kl": 0.01601938863284886,
+        "support": 0.7532725089788437
+      },
+      "validation": {
+        "identity": 0.0014888272318057715,
+        "movement": 0.07278437286615372,
+        "objective": 0.057773624594789005,
+        "semantic_kl": 0.01047556784003973,
+        "support": 0.7706158447265625
+      }
+    },
+    {
+      "elapsed_seconds": 7.790441930294037,
+      "epoch": 56,
+      "gradient_norm_max": 1.0563647747039795,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0011692876043734022,
+        "movement": 0.06986984841525555,
+        "objective": 0.05172716029556513,
+        "semantic_kl": 0.00634065865073353,
+        "support": 0.7446045839786529
+      },
+      "validation": {
+        "identity": 0.0008796187484404072,
+        "movement": 0.07024565756320954,
+        "objective": 0.05577350576908793,
+        "semantic_kl": 0.00954496804624796,
+        "support": 0.7664870643615722
+      }
+    },
+    {
+      "elapsed_seconds": 7.791152760386467,
+      "epoch": 57,
+      "gradient_norm_max": 0.8141809105873108,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0009165526931792335,
+        "movement": 0.06712353609502315,
+        "objective": 0.04964502805058507,
+        "semantic_kl": 0.0049535852996632455,
+        "support": 0.7412507289648056
+      },
+      "validation": {
+        "identity": 0.0007577846542699263,
+        "movement": 0.06668378412723541,
+        "objective": 0.05311968766979408,
+        "semantic_kl": 0.007518853191286325,
+        "support": 0.7634934282302857
+      }
+    },
+    {
+      "elapsed_seconds": 7.8044964373111725,
+      "epoch": 58,
+      "gradient_norm_max": 0.5093619227409363,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0008190022440469539,
+        "movement": 0.06585680838674307,
+        "objective": 0.04850818234205532,
+        "semantic_kl": 0.004133401985745877,
+        "support": 0.7394019454717636
+      },
+      "validation": {
+        "identity": 0.0007612920089741237,
+        "movement": 0.0680142942070961,
+        "objective": 0.05262648793525295,
+        "semantic_kl": 0.006908445861190557,
+        "support": 0.7631064128875732
+      }
+    },
+    {
+      "elapsed_seconds": 7.791339322924614,
+      "epoch": 59,
+      "gradient_norm_max": 0.6968767642974854,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007662755047891689,
+        "movement": 0.06504573803395033,
+        "objective": 0.04834676361707863,
+        "semantic_kl": 0.004174767688382417,
+        "support": 0.7380229324102402
+      },
+      "validation": {
+        "identity": 0.0007153340586228297,
+        "movement": 0.06593730211257935,
+        "objective": 0.05163899893767667,
+        "semantic_kl": 0.00624344689771533,
+        "support": 0.7617297554016114
+      }
+    },
+    {
+      "elapsed_seconds": 7.79772076010704,
+      "epoch": 60,
+      "gradient_norm_max": 0.6190096735954285,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0007015349877001117,
+        "movement": 0.06476548694074154,
+        "objective": 0.04769798484844429,
+        "semantic_kl": 0.0036610256833955646,
+        "support": 0.7371775096654892
+      },
+      "validation": {
+        "identity": 0.0006931881533819251,
+        "movement": 0.06659407407045365,
+        "objective": 0.051192846913065304,
+        "semantic_kl": 0.0057898246310651305,
+        "support": 0.7610085344314576
+      }
+    },
+    {
+      "elapsed_seconds": 7.8006347715854645,
+      "epoch": 61,
+      "gradient_norm_max": 0.620358943939209,
+      "learning_rate": 0.0003,
+      "selected": false,
+      "train": {
+        "identity": 0.0006964814902868022,
+        "movement": 0.06418657541275025,
+        "objective": 0.047536512096191565,
+        "semantic_kl": 0.0036048516584560276,
+        "support": 0.7363304281234742
+      },
+      "validation": {
+        "identity": 0.0006795240627252497,
+        "movement": 0.06514408558607102,
+        "objective": 0.051446999514999335,
+        "semantic_kl": 0.006236766930669546,
+        "support": 0.7603259992599487
+      }
+    },
+    {
+      "elapsed_seconds": 7.79426184296608,
+      "epoch": 62,
+      "gradient_norm_max": 0.7143031358718872,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0006675430554096858,
+        "movement": 0.06408189937472343,
+        "objective": 0.047553547152238085,
+        "semantic_kl": 0.003685161820612848,
+        "support": 0.7358530467748642
+      },
+      "validation": {
+        "identity": 0.000684337887505535,
+        "movement": 0.0650408336520195,
+        "objective": 0.051416706937889106,
+        "semantic_kl": 0.006245912089943886,
+        "support": 0.7596474719047547
+      }
+    },
+    {
+      "elapsed_seconds": 7.8053900599479675,
+      "epoch": 63,
+      "gradient_norm_max": 0.34718573093414307,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.000651077696121662,
+        "movement": 0.06386689946055413,
+        "objective": 0.046882198028731524,
+        "semantic_kl": 0.0030768377776257696,
+        "support": 0.7353518521785736
+      },
+      "validation": {
+        "identity": 0.0006477590269059875,
+        "movement": 0.06505669176578521,
+        "objective": 0.0504340340840281,
+        "semantic_kl": 0.00530519756488502,
+        "support": 0.7595081663131714
+      }
+    },
+    {
+      "elapsed_seconds": 7.797226905822754,
+      "epoch": 64,
+      "gradient_norm_max": 0.2299758791923523,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0006301508443705152,
+        "movement": 0.06372528664767742,
+        "objective": 0.046629813270205205,
+        "semantic_kl": 0.0028794979793019594,
+        "support": 0.7349527156352997
+      },
+      "validation": {
+        "identity": 0.000631706184358336,
+        "movement": 0.06537258982658387,
+        "objective": 0.05032327383442317,
+        "semantic_kl": 0.005190435638651252,
+        "support": 0.7592774605751038
+      }
+    },
+    {
+      "elapsed_seconds": 7.794823929667473,
+      "epoch": 65,
+      "gradient_norm_max": 0.34074950218200684,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0006300372739215285,
+        "movement": 0.06361993063241243,
+        "objective": 0.04655549694917956,
+        "semantic_kl": 0.002829567942535505,
+        "support": 0.7346779733896256
+      },
+      "validation": {
+        "identity": 0.0005812962862546555,
+        "movement": 0.06460955291986466,
+        "objective": 0.05007867777970387,
+        "semantic_kl": 0.005105664506554603,
+        "support": 0.7586152338981629
+      }
+    },
+    {
+      "elapsed_seconds": 7.787174567580223,
+      "epoch": 66,
+      "gradient_norm_max": 0.3465724289417267,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0006211929843171435,
+        "movement": 0.06354282908141613,
+        "objective": 0.04651138079076697,
+        "semantic_kl": 0.0028194682439789177,
+        "support": 0.734328733086586
+      },
+      "validation": {
+        "identity": 0.000561875335406512,
+        "movement": 0.06443404704332352,
+        "objective": 0.050152741509955384,
+        "semantic_kl": 0.005237982328981161,
+        "support": 0.758189582824707
+      }
+    },
+    {
+      "elapsed_seconds": 7.7863597720861435,
+      "epoch": 67,
+      "gradient_norm_max": 0.332888662815094,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0006031339306636157,
+        "movement": 0.06339804284274578,
+        "objective": 0.04644711445488692,
+        "semantic_kl": 0.0028036219882778823,
+        "support": 0.7340110850334167
+      },
+      "validation": {
+        "identity": 0.0005987350319628604,
+        "movement": 0.06448453962802887,
+        "objective": 0.050139021073759074,
+        "semantic_kl": 0.005184103883802891,
+        "support": 0.7581545639038086
+      }
+    },
+    {
+      "elapsed_seconds": 7.785832524299622,
+      "epoch": 68,
+      "gradient_norm_max": 0.27620238065719604,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0006082425229041525,
+        "movement": 0.06340342354029417,
+        "objective": 0.046417911077130086,
+        "semantic_kl": 0.002779120864579454,
+        "support": 0.7338041067123413
+      },
+      "validation": {
+        "identity": 0.0005799581043538638,
+        "movement": 0.06474451065063476,
+        "objective": 0.04998620022536488,
+        "semantic_kl": 0.0050304530747234824,
+        "support": 0.7580267596244812
+      }
+    },
+    {
+      "elapsed_seconds": 7.79558664560318,
+      "epoch": 69,
+      "gradient_norm_max": 0.5324364304542542,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0006056892193627547,
+        "movement": 0.06325884182006121,
+        "objective": 0.04642530101181539,
+        "semantic_kl": 0.0028201898792758586,
+        "support": 0.733470754623413
+      },
+      "validation": {
+        "identity": 0.0006163140924763865,
+        "movement": 0.06490136504173279,
+        "objective": 0.050166255300689966,
+        "semantic_kl": 0.005161050464957953,
+        "support": 0.7579750847816468
+      }
+    },
+    {
+      "elapsed_seconds": 7.79312838613987,
+      "epoch": 70,
+      "gradient_norm_max": 0.5193821787834167,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0006001480530616209,
+        "movement": 0.06320081822574139,
+        "objective": 0.04643009267203923,
+        "semantic_kl": 0.0028465737262740732,
+        "support": 0.7332657814025879
+      },
+      "validation": {
+        "identity": 0.0005632781152962708,
+        "movement": 0.06487266689538956,
+        "objective": 0.050141747529560236,
+        "semantic_kl": 0.005212681759148836,
+        "support": 0.7575704193115235
+      }
+    },
+    {
+      "elapsed_seconds": 7.791245400905609,
+      "epoch": 71,
+      "gradient_norm_max": 0.3658500909805298,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0006055007948898614,
+        "movement": 0.06316097661852836,
+        "objective": 0.046323682780320286,
+        "semantic_kl": 0.0027517056791111828,
+        "support": 0.733007572889328
+      },
+      "validation": {
+        "identity": 0.0005810085669509136,
+        "movement": 0.06444861143827438,
+        "objective": 0.049699576111917845,
+        "semantic_kl": 0.004814095366746187,
+        "support": 0.7571922206878662
+      }
+    },
+    {
+      "elapsed_seconds": 7.791258439421654,
+      "epoch": 72,
+      "gradient_norm_max": 0.3401104807853699,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005928339715919432,
+        "movement": 0.06307097773998976,
+        "objective": 0.04626242702592751,
+        "semantic_kl": 0.002725343264173716,
+        "support": 0.7327430403232574
+      },
+      "validation": {
+        "identity": 0.0005285994839505292,
+        "movement": 0.06436381816864013,
+        "objective": 0.04976800020603696,
+        "semantic_kl": 0.004967384077608585,
+        "support": 0.7567126965522766
+      }
+    },
+    {
+      "elapsed_seconds": 7.789450004696846,
+      "epoch": 73,
+      "gradient_norm_max": 0.46591460704803467,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0005890336609417153,
+        "movement": 0.06305904917418957,
+        "objective": 0.046243280317631516,
+        "semantic_kl": 0.00272514725336805,
+        "support": 0.7324638897180558
+      },
+      "validation": {
+        "identity": 0.0005871970209409483,
+        "movement": 0.06408388257026672,
+        "objective": 0.049654945457645226,
+        "semantic_kl": 0.004831175217404961,
+        "support": 0.7565636992454529
+      }
+    },
+    {
+      "elapsed_seconds": 7.8000518679618835,
+      "epoch": 74,
+      "gradient_norm_max": 0.4902614951133728,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0005945948085822244,
+        "movement": 0.06292192500084638,
+        "objective": 0.04631178507423774,
+        "semantic_kl": 0.0028139136917889117,
+        "support": 0.7322216814756394
+      },
+      "validation": {
+        "identity": 0.0005395194882294163,
+        "movement": 0.0638668492436409,
+        "objective": 0.049526789165451196,
+        "semantic_kl": 0.004789644367992878,
+        "support": 0.7562188076972961
+      }
+    },
+    {
+      "elapsed_seconds": 7.792856261134148,
+      "epoch": 75,
+      "gradient_norm_max": 0.3978945016860962,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0005796539778039869,
+        "movement": 0.06297982282936573,
+        "objective": 0.04609325560896295,
+        "semantic_kl": 0.002616460077697411,
+        "support": 0.7319831854104996
+      },
+      "validation": {
+        "identity": 0.0005380555111332796,
+        "movement": 0.06343626081943513,
+        "objective": 0.04945403275446734,
+        "semantic_kl": 0.004783147517591715,
+        "support": 0.7557840728759766
+      }
+    },
+    {
+      "elapsed_seconds": 7.791200399398804,
+      "epoch": 76,
+      "gradient_norm_max": 0.2360217124223709,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0005867311473052164,
+        "movement": 0.06286862052977085,
+        "objective": 0.046071315524685304,
+        "semantic_kl": 0.0026123895135242493,
+        "support": 0.731706656217575
+      },
+      "validation": {
+        "identity": 0.0005693941260688007,
+        "movement": 0.06398363947868348,
+        "objective": 0.04942357553122565,
+        "semantic_kl": 0.004659324046224355,
+        "support": 0.7559298682212829
+      }
+    },
+    {
+      "elapsed_seconds": 7.794976010918617,
+      "epoch": 77,
+      "gradient_norm_max": 0.5731073617935181,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005725933435146417,
+        "movement": 0.06287068489938974,
+        "objective": 0.04605893750961467,
+        "semantic_kl": 0.0026272341050207616,
+        "support": 0.7314408314228058
+      },
+      "validation": {
+        "identity": 0.0005509640535456129,
+        "movement": 0.06393773317337036,
+        "objective": 0.049501563306723256,
+        "semantic_kl": 0.004787250459194183,
+        "support": 0.7553915095329284
+      }
+    },
+    {
+      "elapsed_seconds": 7.790423884987831,
+      "epoch": 78,
+      "gradient_norm_max": 0.500359296798706,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005780060031640159,
+        "movement": 0.06277536693960428,
+        "objective": 0.0461235522926974,
+        "semantic_kl": 0.002709207646548748,
+        "support": 0.731176038980484
+      },
+      "validation": {
+        "identity": 0.0005393354024272412,
+        "movement": 0.06446605056524277,
+        "objective": 0.049723777065752074,
+        "semantic_kl": 0.004964555986225605,
+        "support": 0.755465612411499
+      }
+    },
+    {
+      "elapsed_seconds": 7.808550298213959,
+      "epoch": 79,
+      "gradient_norm_max": 0.4550005793571472,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0005759149790164674,
+        "movement": 0.06274970304220914,
+        "objective": 0.046132319426199477,
+        "semantic_kl": 0.002737885946407914,
+        "support": 0.7308709639310836
+      },
+      "validation": {
+        "identity": 0.0005312791268806905,
+        "movement": 0.06347941309213638,
+        "objective": 0.049245263944147154,
+        "semantic_kl": 0.004619434773921967,
+        "support": 0.7549321746826172
+      }
+    },
+    {
+      "elapsed_seconds": 7.80424328148365,
+      "epoch": 80,
+      "gradient_norm_max": 0.3422611951828003,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.000568382418370606,
+        "movement": 0.0627054089307785,
+        "objective": 0.04602093636419698,
+        "semantic_kl": 0.002646673518465832,
+        "support": 0.7307067906856537
+      },
+      "validation": {
+        "identity": 0.0005269133677938953,
+        "movement": 0.06466466188430786,
+        "objective": 0.0496304987227777,
+        "semantic_kl": 0.0048821748420596126,
+        "support": 0.7550988864898681
+      }
+    },
+    {
+      "elapsed_seconds": 7.800010338425636,
+      "epoch": 81,
+      "gradient_norm_max": 0.3724982738494873,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0005709140126346117,
+        "movement": 0.06276216186583042,
+        "objective": 0.04605488134433836,
+        "semantic_kl": 0.0026856022677384317,
+        "support": 0.7304429775476455
+      },
+      "validation": {
+        "identity": 0.0005226224375655874,
+        "movement": 0.06343657970428467,
+        "objective": 0.04913405195006636,
+        "semantic_kl": 0.004545439779758453,
+        "support": 0.7544466352462769
+      }
+    },
+    {
+      "elapsed_seconds": 7.790246710181236,
+      "epoch": 82,
+      "gradient_norm_max": 0.36109888553619385,
+      "learning_rate": 0.00015,
+      "selected": true,
+      "train": {
+        "identity": 0.0005633375476729567,
+        "movement": 0.06264590851962566,
+        "objective": 0.045945798125086396,
+        "semantic_kl": 0.002613591393455863,
+        "support": 0.7300855666399002
+      },
+      "validation": {
+        "identity": 0.0005258759815478698,
+        "movement": 0.06329981476068497,
+        "objective": 0.04908380947785918,
+        "semantic_kl": 0.0045227616000920534,
+        "support": 0.7541038084030152
+      }
+    },
+    {
+      "elapsed_seconds": 7.7909111231565475,
+      "epoch": 83,
+      "gradient_norm_max": 0.5427921414375305,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005683152474388967,
+        "movement": 0.062697371840477,
+        "objective": 0.046056135990090716,
+        "semantic_kl": 0.002728300867602229,
+        "support": 0.7297956538200379
+      },
+      "validation": {
+        "identity": 0.0005012031039223075,
+        "movement": 0.0634193018078804,
+        "objective": 0.04946807587426156,
+        "semantic_kl": 0.004930533338338137,
+        "support": 0.7538881850242615
+      }
+    },
+    {
+      "elapsed_seconds": 7.785751938819885,
+      "epoch": 84,
+      "gradient_norm_max": 0.42386162281036377,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005728656816510109,
+        "movement": 0.0625899489596486,
+        "objective": 0.0460083123486703,
+        "semantic_kl": 0.0026928531215526163,
+        "support": 0.729671972990036
+      },
+      "validation": {
+        "identity": 0.0005093729894724674,
+        "movement": 0.06305061995983124,
+        "objective": 0.049230096961196984,
+        "semantic_kl": 0.00474265269935131,
+        "support": 0.7534601855278015
+      }
+    },
+    {
+      "elapsed_seconds": 7.791961893439293,
+      "epoch": 85,
+      "gradient_norm_max": 0.6138425469398499,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005592271894148191,
+        "movement": 0.06253388840705157,
+        "objective": 0.0460369653840481,
+        "semantic_kl": 0.0027614153665490447,
+        "support": 0.7292586797475815
+      },
+      "validation": {
+        "identity": 0.0004847440686717164,
+        "movement": 0.06318096816539764,
+        "objective": 0.04929198996766354,
+        "semantic_kl": 0.004835587609559298,
+        "support": 0.7530712294578552
+      }
+    },
+    {
+      "elapsed_seconds": 7.792823046445847,
+      "epoch": 86,
+      "gradient_norm_max": 0.5086954236030579,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005682038858323897,
+        "movement": 0.06258948966860771,
+        "objective": 0.0460743815868884,
+        "semantic_kl": 0.0027909209951758386,
+        "support": 0.7291261547803879
+      },
+      "validation": {
+        "identity": 0.0006074494248605333,
+        "movement": 0.06345949411392211,
+        "objective": 0.04947787892952329,
+        "semantic_kl": 0.004852813947945833,
+        "support": 0.7534333229064941
+      }
+    },
+    {
+      "elapsed_seconds": 7.796926394104958,
+      "epoch": 87,
+      "gradient_norm_max": 0.6325851678848267,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005719807182878809,
+        "movement": 0.06257636312395334,
+        "objective": 0.04630443741264498,
+        "semantic_kl": 0.0030234803026542066,
+        "support": 0.7290268015861511
+      },
+      "validation": {
+        "identity": 0.0004763678746530786,
+        "movement": 0.06321430087089538,
+        "objective": 0.04949027244246099,
+        "semantic_kl": 0.005068896170705557,
+        "support": 0.7524715662002563
+      }
+    },
+    {
+      "elapsed_seconds": 7.794303759932518,
+      "epoch": 88,
+      "gradient_norm_max": 0.4741974472999573,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005727145599759151,
+        "movement": 0.06254957184195518,
+        "objective": 0.046247406129035995,
+        "semantic_kl": 0.002982264067977667,
+        "support": 0.728749406337738
+      },
+      "validation": {
+        "identity": 0.0005228949026786722,
+        "movement": 0.06366703778505325,
+        "objective": 0.0492254834571504,
+        "semantic_kl": 0.004684828128665686,
+        "support": 0.7530211329460144
+      }
+    },
+    {
+      "elapsed_seconds": 7.803470775485039,
+      "epoch": 89,
+      "gradient_norm_max": 0.5642743706703186,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005625556394846057,
+        "movement": 0.06272556226700544,
+        "objective": 0.04610174468130962,
+        "semantic_kl": 0.002837801893474534,
+        "support": 0.7285766184329987
+      },
+      "validation": {
+        "identity": 0.000499487794295419,
+        "movement": 0.06344800025224685,
+        "objective": 0.04983137236098992,
+        "semantic_kl": 0.00537889102473855,
+        "support": 0.7521638703346253
+      }
+    },
+    {
+      "elapsed_seconds": 7.802682250738144,
+      "epoch": 90,
+      "gradient_norm_max": 0.9368177056312561,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005503644649975624,
+        "movement": 0.0625881352648139,
+        "objective": 0.04594577471843108,
+        "semantic_kl": 0.0027329261775594204,
+        "support": 0.728073410987854
+      },
+      "validation": {
+        "identity": 0.0004559995897579938,
+        "movement": 0.06341123819351197,
+        "objective": 0.04983520384808071,
+        "semantic_kl": 0.005451879128813743,
+        "support": 0.7517240262031555
+      }
+    },
+    {
+      "elapsed_seconds": 7.787796676158905,
+      "epoch": 91,
+      "gradient_norm_max": 0.5688525438308716,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005557905699607965,
+        "movement": 0.06254256144165993,
+        "objective": 0.04595532371951426,
+        "semantic_kl": 0.002754442048026249,
+        "support": 0.7278166991472245
+      },
+      "validation": {
+        "identity": 0.0004804892957326956,
+        "movement": 0.06239611625671387,
+        "objective": 0.049397018373769246,
+        "semantic_kl": 0.00511508883908391,
+        "support": 0.751236572265625
+      }
+    },
+    {
+      "elapsed_seconds": 7.786872297525406,
+      "epoch": 92,
+      "gradient_norm_max": 0.42358171939849854,
+      "learning_rate": 0.00015,
+      "selected": false,
+      "train": {
+        "identity": 0.0005491425571597355,
+        "movement": 0.06250221978873015,
+        "objective": 0.04591379970471442,
+        "semantic_kl": 0.0027436464454513045,
+        "support": 0.7274157744646073
+      },
+      "validation": {
+        "identity": 0.00051098772441037,
+        "movement": 0.0635926553606987,
+        "objective": 0.049116981069790205,
+        "semantic_kl": 0.004669705256819725,
+        "support": 0.7515404510498047
+      }
+    },
+    {
+      "elapsed_seconds": 7.788901463150978,
+      "epoch": 93,
+      "gradient_norm_max": 0.7030181884765625,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005442149770789554,
+        "movement": 0.06251040589064359,
+        "objective": 0.04608701120492711,
+        "semantic_kl": 0.0029338866693433374,
+        "support": 0.7271573793888092
+      },
+      "validation": {
+        "identity": 0.0005783890897873789,
+        "movement": 0.06289896875619888,
+        "objective": 0.04959100386151113,
+        "semantic_kl": 0.005151675119996071,
+        "support": 0.7514208555221558
+      }
+    },
+    {
+      "elapsed_seconds": 7.797207474708557,
+      "epoch": 94,
+      "gradient_norm_max": 0.46048980951309204,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005511176991952815,
+        "movement": 0.06248754419386387,
+        "objective": 0.04558169392386696,
+        "semantic_kl": 0.0024248835921753197,
+        "support": 0.7271387642621994
+      },
+      "validation": {
+        "identity": 0.0004948569639236666,
+        "movement": 0.0631807017326355,
+        "objective": 0.048893777071556545,
+        "semantic_kl": 0.00453513341024518,
+        "support": 0.7509143304824829
+      }
+    },
+    {
+      "elapsed_seconds": 7.787778541445732,
+      "epoch": 95,
+      "gradient_norm_max": 0.24448131024837494,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005372999372715403,
+        "movement": 0.062451582923531535,
+        "objective": 0.04533218838896698,
+        "semantic_kl": 0.002220982201397419,
+        "support": 0.7265749591588974
+      },
+      "validation": {
+        "identity": 0.00047381937445607037,
+        "movement": 0.0633453118801117,
+        "objective": 0.04867344001622405,
+        "semantic_kl": 0.004336547888815403,
+        "support": 0.7505708312988282
+      }
+    },
+    {
+      "elapsed_seconds": 7.79693578183651,
+      "epoch": 96,
+      "gradient_norm_max": 0.18353797495365143,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005347606501136209,
+        "movement": 0.06249436177313328,
+        "objective": 0.04528408015808688,
+        "semantic_kl": 0.002183078891830519,
+        "support": 0.7263360887765884
+      },
+      "validation": {
+        "identity": 0.0004689374276495073,
+        "movement": 0.0630592367053032,
+        "objective": 0.048782697542483225,
+        "semantic_kl": 0.004503603084012866,
+        "support": 0.7500846672058106
+      }
+    },
+    {
+      "elapsed_seconds": 7.80368384718895,
+      "epoch": 97,
+      "gradient_norm_max": 0.19100050628185272,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005361108995515209,
+        "movement": 0.062479890324175356,
+        "objective": 0.0452480147000409,
+        "semantic_kl": 0.0021620961290318517,
+        "support": 0.7260363727807999
+      },
+      "validation": {
+        "identity": 0.0004961408356030006,
+        "movement": 0.06343246698379516,
+        "objective": 0.048699207873811254,
+        "semantic_kl": 0.004357394669204951,
+        "support": 0.7500485134124756
+      }
+    },
+    {
+      "elapsed_seconds": 7.8022861033678055,
+      "epoch": 98,
+      "gradient_norm_max": 0.2170603722333908,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005383100028472514,
+        "movement": 0.06248036328703165,
+        "objective": 0.0452703916373054,
+        "semantic_kl": 0.002196049073245376,
+        "support": 0.7257599246501922
+      },
+      "validation": {
+        "identity": 0.0004790931694151368,
+        "movement": 0.06319019913673402,
+        "objective": 0.04864729142337455,
+        "semantic_kl": 0.004366779234260321,
+        "support": 0.7496479821205139
+      }
+    },
+    {
+      "elapsed_seconds": 7.798010140657425,
+      "epoch": 99,
+      "gradient_norm_max": 0.21484461426734924,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005345462630919763,
+        "movement": 0.06252468887716532,
+        "objective": 0.04524601195989621,
+        "semantic_kl": 0.0021819910174235703,
+        "support": 0.7255401158332825
+      },
+      "validation": {
+        "identity": 0.0004958776834246237,
+        "movement": 0.06280610531568527,
+        "objective": 0.04874026724908618,
+        "semantic_kl": 0.004505067290738225,
+        "support": 0.749174234867096
+      }
+    },
+    {
+      "elapsed_seconds": 7.803978204727173,
+      "epoch": 100,
+      "gradient_norm_max": 0.22007203102111816,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005316023778152764,
+        "movement": 0.06254357475787402,
+        "objective": 0.045245993997248,
+        "semantic_kl": 0.0021977521595545114,
+        "support": 0.7252456396818161
+      },
+      "validation": {
+        "identity": 0.00045569416179205293,
+        "movement": 0.06281038790941239,
+        "objective": 0.04867255138090695,
+        "semantic_kl": 0.004484687084332108,
+        "support": 0.7490226268768311
+      }
+    },
+    {
+      "elapsed_seconds": 7.790309250354767,
+      "epoch": 101,
+      "gradient_norm_max": 0.1980816274881363,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005314483522797961,
+        "movement": 0.06253185860812664,
+        "objective": 0.04519805670356257,
+        "semantic_kl": 0.002162282313220203,
+        "support": 0.7250228035449982
+      },
+      "validation": {
+        "identity": 0.0004840058431727812,
+        "movement": 0.06357527494430543,
+        "objective": 0.04879415259219241,
+        "semantic_kl": 0.004500857293605804,
+        "support": 0.7490352392196655
+      }
+    },
+    {
+      "elapsed_seconds": 7.797094568610191,
+      "epoch": 102,
+      "gradient_norm_max": 0.3040291368961334,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005305483925742484,
+        "movement": 0.06250277906656265,
+        "objective": 0.04523107646034373,
+        "semantic_kl": 0.0022118878189940007,
+        "support": 0.7247672468423844
+      },
+      "validation": {
+        "identity": 0.00046852643572492525,
+        "movement": 0.06322831004858016,
+        "objective": 0.04876167147391243,
+        "semantic_kl": 0.004538406617939472,
+        "support": 0.7486381483078003
+      }
+    },
+    {
+      "elapsed_seconds": 7.793288484215736,
+      "epoch": 103,
+      "gradient_norm_max": 0.30242952704429626,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005304894671015652,
+        "movement": 0.06260584473609924,
+        "objective": 0.04522070647777843,
+        "semantic_kl": 0.002202548198401928,
+        "support": 0.7245416867733002
+      },
+      "validation": {
+        "identity": 0.0004838363258750178,
+        "movement": 0.06330635011196137,
+        "objective": 0.04852721666829894,
+        "semantic_kl": 0.004295284412801265,
+        "support": 0.7483492183685303
+      }
+    },
+    {
+      "elapsed_seconds": 7.792627692222595,
+      "epoch": 104,
+      "gradient_norm_max": 0.17918400466442108,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000533814149572379,
+        "movement": 0.06257903069257736,
+        "objective": 0.045148320347432845,
+        "semantic_kl": 0.0021466714271809904,
+        "support": 0.7241986340284348
+      },
+      "validation": {
+        "identity": 0.0004977445279655512,
+        "movement": 0.06350120335817337,
+        "objective": 0.04869643093025661,
+        "semantic_kl": 0.004434875976294279,
+        "support": 0.7482738018035888
+      }
+    },
+    {
+      "elapsed_seconds": 7.7911670207977295,
+      "epoch": 105,
+      "gradient_norm_max": 0.20233941078186035,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005266072954941398,
+        "movement": 0.0626117255166173,
+        "objective": 0.045156962085743976,
+        "semantic_kl": 0.002170266458997503,
+        "support": 0.7239783155918121
+      },
+      "validation": {
+        "identity": 0.0005275703909865115,
+        "movement": 0.06328412652015686,
+        "objective": 0.04864038361413986,
+        "semantic_kl": 0.0043816171772778035,
+        "support": 0.7480556678771972
+      }
+    },
+    {
+      "elapsed_seconds": 7.792319118976593,
+      "epoch": 106,
+      "gradient_norm_max": 0.23129653930664062,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005358037229070959,
+        "movement": 0.06266062349081039,
+        "objective": 0.045152950862180685,
+        "semantic_kl": 0.0021633533155545593,
+        "support": 0.7237546294927597
+      },
+      "validation": {
+        "identity": 0.00047405303819687106,
+        "movement": 0.06349493831396102,
+        "objective": 0.048615038068877764,
+        "semantic_kl": 0.004405633974820375,
+        "support": 0.7477171444892883
+      }
+    },
+    {
+      "elapsed_seconds": 7.798973098397255,
+      "epoch": 107,
+      "gradient_norm_max": 0.2661125957965851,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005288466495823628,
+        "movement": 0.06266934115439654,
+        "objective": 0.045170555044560565,
+        "semantic_kl": 0.0022025164985097945,
+        "support": 0.723445155620575
+      },
+      "validation": {
+        "identity": 0.0004821821923542302,
+        "movement": 0.0634249821305275,
+        "objective": 0.04866938014767947,
+        "semantic_kl": 0.00447842669673264,
+        "support": 0.7473254609107971
+      }
+    },
+    {
+      "elapsed_seconds": 7.7972904443740845,
+      "epoch": 108,
+      "gradient_norm_max": 0.31196004152297974,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005290634752284955,
+        "movement": 0.0626323539018631,
+        "objective": 0.04523973686844448,
+        "semantic_kl": 0.002291885258164257,
+        "support": 0.7231110548973083
+      },
+      "validation": {
+        "identity": 0.0004810622571676504,
+        "movement": 0.06332319349050522,
+        "objective": 0.048855669455108,
+        "semantic_kl": 0.004689287208020687,
+        "support": 0.7470600128173828
+      }
+    },
+    {
+      "elapsed_seconds": 7.795565292239189,
+      "epoch": 109,
+      "gradient_norm_max": 0.3806171417236328,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005334664613176387,
+        "movement": 0.0626951252669096,
+        "objective": 0.04519930016036893,
+        "semantic_kl": 0.002249344850424677,
+        "support": 0.7229395264387131
+      },
+      "validation": {
+        "identity": 0.0004996623026090674,
+        "movement": 0.0633072379231453,
+        "objective": 0.04857811386341928,
+        "semantic_kl": 0.004419035809114576,
+        "support": 0.7465738391876221
+      }
+    },
+    {
+      "elapsed_seconds": 7.8068415224552155,
+      "epoch": 110,
+      "gradient_norm_max": 0.26311975717544556,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000523883914041824,
+        "movement": 0.06272210534662008,
+        "objective": 0.04511211768717275,
+        "semantic_kl": 0.002188553132582456,
+        "support": 0.7225494021177292
+      },
+      "validation": {
+        "identity": 0.00043848603090737017,
+        "movement": 0.06366436302661896,
+        "objective": 0.0486175860731164,
+        "semantic_kl": 0.004492339557036758,
+        "support": 0.7464064836502076
+      }
+    },
+    {
+      "elapsed_seconds": 7.807654529809952,
+      "epoch": 111,
+      "gradient_norm_max": 0.334762841463089,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005307005727460866,
+        "movement": 0.06278928808867931,
+        "objective": 0.045123302817324386,
+        "semantic_kl": 0.002199519365094602,
+        "support": 0.7222830814123153
+      },
+      "validation": {
+        "identity": 0.0004953388500143774,
+        "movement": 0.0637339198589325,
+        "objective": 0.04851368219807045,
+        "semantic_kl": 0.004334405679255724,
+        "support": 0.7462109136581421
+      }
+    },
+    {
+      "elapsed_seconds": 7.796097099781036,
+      "epoch": 112,
+      "gradient_norm_max": 0.36764752864837646,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005338418916200745,
+        "movement": 0.06274631444364787,
+        "objective": 0.04524886319710477,
+        "semantic_kl": 0.0023348317935597152,
+        "support": 0.7221111613512039
+      },
+      "validation": {
+        "identity": 0.0004935924128221813,
+        "movement": 0.06336424648761749,
+        "objective": 0.048593451650493086,
+        "semantic_kl": 0.004463399350643158,
+        "support": 0.7460007047653199
+      }
+    },
+    {
+      "elapsed_seconds": 7.809417963027954,
+      "epoch": 113,
+      "gradient_norm_max": 0.17397886514663696,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005280739608387793,
+        "movement": 0.06279182076454162,
+        "objective": 0.04505957290545845,
+        "semantic_kl": 0.002163628643611446,
+        "support": 0.7217737644910812
+      },
+      "validation": {
+        "identity": 0.00048605819465592505,
+        "movement": 0.06387354135513305,
+        "objective": 0.04849865616159513,
+        "semantic_kl": 0.0043457640893757345,
+        "support": 0.7455895948410034
+      }
+    },
+    {
+      "elapsed_seconds": 7.790468662977219,
+      "epoch": 114,
+      "gradient_norm_max": 0.20889171957969666,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005319083796539849,
+        "movement": 0.06283795971423388,
+        "objective": 0.04509255801003478,
+        "semantic_kl": 0.0021984551928471772,
+        "support": 0.7215679693222046
+      },
+      "validation": {
+        "identity": 0.00047484782568062655,
+        "movement": 0.06321272432804108,
+        "objective": 0.048646293705765856,
+        "semantic_kl": 0.004593788478523493,
+        "support": 0.7451276993751526
+      }
+    },
+    {
+      "elapsed_seconds": 7.7973881512880325,
+      "epoch": 115,
+      "gradient_norm_max": 0.24510692059993744,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005232005533199342,
+        "movement": 0.06285004481673241,
+        "objective": 0.04505469634587835,
+        "semantic_kl": 0.0021863756456878035,
+        "support": 0.7212023133039475
+      },
+      "validation": {
+        "identity": 0.0004729900807433296,
+        "movement": 0.06343330532312393,
+        "objective": 0.048656269719853304,
+        "semantic_kl": 0.004593383884057402,
+        "support": 0.7449313044548035
+      }
+    },
+    {
+      "elapsed_seconds": 7.7894687950611115,
+      "epoch": 116,
+      "gradient_norm_max": 0.3025457262992859,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005314489250864275,
+        "movement": 0.06295720785856247,
+        "objective": 0.045090591235491584,
+        "semantic_kl": 0.0022168063709978015,
+        "support": 0.7209323030710221
+      },
+      "validation": {
+        "identity": 0.0004539476083300542,
+        "movement": 0.06365659236907958,
+        "objective": 0.04849288895443896,
+        "semantic_kl": 0.004439240656793118,
+        "support": 0.7446808290481567
+      }
+    },
+    {
+      "elapsed_seconds": 7.803170084953308,
+      "epoch": 117,
+      "gradient_norm_max": 0.24414628744125366,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005254832973908497,
+        "movement": 0.06293127845972776,
+        "objective": 0.04506451790032162,
+        "semantic_kl": 0.0022130848036613316,
+        "support": 0.7206564390659332
+      },
+      "validation": {
+        "identity": 0.000497430687682936,
+        "movement": 0.06330004096031189,
+        "objective": 0.048452698498877005,
+        "semantic_kl": 0.004412281299009919,
+        "support": 0.7442596483230591
+      }
+    },
+    {
+      "elapsed_seconds": 7.796692878007889,
+      "epoch": 118,
+      "gradient_norm_max": 0.27745962142944336,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000537329206880393,
+        "movement": 0.06294477857649326,
+        "objective": 0.04502975782233684,
+        "semantic_kl": 0.002177616156404838,
+        "support": 0.7204066920280456
+      },
+      "validation": {
+        "identity": 0.000477144470642088,
+        "movement": 0.0633566853404045,
+        "objective": 0.048511794539372204,
+        "semantic_kl": 0.0045036436431109906,
+        "support": 0.7439067578315735
+      }
+    },
+    {
+      "elapsed_seconds": 7.789424762129784,
+      "epoch": 119,
+      "gradient_norm_max": 0.2857281267642975,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005310696690837058,
+        "movement": 0.06297903899103403,
+        "objective": 0.0450162036702065,
+        "semantic_kl": 0.002183410368161276,
+        "support": 0.7200763946771622
+      },
+      "validation": {
+        "identity": 0.0005205712564929854,
+        "movement": 0.0635712930560112,
+        "objective": 0.048451557077904,
+        "semantic_kl": 0.0043871394824236635,
+        "support": 0.7437343406677246
+      }
+    },
+    {
+      "elapsed_seconds": 7.786856308579445,
+      "epoch": 120,
+      "gradient_norm_max": 0.1829959601163864,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005275259916501882,
+        "movement": 0.06301156014204025,
+        "objective": 0.04496304517400627,
+        "semantic_kl": 0.002148317658575252,
+        "support": 0.719720910191536
+      },
+      "validation": {
+        "identity": 0.00045996756001841276,
+        "movement": 0.06381251513957978,
+        "objective": 0.048460548558156,
+        "semantic_kl": 0.0044463768322020765,
+        "support": 0.7434590530395507
+      }
+    },
+    {
+      "elapsed_seconds": 7.8000121265649796,
+      "epoch": 121,
+      "gradient_norm_max": 0.2810371220111847,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005250632666203394,
+        "movement": 0.06305574629455805,
+        "objective": 0.045053814529782465,
+        "semantic_kl": 0.0022460008913185447,
+        "support": 0.7195435148477555
+      },
+      "validation": {
+        "identity": 0.0004435451306926552,
+        "movement": 0.06388123661279678,
+        "objective": 0.048544671242736516,
+        "semantic_kl": 0.00455747950822115,
+        "support": 0.7431104588508606
+      }
+    },
+    {
+      "elapsed_seconds": 7.792766213417053,
+      "epoch": 122,
+      "gradient_norm_max": 0.2621774971485138,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005243084673916107,
+        "movement": 0.06307201854884624,
+        "objective": 0.044991444617850436,
+        "semantic_kl": 0.002200027300277725,
+        "support": 0.7191981399059295
+      },
+      "validation": {
+        "identity": 0.0004771147643623408,
+        "movement": 0.0641525137424469,
+        "objective": 0.04830699860243476,
+        "semantic_kl": 0.004260808611288667,
+        "support": 0.7430764770507813
+      }
+    },
+    {
+      "elapsed_seconds": 7.797815382480621,
+      "epoch": 123,
+      "gradient_norm_max": 0.3913911283016205,
+      "learning_rate": 7.5e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005223388560055319,
+        "movement": 0.06310500022023917,
+        "objective": 0.04504569177002968,
+        "semantic_kl": 0.0022656677034683524,
+        "support": 0.7189437037706375
+      },
+      "validation": {
+        "identity": 0.0004952386506192852,
+        "movement": 0.06352081358432769,
+        "objective": 0.0482995194401883,
+        "semantic_kl": 0.004319091411307454,
+        "support": 0.742662160396576
+      }
+    },
+    {
+      "elapsed_seconds": 7.797637537121773,
+      "epoch": 124,
+      "gradient_norm_max": 0.27018553018569946,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005201132724070967,
+        "movement": 0.06319747343659401,
+        "objective": 0.04498879176336435,
+        "semantic_kl": 0.0022184397594537586,
+        "support": 0.7186098277568818
+      },
+      "validation": {
+        "identity": 0.0004513701742689591,
+        "movement": 0.06355774194002152,
+        "objective": 0.04839567140696454,
+        "semantic_kl": 0.004481191709637642,
+        "support": 0.7421467065811157
+      }
+    },
+    {
+      "elapsed_seconds": 7.801578223705292,
+      "epoch": 125,
+      "gradient_norm_max": 0.517664909362793,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000523128814930204,
+        "movement": 0.06313732273876667,
+        "objective": 0.04507104390061471,
+        "semantic_kl": 0.002314221716951579,
+        "support": 0.7183992218971252
+      },
+      "validation": {
+        "identity": 0.0005113677438930609,
+        "movement": 0.06402500957250595,
+        "objective": 0.04859743583394447,
+        "semantic_kl": 0.004574908223003149,
+        "support": 0.7421731781959534
+      }
+    },
+    {
+      "elapsed_seconds": 7.809303775429726,
+      "epoch": 126,
+      "gradient_norm_max": 0.29142844676971436,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005244764643609263,
+        "movement": 0.06320422131568193,
+        "objective": 0.0449234451209083,
+        "semantic_kl": 0.00216757929418236,
+        "support": 0.7182193446159363
+      },
+      "validation": {
+        "identity": 0.000443209293007385,
+        "movement": 0.06450170069932938,
+        "objective": 0.048501397504180206,
+        "semantic_kl": 0.004504535775631666,
+        "support": 0.7420696473121643
+      }
+    },
+    {
+      "elapsed_seconds": 7.799488410353661,
+      "epoch": 127,
+      "gradient_norm_max": 0.3379048705101013,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005167300177507792,
+        "movement": 0.06329303372651339,
+        "objective": 0.044919855122012346,
+        "semantic_kl": 0.002176573135657236,
+        "support": 0.7179449719190597
+      },
+      "validation": {
+        "identity": 0.0004442154346907046,
+        "movement": 0.0639947584271431,
+        "objective": 0.048567646241834156,
+        "semantic_kl": 0.004647802282124758,
+        "support": 0.7415230536460876
+      }
+    },
+    {
+      "elapsed_seconds": 7.787067249417305,
+      "epoch": 128,
+      "gradient_norm_max": 0.2352566421031952,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005283503140098542,
+        "movement": 0.06326643615961075,
+        "objective": 0.04487743216066241,
+        "semantic_kl": 0.0021432224835734814,
+        "support": 0.71758431494236
+      },
+      "validation": {
+        "identity": 0.00048205168772256,
+        "movement": 0.06373926848173142,
+        "objective": 0.04830365836474812,
+        "semantic_kl": 0.004392713140696287,
+        "support": 0.7410993337631225
+      }
+    },
+    {
+      "elapsed_seconds": 7.802834644913673,
+      "epoch": 129,
+      "gradient_norm_max": 0.1921428143978119,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005160414197573769,
+        "movement": 0.06334401864558459,
+        "objective": 0.04480359341000192,
+        "semantic_kl": 0.002088055761996657,
+        "support": 0.7173018872737884
+      },
+      "validation": {
+        "identity": 0.0004887608341232408,
+        "movement": 0.06401782304048538,
+        "objective": 0.04836969496266101,
+        "semantic_kl": 0.004435869911685586,
+        "support": 0.740865638256073
+      }
+    },
+    {
+      "elapsed_seconds": 7.798302382230759,
+      "epoch": 130,
+      "gradient_norm_max": 0.2629620134830475,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005202372525092646,
+        "movement": 0.06337802607566118,
+        "objective": 0.04482736892641713,
+        "semantic_kl": 0.002126380748813972,
+        "support": 0.7168589663505555
+      },
+      "validation": {
+        "identity": 0.0004922070346947293,
+        "movement": 0.06395710289478301,
+        "objective": 0.048434133420902074,
+        "semantic_kl": 0.004520531501621008,
+        "support": 0.7405136919021607
+      }
+    },
+    {
+      "elapsed_seconds": 7.794854834675789,
+      "epoch": 131,
+      "gradient_norm_max": 0.392697274684906,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005292975078497126,
+        "movement": 0.06339251358062029,
+        "objective": 0.0448644673698742,
+        "semantic_kl": 0.0021631880616769196,
+        "support": 0.7166546088457107
+      },
+      "validation": {
+        "identity": 0.0004777368495706469,
+        "movement": 0.06404648274183274,
+        "objective": 0.04835687440098264,
+        "semantic_kl": 0.004459073608741164,
+        "support": 0.740308313369751
+      }
+    },
+    {
+      "elapsed_seconds": 7.807444214820862,
+      "epoch": 132,
+      "gradient_norm_max": 0.21160271763801575,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005241177204791309,
+        "movement": 0.06346515238285065,
+        "objective": 0.0448055630011279,
+        "semantic_kl": 0.0021172167221084237,
+        "support": 0.7163542664051056
+      },
+      "validation": {
+        "identity": 0.0004854744211479556,
+        "movement": 0.0643417027592659,
+        "objective": 0.048531886671175015,
+        "semantic_kl": 0.004608293166384101,
+        "support": 0.7400789761543274
+      }
+    },
+    {
+      "elapsed_seconds": 7.806169643998146,
+      "epoch": 133,
+      "gradient_norm_max": 0.294488787651062,
+      "learning_rate": 7.5e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005257805337123777,
+        "movement": 0.06354905359447002,
+        "objective": 0.04487559055098521,
+        "semantic_kl": 0.00218803777359426,
+        "support": 0.7161373376846314
+      },
+      "validation": {
+        "identity": 0.00045687235935474744,
+        "movement": 0.06383793771266938,
+        "objective": 0.04843115028410102,
+        "semantic_kl": 0.0046235288493335245,
+        "support": 0.7393391060829163
+      }
+    },
+    {
+      "elapsed_seconds": 7.801463484764099,
+      "epoch": 134,
+      "gradient_norm_max": 0.20144440233707428,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005208390965570279,
+        "movement": 0.06360312689095736,
+        "objective": 0.04479835186647033,
+        "semantic_kl": 0.0021261784655507653,
+        "support": 0.715820432305336
+      },
+      "validation": {
+        "identity": 0.0004425548284780234,
+        "movement": 0.06429248154163361,
+        "objective": 0.04852501743729227,
+        "semantic_kl": 0.004677789807319641,
+        "support": 0.7395084929466248
+      }
+    },
+    {
+      "elapsed_seconds": 7.804809033870697,
+      "epoch": 135,
+      "gradient_norm_max": 0.13845673203468323,
+      "learning_rate": 3.75e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005046583832238476,
+        "movement": 0.06351247895509005,
+        "objective": 0.04463834450989931,
+        "semantic_kl": 0.0020021612173877655,
+        "support": 0.7156055402755738
+      },
+      "validation": {
+        "identity": 0.00046591084596002473,
+        "movement": 0.06450485557317734,
+        "objective": 0.04824117992591345,
+        "semantic_kl": 0.0043623271770775315,
+        "support": 0.7392491269111633
+      }
+    },
+    {
+      "elapsed_seconds": 7.809509500861168,
+      "epoch": 136,
+      "gradient_norm_max": 0.12500128149986267,
+      "learning_rate": 3.75e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005028705057087122,
+        "movement": 0.06358354818075895,
+        "objective": 0.04456590105293829,
+        "semantic_kl": 0.001939853186486289,
+        "support": 0.7152964508533478
+      },
+      "validation": {
+        "identity": 0.0004935372043109965,
+        "movement": 0.0643511426448822,
+        "objective": 0.04816663207110833,
+        "semantic_kl": 0.004289587615057826,
+        "support": 0.7389678597450257
+      }
+    },
+    {
+      "elapsed_seconds": 7.787209942936897,
+      "epoch": 137,
+      "gradient_norm_max": 0.15322309732437134,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005110235392289286,
+        "movement": 0.06364677231758833,
+        "objective": 0.044553435553208565,
+        "semantic_kl": 0.001924227048875764,
+        "support": 0.7150701546669006
+      },
+      "validation": {
+        "identity": 0.0004702603246551007,
+        "movement": 0.06445732712745667,
+        "objective": 0.04818215110967867,
+        "semantic_kl": 0.004332715002819895,
+        "support": 0.7386688613891601
+      }
+    },
+    {
+      "elapsed_seconds": 7.789337977766991,
+      "epoch": 138,
+      "gradient_norm_max": 0.11836662888526917,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005054890135108594,
+        "movement": 0.06364693138748408,
+        "objective": 0.04454723969020798,
+        "semantic_kl": 0.0019358469580765814,
+        "support": 0.7148242115974426
+      },
+      "validation": {
+        "identity": 0.0004830465595296118,
+        "movement": 0.06470975995063782,
+        "objective": 0.04823123158319504,
+        "semantic_kl": 0.004348694309592247,
+        "support": 0.738570294380188
+      }
+    },
+    {
+      "elapsed_seconds": 7.793142855167389,
+      "epoch": 139,
+      "gradient_norm_max": 0.1194579005241394,
+      "learning_rate": 3.75e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005096848730446519,
+        "movement": 0.06368291337043047,
+        "objective": 0.04455095000075938,
+        "semantic_kl": 0.0019408903806470334,
+        "support": 0.7146416682004929
+      },
+      "validation": {
+        "identity": 0.0004630724762682803,
+        "movement": 0.06432303458452225,
+        "objective": 0.04814653553563403,
+        "semantic_kl": 0.004343845061957836,
+        "support": 0.7381462907791138
+      }
+    },
+    {
+      "elapsed_seconds": 7.790312945842743,
+      "epoch": 140,
+      "gradient_norm_max": 0.11087796092033386,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005035650728587469,
+        "movement": 0.06377570722252131,
+        "objective": 0.044526853521898425,
+        "semantic_kl": 0.0019220456050243228,
+        "support": 0.7144734424352646
+      },
+      "validation": {
+        "identity": 0.00047270534763811157,
+        "movement": 0.06439860552549362,
+        "objective": 0.04817407528514741,
+        "semantic_kl": 0.004361561741679907,
+        "support": 0.7379989528656006
+      }
+    },
+    {
+      "elapsed_seconds": 7.807361736893654,
+      "epoch": 141,
+      "gradient_norm_max": 0.10229520499706268,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005095095641190134,
+        "movement": 0.06375893712043762,
+        "objective": 0.04452451670935619,
+        "semantic_kl": 0.0019288657675497233,
+        "support": 0.7142049533128738
+      },
+      "validation": {
+        "identity": 0.000454071675776504,
+        "movement": 0.06448231399059295,
+        "objective": 0.04820552443841007,
+        "semantic_kl": 0.004412617702037096,
+        "support": 0.7378120732307434
+      }
+    },
+    {
+      "elapsed_seconds": 7.787664785981178,
+      "epoch": 142,
+      "gradient_norm_max": 0.13615798950195312,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000504455630059624,
+        "movement": 0.06379105377942323,
+        "objective": 0.04452219165847385,
+        "semantic_kl": 0.0019358488242141902,
+        "support": 0.7140556365251541
+      },
+      "validation": {
+        "identity": 0.0004680353814910632,
+        "movement": 0.06463912039995194,
+        "objective": 0.04818365707268822,
+        "semantic_kl": 0.004372926186770201,
+        "support": 0.7375756692886353
+      }
+    },
+    {
+      "elapsed_seconds": 7.8039539605379105,
+      "epoch": 143,
+      "gradient_norm_max": 0.15375922620296478,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005049908988116236,
+        "movement": 0.06384384393692016,
+        "objective": 0.04451843812343981,
+        "semantic_kl": 0.001937171637546271,
+        "support": 0.7138378238677978
+      },
+      "validation": {
+        "identity": 0.0004547851244569756,
+        "movement": 0.06452117413282395,
+        "objective": 0.04822997209901223,
+        "semantic_kl": 0.004456610549241304,
+        "support": 0.7373291802406311
+      }
+    },
+    {
+      "elapsed_seconds": 7.80822691321373,
+      "epoch": 144,
+      "gradient_norm_max": 0.1618945449590683,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005077921385227687,
+        "movement": 0.06385631125420332,
+        "objective": 0.044529139339253586,
+        "semantic_kl": 0.0019540213292930275,
+        "support": 0.7136338949203491
+      },
+      "validation": {
+        "identity": 0.00045347223232965916,
+        "movement": 0.06484215199947357,
+        "objective": 0.048225136164459406,
+        "semantic_kl": 0.004422234026715159,
+        "support": 0.7373042941093445
+      }
+    },
+    {
+      "elapsed_seconds": 7.8026876747608185,
+      "epoch": 145,
+      "gradient_norm_max": 0.13201957941055298,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005018897704132373,
+        "movement": 0.06393668051809072,
+        "objective": 0.04450686222573784,
+        "semantic_kl": 0.0019387336086947472,
+        "support": 0.7134514158964157
+      },
+      "validation": {
+        "identity": 0.00048267733043758196,
+        "movement": 0.06517602056264878,
+        "objective": 0.04826710211223689,
+        "semantic_kl": 0.004408627301454544,
+        "support": 0.7371639084815979
+      }
+    },
+    {
+      "elapsed_seconds": 7.809532061219215,
+      "epoch": 146,
+      "gradient_norm_max": 0.14231783151626587,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005056620274523521,
+        "movement": 0.0639808364212513,
+        "objective": 0.04449487932672186,
+        "semantic_kl": 0.0019304896623361855,
+        "support": 0.7132128798961639
+      },
+      "validation": {
+        "identity": 0.0004773208261758555,
+        "movement": 0.06478224217891693,
+        "objective": 0.048165537627908636,
+        "semantic_kl": 0.0043723339401185515,
+        "support": 0.7367531728744506
+      }
+    },
+    {
+      "elapsed_seconds": 7.820727750658989,
+      "epoch": 147,
+      "gradient_norm_max": 0.15954652428627014,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000509525695883036,
+        "movement": 0.0639887983351946,
+        "objective": 0.044499220753155946,
+        "semantic_kl": 0.001944340206682682,
+        "support": 0.7129295003414154
+      },
+      "validation": {
+        "identity": 0.000451952395378612,
+        "movement": 0.06502525478601456,
+        "objective": 0.04822002795280424,
+        "semantic_kl": 0.004438687982037663,
+        "support": 0.73653724193573
+      }
+    },
+    {
+      "elapsed_seconds": 7.7944832891225815,
+      "epoch": 148,
+      "gradient_norm_max": 0.1257220059633255,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005075658322063793,
+        "movement": 0.06402321957051754,
+        "objective": 0.04447443083973914,
+        "semantic_kl": 0.00192449162597768,
+        "support": 0.7128010284900665
+      },
+      "validation": {
+        "identity": 0.0004593411250971258,
+        "movement": 0.06456662893295288,
+        "objective": 0.048229143101256346,
+        "semantic_kl": 0.00450325739569962,
+        "support": 0.7361976337432862
+      }
+    },
+    {
+      "elapsed_seconds": 7.799119725823402,
+      "epoch": 149,
+      "gradient_norm_max": 0.13421811163425446,
+      "learning_rate": 3.75e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005063697650250735,
+        "movement": 0.06408271469175815,
+        "objective": 0.04447225105237819,
+        "semantic_kl": 0.0019269768812227993,
+        "support": 0.71261265873909
+      },
+      "validation": {
+        "identity": 0.0004645915725268424,
+        "movement": 0.0649939176440239,
+        "objective": 0.04814903680281714,
+        "semantic_kl": 0.004375785468146205,
+        "support": 0.736185359954834
+      }
+    },
+    {
+      "elapsed_seconds": 7.797594636678696,
+      "epoch": 150,
+      "gradient_norm_max": 0.19426847994327545,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005026525349633305,
+        "movement": 0.06412137355655431,
+        "objective": 0.04447366172841727,
+        "semantic_kl": 0.0019427248858846723,
+        "support": 0.7123229390382767
+      },
+      "validation": {
+        "identity": 0.0004859938399749808,
+        "movement": 0.06552803546190261,
+        "objective": 0.048196315204899295,
+        "semantic_kl": 0.004348164824768901,
+        "support": 0.736187059879303
+      }
+    },
+    {
+      "elapsed_seconds": 7.801558956503868,
+      "epoch": 151,
+      "gradient_norm_max": 0.10414326190948486,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005036182299238742,
+        "movement": 0.06414177786558867,
+        "objective": 0.044415859155168866,
+        "semantic_kl": 0.001887733838520944,
+        "support": 0.7122065860033036
+      },
+      "validation": {
+        "identity": 0.00046467869076877833,
+        "movement": 0.06491696774959564,
+        "objective": 0.04817226801160724,
+        "semantic_kl": 0.004428570978343487,
+        "support": 0.735746431350708
+      }
+    },
+    {
+      "elapsed_seconds": 7.797862336039543,
+      "epoch": 152,
+      "gradient_norm_max": 0.11627181619405746,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000501953438675909,
+        "movement": 0.06412998422980308,
+        "objective": 0.04439709156756936,
+        "semantic_kl": 0.0018807362311054022,
+        "support": 0.7120280694961548
+      },
+      "validation": {
+        "identity": 0.00045919097741716543,
+        "movement": 0.06502587020397187,
+        "objective": 0.04816684038718814,
+        "semantic_kl": 0.004425638318061829,
+        "support": 0.735588481426239
+      }
+    },
+    {
+      "elapsed_seconds": 7.796846687793732,
+      "epoch": 153,
+      "gradient_norm_max": 0.09229975193738937,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005013832498648648,
+        "movement": 0.06418432097882032,
+        "objective": 0.044394403704426204,
+        "semantic_kl": 0.0018799236638005824,
+        "support": 0.7118932938575745
+      },
+      "validation": {
+        "identity": 0.00046400978142628445,
+        "movement": 0.06515394985675811,
+        "objective": 0.04813614984328161,
+        "semantic_kl": 0.00438094437122345,
+        "support": 0.735516014099121
+      }
+    },
+    {
+      "elapsed_seconds": 7.819201946258545,
+      "epoch": 154,
+      "gradient_norm_max": 0.10973542928695679,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004975963854324527,
+        "movement": 0.06420314326882362,
+        "objective": 0.04438938567276118,
+        "semantic_kl": 0.0018843548744916915,
+        "support": 0.7117424017190933
+      },
+      "validation": {
+        "identity": 0.00045975469576660545,
+        "movement": 0.06503773748874664,
+        "objective": 0.04813671438919846,
+        "semantic_kl": 0.004404319524765015,
+        "support": 0.7353773283958435
+      }
+    },
+    {
+      "elapsed_seconds": 7.802085071802139,
+      "epoch": 155,
+      "gradient_norm_max": 0.07460657507181168,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004988805900902706,
+        "movement": 0.06421941783279181,
+        "objective": 0.04438237132691939,
+        "semantic_kl": 0.0018799144320655614,
+        "support": 0.7116326904296875
+      },
+      "validation": {
+        "identity": 0.00047436299282708203,
+        "movement": 0.06510343700647354,
+        "objective": 0.048198673063103346,
+        "semantic_kl": 0.004449716210365296,
+        "support": 0.7352850031852722
+      }
+    },
+    {
+      "elapsed_seconds": 7.804633870720863,
+      "epoch": 156,
+      "gradient_norm_max": 0.08131688833236694,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000501315854503983,
+        "movement": 0.0642775285989046,
+        "objective": 0.044377995966249355,
+        "semantic_kl": 0.0018726178689394146,
+        "support": 0.7115261876583099
+      },
+      "validation": {
+        "identity": 0.00046048483127378856,
+        "movement": 0.06480431824922561,
+        "objective": 0.048141966472059726,
+        "semantic_kl": 0.0044538254849612715,
+        "support": 0.734944486618042
+      }
+    },
+    {
+      "elapsed_seconds": 7.812069803476334,
+      "epoch": 157,
+      "gradient_norm_max": 0.10313262790441513,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004975237169608715,
+        "movement": 0.06425115935504437,
+        "objective": 0.04437444750949072,
+        "semantic_kl": 0.0018829757277853787,
+        "support": 0.7113766425848007
+      },
+      "validation": {
+        "identity": 0.0004548773163696751,
+        "movement": 0.06528018504381179,
+        "objective": 0.048248941361322066,
+        "semantic_kl": 0.004517878741025925,
+        "support": 0.7349633359909058
+      }
+    },
+    {
+      "elapsed_seconds": 7.802626326680183,
+      "epoch": 158,
+      "gradient_norm_max": 0.08863125741481781,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004968319529599151,
+        "movement": 0.0643317450210452,
+        "objective": 0.044368009189509464,
+        "semantic_kl": 0.001875163852237165,
+        "support": 0.7112567776441574
+      },
+      "validation": {
+        "identity": 0.0004754773653985467,
+        "movement": 0.06518595308065414,
+        "objective": 0.048211375070357464,
+        "semantic_kl": 0.0044739384204149244,
+        "support": 0.7348672795295715
+      }
+    },
+    {
+      "elapsed_seconds": 7.83403679728508,
+      "epoch": 159,
+      "gradient_norm_max": 0.17441736161708832,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005012805211599111,
+        "movement": 0.0643407653644681,
+        "objective": 0.04436697040277153,
+        "semantic_kl": 0.0018749662232585252,
+        "support": 0.7111329424381256
+      },
+      "validation": {
+        "identity": 0.00047078008559765295,
+        "movement": 0.06511574506759643,
+        "objective": 0.048169708501372956,
+        "semantic_kl": 0.004454762041568756,
+        "support": 0.734651837348938
+      }
+    },
+    {
+      "elapsed_seconds": 7.791817739605904,
+      "epoch": 160,
+      "gradient_norm_max": 0.11252018809318542,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004979976525806157,
+        "movement": 0.06432296343147755,
+        "objective": 0.04436450605916756,
+        "semantic_kl": 0.0018855056213214995,
+        "support": 0.7109741288423538
+      },
+      "validation": {
+        "identity": 0.00047080868214834483,
+        "movement": 0.06544046252965927,
+        "objective": 0.048223563823034055,
+        "semantic_kl": 0.004476076727733016,
+        "support": 0.7346526432037354
+      }
+    },
+    {
+      "elapsed_seconds": 7.802034139633179,
+      "epoch": 161,
+      "gradient_norm_max": 0.08603401482105255,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000497866293150834,
+        "movement": 0.06442264255136251,
+        "objective": 0.044353251842750144,
+        "semantic_kl": 0.0018698710913304239,
+        "support": 0.7108650040626526
+      },
+      "validation": {
+        "identity": 0.0004620441903534811,
+        "movement": 0.06524581462144852,
+        "objective": 0.04819019619163009,
+        "semantic_kl": 0.00448255711235106,
+        "support": 0.734420268535614
+      }
+    },
+    {
+      "elapsed_seconds": 7.798105418682098,
+      "epoch": 162,
+      "gradient_norm_max": 0.09401020407676697,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005027999994993022,
+        "movement": 0.06436461724340915,
+        "objective": 0.04435546401312536,
+        "semantic_kl": 0.001879703385056928,
+        "support": 0.7107299780845642
+      },
+      "validation": {
+        "identity": 0.00045447628435795194,
+        "movement": 0.06566025167703629,
+        "objective": 0.04813458043945139,
+        "semantic_kl": 0.004397862423211336,
+        "support": 0.7343243312835693
+      }
+    },
+    {
+      "elapsed_seconds": 7.797247067093849,
+      "epoch": 163,
+      "gradient_norm_max": 0.13704414665699005,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005000734505682886,
+        "movement": 0.06446269169449806,
+        "objective": 0.04435484504089427,
+        "semantic_kl": 0.0018768522352911531,
+        "support": 0.7106330037117005
+      },
+      "validation": {
+        "identity": 0.0004695147163874935,
+        "movement": 0.0650635725259781,
+        "objective": 0.048176194464758744,
+        "semantic_kl": 0.004499253975227475,
+        "support": 0.7340213704109192
+      }
+    },
+    {
+      "elapsed_seconds": 7.794108867645264,
+      "epoch": 164,
+      "gradient_norm_max": 0.09786465018987656,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000493492900977965,
+        "movement": 0.0644127293303609,
+        "objective": 0.044348933169969476,
+        "semantic_kl": 0.001892859897343442,
+        "support": 0.7104261487722396
+      },
+      "validation": {
+        "identity": 0.00046129602094879373,
+        "movement": 0.06526582151651382,
+        "objective": 0.04814406824012986,
+        "semantic_kl": 0.004458060413599014,
+        "support": 0.7339625930786133
+      }
+    },
+    {
+      "elapsed_seconds": 7.798324882984161,
+      "epoch": 165,
+      "gradient_norm_max": 0.10145560652017593,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.000495207026568508,
+        "movement": 0.06446543496102095,
+        "objective": 0.04433898586031543,
+        "semantic_kl": 0.0018822973407804965,
+        "support": 0.7102987599372864
+      },
+      "validation": {
+        "identity": 0.00046255005960119886,
+        "movement": 0.06517226099967957,
+        "objective": 0.048131293675571216,
+        "semantic_kl": 0.004461963539943099,
+        "support": 0.7337910795211792
+      }
+    },
+    {
+      "elapsed_seconds": 7.802057757973671,
+      "epoch": 166,
+      "gradient_norm_max": 0.08385027945041656,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0004930298247382535,
+        "movement": 0.06452709507197142,
+        "objective": 0.0443363338928212,
+        "semantic_kl": 0.0018809490988496692,
+        "support": 0.7101929092407226
+      },
+      "validation": {
+        "identity": 0.00048034958352218384,
+        "movement": 0.0656866654753685,
+        "objective": 0.04813022379015457,
+        "semantic_kl": 0.004385901000350714,
+        "support": 0.7339061331748963
+      }
+    },
+    {
+      "elapsed_seconds": 7.802275002002716,
+      "epoch": 167,
+      "gradient_norm_max": 0.1180638000369072,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004950625708581365,
+        "movement": 0.06452873900532723,
+        "objective": 0.04432884152310653,
+        "semantic_kl": 0.0018765408592298627,
+        "support": 0.7100872838497162
+      },
+      "validation": {
+        "identity": 0.0004747276136185974,
+        "movement": 0.06556519985198975,
+        "objective": 0.048150239415233956,
+        "semantic_kl": 0.004434361541643739,
+        "support": 0.7336926054954529
+      }
+    },
+    {
+      "elapsed_seconds": 7.79700431227684,
+      "epoch": 168,
+      "gradient_norm_max": 0.11963613331317902,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005005897577493548,
+        "movement": 0.0645556102320552,
+        "objective": 0.04432456245162665,
+        "semantic_kl": 0.0018720018968451768,
+        "support": 0.709928195476532
+      },
+      "validation": {
+        "identity": 0.00046295865860884077,
+        "movement": 0.06565896183252334,
+        "objective": 0.048142030971619544,
+        "semantic_kl": 0.004437268041074276,
+        "support": 0.7335181617736817
+      }
+    },
+    {
+      "elapsed_seconds": 7.810032844543457,
+      "epoch": 169,
+      "gradient_norm_max": 0.0834960862994194,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004933426756370386,
+        "movement": 0.064591084420681,
+        "objective": 0.044312663657260644,
+        "semantic_kl": 0.0018711488891858608,
+        "support": 0.7097812730073929
+      },
+      "validation": {
+        "identity": 0.00046546245765057394,
+        "movement": 0.06529929459095002,
+        "objective": 0.04819370983194677,
+        "semantic_kl": 0.004539548307657242,
+        "support": 0.7331753921508789
+      }
+    },
+    {
+      "elapsed_seconds": 7.798103183507919,
+      "epoch": 170,
+      "gradient_norm_max": 0.13010019063949585,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004960889473583563,
+        "movement": 0.06462940324097871,
+        "objective": 0.04431836978551262,
+        "semantic_kl": 0.0018764398945495487,
+        "support": 0.7096580123901367
+      },
+      "validation": {
+        "identity": 0.00046101320389425383,
+        "movement": 0.06542596191167832,
+        "objective": 0.04814345513697481,
+        "semantic_kl": 0.004489449514076114,
+        "support": 0.7330079245567321
+      }
+    },
+    {
+      "elapsed_seconds": 7.795269623398781,
+      "epoch": 171,
+      "gradient_norm_max": 0.1265949010848999,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0005001981876890916,
+        "movement": 0.06463743131607771,
+        "objective": 0.04431170904185696,
+        "semantic_kl": 0.0018735254823695868,
+        "support": 0.7094848448038101
+      },
+      "validation": {
+        "identity": 0.0004566487681586295,
+        "movement": 0.06568439036607743,
+        "objective": 0.048161741337971756,
+        "semantic_kl": 0.004484401931986213,
+        "support": 0.7330450320243835
+      }
+    },
+    {
+      "elapsed_seconds": 7.802966773509979,
+      "epoch": 172,
+      "gradient_norm_max": 0.11058839410543442,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000493553276661552,
+        "movement": 0.06468558885157108,
+        "objective": 0.044306659818416236,
+        "semantic_kl": 0.0018767475162167102,
+        "support": 0.7093560028076172
+      },
+      "validation": {
+        "identity": 0.00045760465174680574,
+        "movement": 0.06572315722703934,
+        "objective": 0.048152640861866526,
+        "semantic_kl": 0.004478979595005512,
+        "support": 0.7328748178482055
+      }
+    },
+    {
+      "elapsed_seconds": 7.800192102789879,
+      "epoch": 173,
+      "gradient_norm_max": 0.14098311960697174,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004993321185521912,
+        "movement": 0.0647061674669385,
+        "objective": 0.04431059761555494,
+        "semantic_kl": 0.0018789451220072805,
+        "support": 0.7092340725660324
+      },
+      "validation": {
+        "identity": 0.00046871512866346164,
+        "movement": 0.0655508953332901,
+        "objective": 0.048200678550812885,
+        "semantic_kl": 0.004543202128261327,
+        "support": 0.7326734352111817
+      }
+    },
+    {
+      "elapsed_seconds": 7.7961445748806,
+      "epoch": 174,
+      "gradient_norm_max": 0.12028916925191879,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004990970501306111,
+        "movement": 0.0647325287759304,
+        "objective": 0.044296272108294316,
+        "semantic_kl": 0.0018695260817185044,
+        "support": 0.7090879219770432
+      },
+      "validation": {
+        "identity": 0.00045615817929501646,
+        "movement": 0.06576068460941314,
+        "objective": 0.04813730772348936,
+        "semantic_kl": 0.004475890519097447,
+        "support": 0.7325838112831116
+      }
+    },
+    {
+      "elapsed_seconds": 7.805177763104439,
+      "epoch": 175,
+      "gradient_norm_max": 0.09025250375270844,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0004968378639354736,
+        "movement": 0.06473968431353569,
+        "objective": 0.044290162178226136,
+        "semantic_kl": 0.00187273008399643,
+        "support": 0.7089325159788131
+      },
+      "validation": {
+        "identity": 0.0004738276464922819,
+        "movement": 0.06582185059785843,
+        "objective": 0.04811168400142924,
+        "semantic_kl": 0.004427459677681327,
+        "support": 0.7325642323493957
+      }
+    },
+    {
+      "elapsed_seconds": 7.797257140278816,
+      "epoch": 176,
+      "gradient_norm_max": 0.11338624358177185,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0004914468563572718,
+        "movement": 0.06478672597557306,
+        "objective": 0.04428551680496347,
+        "semantic_kl": 0.0018721949448809027,
+        "support": 0.7088640481233597
+      },
+      "validation": {
+        "identity": 0.0004772568259795662,
+        "movement": 0.06554979264736176,
+        "objective": 0.048090044819604376,
+        "semantic_kl": 0.004440710516646505,
+        "support": 0.7323419642448425
+      }
+    },
+    {
+      "elapsed_seconds": 7.806614354252815,
+      "epoch": 177,
+      "gradient_norm_max": 0.11244542896747589,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0004931640094551672,
+        "movement": 0.06479525286704302,
+        "objective": 0.044274692975723694,
+        "semantic_kl": 0.0018683732429053634,
+        "support": 0.7086726087331772
+      },
+      "validation": {
+        "identity": 0.00047503054491244257,
+        "movement": 0.06572168171405793,
+        "objective": 0.048074888605391615,
+        "semantic_kl": 0.004413296654820442,
+        "support": 0.7322878646850586
+      }
+    },
+    {
+      "elapsed_seconds": 7.802553340792656,
+      "epoch": 178,
+      "gradient_norm_max": 0.11835569888353348,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004974658223699686,
+        "movement": 0.0648341154307127,
+        "objective": 0.044276043354523544,
+        "semantic_kl": 0.0018642415734939277,
+        "support": 0.7086184883117675
+      },
+      "validation": {
+        "identity": 0.0004608753422508016,
+        "movement": 0.0656327223777771,
+        "objective": 0.04814166380150709,
+        "semantic_kl": 0.004514860333874822,
+        "support": 0.7320531177520752
+      }
+    },
+    {
+      "elapsed_seconds": 7.796091362833977,
+      "epoch": 179,
+      "gradient_norm_max": 0.10969655215740204,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004863505537497463,
+        "movement": 0.06483058709651232,
+        "objective": 0.04426689172809633,
+        "semantic_kl": 0.0018733038345817477,
+        "support": 0.708483572602272
+      },
+      "validation": {
+        "identity": 0.000469966001692228,
+        "movement": 0.06561160326004029,
+        "objective": 0.04810959070164245,
+        "semantic_kl": 0.004484881982207299,
+        "support": 0.7318716478347779
+      }
+    },
+    {
+      "elapsed_seconds": 7.807800397276878,
+      "epoch": 180,
+      "gradient_norm_max": 0.11278754472732544,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004958985864527095,
+        "movement": 0.06489709105342627,
+        "objective": 0.04427058468734543,
+        "semantic_kl": 0.0018684059148654341,
+        "support": 0.7083314216136932
+      },
+      "validation": {
+        "identity": 0.0004737855693383608,
+        "movement": 0.06587275534868241,
+        "objective": 0.04807884971928434,
+        "semantic_kl": 0.0044278731010854245,
+        "support": 0.7317983102798462
+      }
+    },
+    {
+      "elapsed_seconds": 7.787396103143692,
+      "epoch": 181,
+      "gradient_norm_max": 0.11804952472448349,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000499425640582968,
+        "movement": 0.0648867902904749,
+        "objective": 0.0442600869802031,
+        "semantic_kl": 0.001862776397028938,
+        "support": 0.708184118270874
+      },
+      "validation": {
+        "identity": 0.00047093068264075555,
+        "movement": 0.0658552649617195,
+        "objective": 0.048157930171262714,
+        "semantic_kl": 0.004517093319445848,
+        "support": 0.731687593460083
+      }
+    },
+    {
+      "elapsed_seconds": 7.8163271844387054,
+      "epoch": 182,
+      "gradient_norm_max": 0.08386527746915817,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004981285815856598,
+        "movement": 0.0649409044906497,
+        "objective": 0.04425025352675311,
+        "semantic_kl": 0.0018544880137778819,
+        "support": 0.708070929646492
+      },
+      "validation": {
+        "identity": 0.00046025107832974754,
+        "movement": 0.06584486752748489,
+        "objective": 0.048172772869787876,
+        "semantic_kl": 0.004549079984426499,
+        "support": 0.7315791010856628
+      }
+    },
+    {
+      "elapsed_seconds": 7.811745315790176,
+      "epoch": 183,
+      "gradient_norm_max": 0.12100864201784134,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0004911115260639632,
+        "movement": 0.06496850598603487,
+        "objective": 0.04425561865166141,
+        "semantic_kl": 0.0018703565816394984,
+        "support": 0.7079459989070892
+      },
+      "validation": {
+        "identity": 0.00047827031929045913,
+        "movement": 0.06581314891576767,
+        "objective": 0.04807212389167399,
+        "semantic_kl": 0.004442735323682428,
+        "support": 0.7313960671424866
+      }
+    },
+    {
+      "elapsed_seconds": 7.79382586479187,
+      "epoch": 184,
+      "gradient_norm_max": 0.10246796160936356,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004992489823172534,
+        "movement": 0.06496207024902105,
+        "objective": 0.04424261999237675,
+        "semantic_kl": 0.001858758662128821,
+        "support": 0.7077681064605713
+      },
+      "validation": {
+        "identity": 0.0004671086638700217,
+        "movement": 0.065893514752388,
+        "objective": 0.04808873247425072,
+        "semantic_kl": 0.0044668356142938135,
+        "support": 0.7313087344169616
+      }
+    },
+    {
+      "elapsed_seconds": 7.796948865056038,
+      "epoch": 185,
+      "gradient_norm_max": 0.12290433049201965,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004934497650422896,
+        "movement": 0.06501158967614173,
+        "objective": 0.044237381822447186,
+        "semantic_kl": 0.0018591806630138307,
+        "support": 0.7076718485355378
+      },
+      "validation": {
+        "identity": 0.0004773148984531872,
+        "movement": 0.06594702571630479,
+        "objective": 0.04813327795051737,
+        "semantic_kl": 0.004502225536853075,
+        "support": 0.7311806988716125
+      }
+    },
+    {
+      "elapsed_seconds": 7.791336879134178,
+      "epoch": 186,
+      "gradient_norm_max": 0.11297423392534256,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004938789458745318,
+        "movement": 0.0650317857414484,
+        "objective": 0.044235610443100815,
+        "semantic_kl": 0.0018635374854784458,
+        "support": 0.7075003087520599
+      },
+      "validation": {
+        "identity": 0.00047585763240931556,
+        "movement": 0.06600339025259018,
+        "objective": 0.048123744044627534,
+        "semantic_kl": 0.004498021649196744,
+        "support": 0.730990514755249
+      }
+    },
+    {
+      "elapsed_seconds": 7.8005582094192505,
+      "epoch": 187,
+      "gradient_norm_max": 0.14023913443088531,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004944676694475953,
+        "movement": 0.06508002366870641,
+        "objective": 0.04422486020280206,
+        "semantic_kl": 0.0018521672999486328,
+        "support": 0.7074044573307038
+      },
+      "validation": {
+        "identity": 0.0004650417927769013,
+        "movement": 0.06617666482925415,
+        "objective": 0.04811616881826194,
+        "semantic_kl": 0.004488199278712273,
+        "support": 0.730905225276947
+      }
+    },
+    {
+      "elapsed_seconds": 7.801280096173286,
+      "epoch": 188,
+      "gradient_norm_max": 0.10559020191431046,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004936305206204083,
+        "movement": 0.0650929296016693,
+        "objective": 0.04422254369556255,
+        "semantic_kl": 0.0018552364874631167,
+        "support": 0.7072876745462418
+      },
+      "validation": {
+        "identity": 0.0004633871364057995,
+        "movement": 0.06596634387969971,
+        "objective": 0.04816537788609276,
+        "semantic_kl": 0.0045700686238706115,
+        "support": 0.7307057547569275
+      }
+    },
+    {
+      "elapsed_seconds": 7.79689547419548,
+      "epoch": 189,
+      "gradient_norm_max": 0.09286730736494064,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004919295574055733,
+        "movement": 0.06513036206364632,
+        "objective": 0.044221361730944535,
+        "semantic_kl": 0.0018588037719018758,
+        "support": 0.7071518439054489
+      },
+      "validation": {
+        "identity": 0.0004612249333877116,
+        "movement": 0.06592401027679444,
+        "objective": 0.04812694371235557,
+        "semantic_kl": 0.0045484771579504014,
+        "support": 0.7304968118667603
+      }
+    },
+    {
+      "elapsed_seconds": 7.800897806882858,
+      "epoch": 190,
+      "gradient_norm_max": 0.13174591958522797,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004921360367286018,
+        "movement": 0.06515908814966678,
+        "objective": 0.04422770048862612,
+        "semantic_kl": 0.0018684813717845827,
+        "support": 0.7070234853029251
+      },
+      "validation": {
+        "identity": 0.0004720150771026965,
+        "movement": 0.0660761022567749,
+        "objective": 0.048106481263268504,
+        "semantic_kl": 0.004499404802918434,
+        "support": 0.7305490231513977
+      }
+    },
+    {
+      "elapsed_seconds": 7.801971942186356,
+      "epoch": 191,
+      "gradient_norm_max": 0.13991491496562958,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.000492797145055211,
+        "movement": 0.0651675458997488,
+        "objective": 0.044214393790945015,
+        "semantic_kl": 0.001859719956992194,
+        "support": 0.7069024419784546
+      },
+      "validation": {
+        "identity": 0.0004783164890250191,
+        "movement": 0.06611524194478989,
+        "objective": 0.04804085682833102,
+        "semantic_kl": 0.004429459171369672,
+        "support": 0.7304311394691467
+      }
+    },
+    {
+      "elapsed_seconds": 7.805707588791847,
+      "epoch": 192,
+      "gradient_norm_max": 0.10146898031234741,
+      "learning_rate": 1.875e-05,
+      "selected": true,
+      "train": {
+        "identity": 0.0005002895030663797,
+        "movement": 0.06516291186213494,
+        "objective": 0.04420828528846665,
+        "semantic_kl": 0.0018513001780956983,
+        "support": 0.7068080884218216
+      },
+      "validation": {
+        "identity": 0.00046280584152555096,
+        "movement": 0.06620164871215821,
+        "objective": 0.048038266435673,
+        "semantic_kl": 0.004443150442093611,
+        "support": 0.7302429056167603
+      }
+    },
+    {
+      "elapsed_seconds": 7.804758042097092,
+      "epoch": 193,
+      "gradient_norm_max": 0.10520802438259125,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.00048815276488365695,
+        "movement": 0.06523398384451866,
+        "objective": 0.04419649958019779,
+        "semantic_kl": 0.0018510846956633032,
+        "support": 0.7066772747039795
+      },
+      "validation": {
+        "identity": 0.00046220092350267804,
+        "movement": 0.06600144922733307,
+        "objective": 0.04808505033576512,
+        "semantic_kl": 0.004521932490170002,
+        "support": 0.7300154399871827
+      }
+    },
+    {
+      "elapsed_seconds": 7.801352828741074,
+      "epoch": 194,
+      "gradient_norm_max": 0.1087825745344162,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.000491315630021682,
+        "movement": 0.06524164900183678,
+        "objective": 0.04419814879422932,
+        "semantic_kl": 0.0018548315716907383,
+        "support": 0.7065567338466644
+      },
+      "validation": {
+        "identity": 0.0004646073408366647,
+        "movement": 0.06618842482566833,
+        "objective": 0.04811518175862147,
+        "semantic_kl": 0.004535651775076985,
+        "support": 0.7299216032028198
+      }
+    },
+    {
+      "elapsed_seconds": 7.7938647866249084,
+      "epoch": 195,
+      "gradient_norm_max": 0.1276767998933792,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.00048734598261563407,
+        "movement": 0.06525380000472068,
+        "objective": 0.04418672927123754,
+        "semantic_kl": 0.0018551024049520493,
+        "support": 0.7063780176639557
+      },
+      "validation": {
+        "identity": 0.00045915508177131416,
+        "movement": 0.06637468963861465,
+        "objective": 0.0481192583674565,
+        "semantic_kl": 0.004528763229027391,
+        "support": 0.7298774218559265
+      }
+    },
+    {
+      "elapsed_seconds": 7.8016001880168915,
+      "epoch": 196,
+      "gradient_norm_max": 0.16361355781555176,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004884409545932133,
+        "movement": 0.06529225938022137,
+        "objective": 0.0441899107799411,
+        "semantic_kl": 0.0018576033355202526,
+        "support": 0.70629281103611
+      },
+      "validation": {
+        "identity": 0.000460974505986087,
+        "movement": 0.06638149023056031,
+        "objective": 0.04803919779218268,
+        "semantic_kl": 0.00445336895994842,
+        "support": 0.7297341060638428
+      }
+    },
+    {
+      "elapsed_seconds": 7.809621721506119,
+      "epoch": 197,
+      "gradient_norm_max": 0.10962455719709396,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004935476648244507,
+        "movement": 0.06534277949482202,
+        "objective": 0.04418246010212185,
+        "semantic_kl": 0.0018476395728066564,
+        "support": 0.7061398983001709
+      },
+      "validation": {
+        "identity": 0.0004601416763034649,
+        "movement": 0.06619572341442108,
+        "objective": 0.04811077094898792,
+        "semantic_kl": 0.004555163076147437,
+        "support": 0.7295178771018982
+      }
+    },
+    {
+      "elapsed_seconds": 7.810696065425873,
+      "epoch": 198,
+      "gradient_norm_max": 0.13493411242961884,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.00048665568966973783,
+        "movement": 0.0653654970228672,
+        "objective": 0.044182243005033546,
+        "semantic_kl": 0.0018575138680171222,
+        "support": 0.7060304749011993
+      },
+      "validation": {
+        "identity": 0.0004731469752732664,
+        "movement": 0.066205495595932,
+        "objective": 0.04812064866744913,
+        "semantic_kl": 0.00455406092107296,
+        "support": 0.7294578242301941
+      }
+    },
+    {
+      "elapsed_seconds": 7.803909435868263,
+      "epoch": 199,
+      "gradient_norm_max": 0.12428979575634003,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004897199499844227,
+        "movement": 0.06540082905441523,
+        "objective": 0.04417256830851125,
+        "semantic_kl": 0.0018462863471359016,
+        "support": 0.705929582118988
+      },
+      "validation": {
+        "identity": 0.00046249058446846904,
+        "movement": 0.06624012291431428,
+        "objective": 0.048083529049297795,
+        "semantic_kl": 0.0045321569126099345,
+        "support": 0.7292973852157593
+      }
+    },
+    {
+      "elapsed_seconds": 7.800092726945877,
+      "epoch": 200,
+      "gradient_norm_max": 0.08177777379751205,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004892053273869463,
+        "movement": 0.06537708468735218,
+        "objective": 0.04416568450121113,
+        "semantic_kl": 0.001848772084340453,
+        "support": 0.7057999724149704
+      },
+      "validation": {
+        "identity": 0.00046647480281535535,
+        "movement": 0.06635496467351913,
+        "objective": 0.04812178776937071,
+        "semantic_kl": 0.004555663447827101,
+        "support": 0.7292830610275268
+      }
+    },
+    {
+      "elapsed_seconds": 7.808671876788139,
+      "epoch": 201,
+      "gradient_norm_max": 0.11731480062007904,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004901148590622822,
+        "movement": 0.06541525717824698,
+        "objective": 0.044164204369754566,
+        "semantic_kl": 0.0018495249084662646,
+        "support": 0.7056607776880264
+      },
+      "validation": {
+        "identity": 0.00045724958210485055,
+        "movement": 0.0663654175400734,
+        "objective": 0.04812721896759467,
+        "semantic_kl": 0.004581156885251403,
+        "support": 0.7290454149246216
+      }
+    },
+    {
+      "elapsed_seconds": 7.807565897703171,
+      "epoch": 202,
+      "gradient_norm_max": 0.10483807325363159,
+      "learning_rate": 1.875e-05,
+      "selected": false,
+      "train": {
+        "identity": 0.0004842050192089543,
+        "movement": 0.06549377728253603,
+        "objective": 0.04415634897259565,
+        "semantic_kl": 0.0018445504293777048,
+        "support": 0.7055643159151077
+      },
+      "validation": {
+        "identity": 0.00047452570594032296,
+        "movement": 0.06631392538547516,
+        "objective": 0.04808628495133599,
+        "semantic_kl": 0.004529416561126709,
+        "support": 0.7290190029144287
+      }
+    },
+    {
+      "elapsed_seconds": 7.813774228096008,
+      "epoch": 203,
+      "gradient_norm_max": 0.14982643723487854,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004882619964868062,
+        "movement": 0.06544434759765863,
+        "objective": 0.04416947322869452,
+        "semantic_kl": 0.0018646477116271854,
+        "support": 0.7054425752162934
+      },
+      "validation": {
+        "identity": 0.00047339908327558077,
+        "movement": 0.06629186034202576,
+        "objective": 0.048183268667344244,
+        "semantic_kl": 0.004643053850159049,
+        "support": 0.7287525939941406
+      }
+    },
+    {
+      "elapsed_seconds": 7.804669141769409,
+      "epoch": 204,
+      "gradient_norm_max": 0.08577462285757065,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004909692518647032,
+        "movement": 0.0655278342962265,
+        "objective": 0.044134658456104925,
+        "semantic_kl": 0.0018253184447530658,
+        "support": 0.70531174659729
+      },
+      "validation": {
+        "identity": 0.0004741797786846291,
+        "movement": 0.06624002248048783,
+        "objective": 0.04805252155518974,
+        "semantic_kl": 0.004518952155485749,
+        "support": 0.7287077474594116
+      }
+    },
+    {
+      "elapsed_seconds": 7.807014837861061,
+      "epoch": 205,
+      "gradient_norm_max": 0.0702253207564354,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004897272762888277,
+        "movement": 0.06550151839852333,
+        "objective": 0.044119148470605656,
+        "semantic_kl": 0.0018178566743154078,
+        "support": 0.7052282536029816
+      },
+      "validation": {
+        "identity": 0.00047364865662530064,
+        "movement": 0.06636713176965714,
+        "objective": 0.04805853009456769,
+        "semantic_kl": 0.004510298473760486,
+        "support": 0.7287573957443237
+      }
+    },
+    {
+      "elapsed_seconds": 7.791140556335449,
+      "epoch": 206,
+      "gradient_norm_max": 0.0809139832854271,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004912980954601213,
+        "movement": 0.06550905153155327,
+        "objective": 0.04411611876417611,
+        "semantic_kl": 0.0018137705069966614,
+        "support": 0.70520290017128
+      },
+      "validation": {
+        "identity": 0.000454531590512488,
+        "movement": 0.06636012136936188,
+        "objective": 0.04807490179227898,
+        "semantic_kl": 0.004554306976497173,
+        "support": 0.7286010217666626
+      }
+    },
+    {
+      "elapsed_seconds": 7.788711875677109,
+      "epoch": 207,
+      "gradient_norm_max": 0.08331861346960068,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048748730667763255,
+        "movement": 0.06552549101412296,
+        "objective": 0.044117103978385114,
+        "semantic_kl": 0.001819916085805744,
+        "support": 0.7051430296897888
+      },
+      "validation": {
+        "identity": 0.00045270232381881213,
+        "movement": 0.06642055958509445,
+        "objective": 0.048109276021743426,
+        "semantic_kl": 0.004587873890995979,
+        "support": 0.7285328769683838
+      }
+    },
+    {
+      "elapsed_seconds": 7.80567142367363,
+      "epoch": 208,
+      "gradient_norm_max": 0.08497273176908493,
+      "learning_rate": 9.375e-06,
+      "selected": true,
+      "train": {
+        "identity": 0.00048226716229975695,
+        "movement": 0.06552776657044887,
+        "objective": 0.04411108052591146,
+        "semantic_kl": 0.001823865696787834,
+        "support": 0.7050434201955795
+      },
+      "validation": {
+        "identity": 0.00047262952270102685,
+        "movement": 0.0665377613902092,
+        "objective": 0.048036002799664856,
+        "semantic_kl": 0.0044818727765232325,
+        "support": 0.7285544872283936
+      }
+    },
+    {
+      "elapsed_seconds": 7.80775947868824,
+      "epoch": 209,
+      "gradient_norm_max": 0.08485987037420273,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048734581206931455,
+        "movement": 0.06559182416647673,
+        "objective": 0.04411035289212136,
+        "semantic_kl": 0.0018128426768817007,
+        "support": 0.7050196397304535
+      },
+      "validation": {
+        "identity": 0.000456876405805815,
+        "movement": 0.06641043752431869,
+        "objective": 0.0480731741686468,
+        "semantic_kl": 0.004556502532213926,
+        "support": 0.7283750295639038
+      }
+    },
+    {
+      "elapsed_seconds": 7.804582700133324,
+      "epoch": 210,
+      "gradient_norm_max": 0.11630360037088394,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048312820772026144,
+        "movement": 0.06559068996459246,
+        "objective": 0.04411049655427542,
+        "semantic_kl": 0.0018218979507219047,
+        "support": 0.7049280279874801
+      },
+      "validation": {
+        "identity": 0.00045386658210190946,
+        "movement": 0.06631212651729584,
+        "objective": 0.04810527168188128,
+        "semantic_kl": 0.004606309477239847,
+        "support": 0.7282776594161987
+      }
+    },
+    {
+      "elapsed_seconds": 7.8119428008794785,
+      "epoch": 211,
+      "gradient_norm_max": 0.07176966220140457,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048282876746597427,
+        "movement": 0.06557629287242889,
+        "objective": 0.04410455446500199,
+        "semantic_kl": 0.0018210441363044083,
+        "support": 0.7048610454797745
+      },
+      "validation": {
+        "identity": 0.00047263188345823435,
+        "movement": 0.06654828935861587,
+        "objective": 0.04807696026621852,
+        "semantic_kl": 0.004532869774848223,
+        "support": 0.7283325934410095
+      }
+    },
+    {
+      "elapsed_seconds": 7.798350349068642,
+      "epoch": 212,
+      "gradient_norm_max": 0.09030203521251678,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004839791396305807,
+        "movement": 0.06560378514230251,
+        "objective": 0.04410567931822957,
+        "semantic_kl": 0.001822978783166036,
+        "support": 0.704766857624054
+      },
+      "validation": {
+        "identity": 0.00045469286662410015,
+        "movement": 0.06638867974281311,
+        "objective": 0.04807874049057137,
+        "semantic_kl": 0.004575799452140927,
+        "support": 0.7281876039505005
+      }
+    },
+    {
+      "elapsed_seconds": 7.799789905548096,
+      "epoch": 213,
+      "gradient_norm_max": 0.06332515180110931,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004781895354731166,
+        "movement": 0.0656062250584364,
+        "objective": 0.04410073039847111,
+        "semantic_kl": 0.0018261239619459958,
+        "support": 0.7047158879041672
+      },
+      "validation": {
+        "identity": 0.0004707191401394084,
+        "movement": 0.06663721352815628,
+        "objective": 0.04809721670125146,
+        "semantic_kl": 0.004552556658163667,
+        "support": 0.728204391002655
+      }
+    },
+    {
+      "elapsed_seconds": 7.805228367447853,
+      "epoch": 214,
+      "gradient_norm_max": 0.08557277172803879,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048054117633111493,
+        "movement": 0.06562624406069517,
+        "objective": 0.0441012463862364,
+        "semantic_kl": 0.0018244855816010386,
+        "support": 0.7046719044446945
+      },
+      "validation": {
+        "identity": 0.00047474601858993993,
+        "movement": 0.06674365073442459,
+        "objective": 0.04805149304115912,
+        "semantic_kl": 0.0044925807043910025,
+        "support": 0.7281960248947144
+      }
+    },
+    {
+      "elapsed_seconds": 7.8005878031253815,
+      "epoch": 215,
+      "gradient_norm_max": 0.07432302832603455,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048396841384102925,
+        "movement": 0.06565477296710015,
+        "objective": 0.04409512715315079,
+        "semantic_kl": 0.0018160209315828978,
+        "support": 0.7045932102203369
+      },
+      "validation": {
+        "identity": 0.0004573683468333911,
+        "movement": 0.06663991123437882,
+        "objective": 0.04808340355657856,
+        "semantic_kl": 0.004560939874500037,
+        "support": 0.728022084236145
+      }
+    },
+    {
+      "elapsed_seconds": 7.805123969912529,
+      "epoch": 216,
+      "gradient_norm_max": 0.07902486622333527,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004847962403054271,
+        "movement": 0.0656890931352973,
+        "objective": 0.044094439563419574,
+        "semantic_kl": 0.001814797775587067,
+        "support": 0.7045187246799469
+      },
+      "validation": {
+        "identity": 0.00044929620111361146,
+        "movement": 0.06650768399238587,
+        "objective": 0.04806476565310732,
+        "semantic_kl": 0.004570144768804312,
+        "support": 0.7278911256790161
+      }
+    },
+    {
+      "elapsed_seconds": 7.813970565795898,
+      "epoch": 217,
+      "gradient_norm_max": 0.07410600781440735,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.000480443016386942,
+        "movement": 0.06566211111843585,
+        "objective": 0.04409350911829935,
+        "semantic_kl": 0.0018246500962413848,
+        "support": 0.7044440978765487
+      },
+      "validation": {
+        "identity": 0.0004778573042131029,
+        "movement": 0.06659296780824661,
+        "objective": 0.04808710937335854,
+        "semantic_kl": 0.0045532541908323764,
+        "support": 0.7279340219497681
+      }
+    },
+    {
+      "elapsed_seconds": 7.8077840358018875,
+      "epoch": 218,
+      "gradient_norm_max": 0.08748506754636765,
+      "learning_rate": 9.375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004812035070895019,
+        "movement": 0.0657030901685357,
+        "objective": 0.04408948002445277,
+        "semantic_kl": 0.0018184502993244679,
+        "support": 0.7043903440237045
+      },
+      "validation": {
+        "identity": 0.0004669450993242208,
+        "movement": 0.06662696987390518,
+        "objective": 0.0480696764724853,
+        "semantic_kl": 0.004549427982419729,
+        "support": 0.7278121280670166
+      }
+    },
+    {
+      "elapsed_seconds": 7.813392668962479,
+      "epoch": 219,
+      "gradient_norm_max": 0.09820866584777832,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004820391597547007,
+        "movement": 0.06569911144673825,
+        "objective": 0.04408720389067609,
+        "semantic_kl": 0.001819481374695897,
+        "support": 0.7043154442310333
+      },
+      "validation": {
+        "identity": 0.00046076712853391653,
+        "movement": 0.06658606797456741,
+        "objective": 0.04809030173628707,
+        "semantic_kl": 0.004585156058892608,
+        "support": 0.7277154350280761
+      }
+    },
+    {
+      "elapsed_seconds": 7.807122603058815,
+      "epoch": 220,
+      "gradient_norm_max": 0.1064692810177803,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004784105121992964,
+        "movement": 0.06570366945117712,
+        "objective": 0.044075520197385594,
+        "semantic_kl": 0.0018141715065576136,
+        "support": 0.7042514246702194
+      },
+      "validation": {
+        "identity": 0.0004580810522020329,
+        "movement": 0.06666492402553559,
+        "objective": 0.048070706740516465,
+        "semantic_kl": 0.004561239033937454,
+        "support": 0.7276978850364685
+      }
+    },
+    {
+      "elapsed_seconds": 7.8230036944150925,
+      "epoch": 221,
+      "gradient_norm_max": 0.06860373169183731,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004785906176205302,
+        "movement": 0.06573280967772006,
+        "objective": 0.044072183554492106,
+        "semantic_kl": 0.001808671074686572,
+        "support": 0.7042328178882599
+      },
+      "validation": {
+        "identity": 0.0004618036962347105,
+        "movement": 0.06668338119983673,
+        "objective": 0.04806909780681599,
+        "semantic_kl": 0.00455519231967628,
+        "support": 0.7276752734184265
+      }
+    },
+    {
+      "elapsed_seconds": 7.8012015372514725,
+      "epoch": 222,
+      "gradient_norm_max": 0.08565323054790497,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048134126470040817,
+        "movement": 0.06572022750973701,
+        "objective": 0.044072272172687464,
+        "semantic_kl": 0.0018106630584225059,
+        "support": 0.704164901971817
+      },
+      "validation": {
+        "identity": 0.0004531854337255936,
+        "movement": 0.06667140871286392,
+        "objective": 0.04807635262628901,
+        "semantic_kl": 0.004576772814616561,
+        "support": 0.7275850701332093
+      }
+    },
+    {
+      "elapsed_seconds": 7.809764415025711,
+      "epoch": 223,
+      "gradient_norm_max": 0.07772479206323624,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00047756271338190694,
+        "movement": 0.06576283566653729,
+        "objective": 0.04407277624932218,
+        "semantic_kl": 0.0018122849275823683,
+        "support": 0.7041329008340835
+      },
+      "validation": {
+        "identity": 0.000462150776584167,
+        "movement": 0.06663900583982468,
+        "objective": 0.048075496000994464,
+        "semantic_kl": 0.004571261871606111,
+        "support": 0.7275636553764343
+      }
+    },
+    {
+      "elapsed_seconds": 7.812371984124184,
+      "epoch": 224,
+      "gradient_norm_max": 0.07053330540657043,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00047707903577779375,
+        "movement": 0.06576924797147513,
+        "objective": 0.04406915305724201,
+        "semantic_kl": 0.0018097939377184958,
+        "support": 0.7041071057319641
+      },
+      "validation": {
+        "identity": 0.00046184369624825195,
+        "movement": 0.06652398467063904,
+        "objective": 0.048074545779090844,
+        "semantic_kl": 0.004586705397814512,
+        "support": 0.7274719643592834
+      }
+    },
+    {
+      "elapsed_seconds": 7.7967527359724045,
+      "epoch": 225,
+      "gradient_norm_max": 0.06561843305826187,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004808988448246025,
+        "movement": 0.0657285687327385,
+        "objective": 0.04406709871865014,
+        "semantic_kl": 0.0018106315971817822,
+        "support": 0.704054228067398
+      },
+      "validation": {
+        "identity": 0.0004608889456721954,
+        "movement": 0.06677472978830337,
+        "objective": 0.04806160567997722,
+        "semantic_kl": 0.004546413058415055,
+        "support": 0.7275366139411926
+      }
+    },
+    {
+      "elapsed_seconds": 7.812304854393005,
+      "epoch": 226,
+      "gradient_norm_max": 0.06867857277393341,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004804119450613305,
+        "movement": 0.0657862301170826,
+        "objective": 0.04406660727007458,
+        "semantic_kl": 0.00180546518182382,
+        "support": 0.7040421426296234
+      },
+      "validation": {
+        "identity": 0.00046033805687329733,
+        "movement": 0.06658197671175003,
+        "objective": 0.048094214866723634,
+        "semantic_kl": 0.004605126241222024,
+        "support": 0.7274110579490661
+      }
+    },
+    {
+      "elapsed_seconds": 7.800339058041573,
+      "epoch": 227,
+      "gradient_norm_max": 0.07478713244199753,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00047995736705148923,
+        "movement": 0.06575156826525927,
+        "objective": 0.04406593731766577,
+        "semantic_kl": 0.0018122773105278612,
+        "support": 0.7039709162712097
+      },
+      "validation": {
+        "identity": 0.0004728792847890873,
+        "movement": 0.0667697885632515,
+        "objective": 0.04806319289634121,
+        "semantic_kl": 0.004539101747795939,
+        "support": 0.7274846601486206
+      }
+    },
+    {
+      "elapsed_seconds": 7.814587250351906,
+      "epoch": 228,
+      "gradient_norm_max": 0.06977922469377518,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004812072533657536,
+        "movement": 0.06579362902790307,
+        "objective": 0.044064109530487075,
+        "semantic_kl": 0.0018047650961671026,
+        "support": 0.7039754855632782
+      },
+      "validation": {
+        "identity": 0.00046371122327400373,
+        "movement": 0.06672815531492234,
+        "objective": 0.04805096030113054,
+        "semantic_kl": 0.004544035382568836,
+        "support": 0.7274079632759094
+      }
+    },
+    {
+      "elapsed_seconds": 7.79785244166851,
+      "epoch": 229,
+      "gradient_norm_max": 0.06240227818489075,
+      "learning_rate": 4.6875e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004803961769533916,
+        "movement": 0.06580934509634971,
+        "objective": 0.04406218136547558,
+        "semantic_kl": 0.001804731877055019,
+        "support": 0.703922376036644
+      },
+      "validation": {
+        "identity": 0.0004582245550409425,
+        "movement": 0.06671857982873916,
+        "objective": 0.04808375457444345,
+        "semantic_kl": 0.004586172923445701,
+        "support": 0.7273499822616577
+      }
+    },
+    {
+      "elapsed_seconds": 7.794814094901085,
+      "epoch": 230,
+      "gradient_norm_max": 0.07894495129585266,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004773169823147438,
+        "movement": 0.06577457781881094,
+        "objective": 0.044062237879696126,
+        "semantic_kl": 0.0018136191845405847,
+        "support": 0.703876878619194
+      },
+      "validation": {
+        "identity": 0.0004684364948479924,
+        "movement": 0.06679470151662827,
+        "objective": 0.04807364338301705,
+        "semantic_kl": 0.004558971356600523,
+        "support": 0.727335307598114
+      }
+    },
+    {
+      "elapsed_seconds": 7.797304555773735,
+      "epoch": 231,
+      "gradient_norm_max": 0.05509879067540169,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048108676269233006,
+        "movement": 0.06584255058318376,
+        "objective": 0.044056058008759766,
+        "semantic_kl": 0.0017980917380191386,
+        "support": 0.7038524889945984
+      },
+      "validation": {
+        "identity": 0.0004667876003077254,
+        "movement": 0.06666853159666061,
+        "objective": 0.04805813517549541,
+        "semantic_kl": 0.004560985714197159,
+        "support": 0.7272701740264893
+      }
+    },
+    {
+      "elapsed_seconds": 7.801148131489754,
+      "epoch": 232,
+      "gradient_norm_max": 0.06090083718299866,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004794891390438451,
+        "movement": 0.06579187318682671,
+        "objective": 0.04405445616133057,
+        "semantic_kl": 0.0018052364990580826,
+        "support": 0.7038108640909195
+      },
+      "validation": {
+        "identity": 0.00046668108014273456,
+        "movement": 0.06669944763183594,
+        "objective": 0.04806187382919598,
+        "semantic_kl": 0.004561974722892046,
+        "support": 0.727265465259552
+      }
+    },
+    {
+      "elapsed_seconds": 7.794446498155594,
+      "epoch": 233,
+      "gradient_norm_max": 0.07243721932172775,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.000480586177996024,
+        "movement": 0.06581393223255873,
+        "objective": 0.04405493286331243,
+        "semantic_kl": 0.001802599800284952,
+        "support": 0.7038070732355117
+      },
+      "validation": {
+        "identity": 0.0004624523226812016,
+        "movement": 0.06669997394084931,
+        "objective": 0.048058593526919144,
+        "semantic_kl": 0.004564506933093071,
+        "support": 0.7272327375411988
+      }
+    },
+    {
+      "elapsed_seconds": 7.801765471696854,
+      "epoch": 234,
+      "gradient_norm_max": 0.0501491017639637,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004796072567625076,
+        "movement": 0.06580469910055399,
+        "objective": 0.044052728561619126,
+        "semantic_kl": 0.001803660086588934,
+        "support": 0.7037798261642456
+      },
+      "validation": {
+        "identity": 0.0004604916689277161,
+        "movement": 0.06671728670597077,
+        "objective": 0.04807160355572705,
+        "semantic_kl": 0.004579150266945362,
+        "support": 0.727204658985138
+      }
+    },
+    {
+      "elapsed_seconds": 7.797738507390022,
+      "epoch": 235,
+      "gradient_norm_max": 0.05883374437689781,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00048083537688561634,
+        "movement": 0.06581894796341657,
+        "objective": 0.044052230296536245,
+        "semantic_kl": 0.0018011631548870354,
+        "support": 0.7037667393684387
+      },
+      "validation": {
+        "identity": 0.00046681245919899083,
+        "movement": 0.06674825131893158,
+        "objective": 0.04805885217097238,
+        "semantic_kl": 0.004556792564690113,
+        "support": 0.7272084403038025
+      }
+    },
+    {
+      "elapsed_seconds": 7.798461765050888,
+      "epoch": 236,
+      "gradient_norm_max": 0.05905076488852501,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.0004790840951862533,
+        "movement": 0.06581473231315613,
+        "objective": 0.044051614292165905,
+        "semantic_kl": 0.0018043984938412904,
+        "support": 0.7037331694364548
+      },
+      "validation": {
+        "identity": 0.00046594619168899954,
+        "movement": 0.06686380386352539,
+        "objective": 0.04805789586133323,
+        "semantic_kl": 0.004543969957157969,
+        "support": 0.7272319865226745
+      }
+    },
+    {
+      "elapsed_seconds": 7.805898264050484,
+      "epoch": 237,
+      "gradient_norm_max": 0.11862163990736008,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00047816202100071415,
+        "movement": 0.06585634108632803,
+        "objective": 0.04405148853975985,
+        "semantic_kl": 0.0018016155902296305,
+        "support": 0.703721536397934
+      },
+      "validation": {
+        "identity": 0.00046165619874955155,
+        "movement": 0.06668191224336624,
+        "objective": 0.048062837549397955,
+        "semantic_kl": 0.004576459340751171,
+        "support": 0.7271306157112122
+      }
+    },
+    {
+      "elapsed_seconds": 7.817503109574318,
+      "epoch": 238,
+      "gradient_norm_max": 0.10422360897064209,
+      "learning_rate": 2.34375e-06,
+      "selected": false,
+      "train": {
+        "identity": 0.00047486118822386627,
+        "movement": 0.0658213722705841,
+        "objective": 0.04405015520531712,
+        "semantic_kl": 0.0018088455789256842,
+        "support": 0.7036862242221832
+      },
+      "validation": {
+        "identity": 0.0004688839968002867,
+        "movement": 0.06677515119314194,
+        "objective": 0.04806763166000019,
+        "semantic_kl": 0.004563458524644375,
+        "support": 0.7271554803848267
+      }
+    }
+  ],
+  "initial_validation": {
+    "identity": 1.205058340059603e-15,
+    "movement": 1.1152947826276075e-15,
+    "objective": 13.569607718467713,
+    "semantic_kl": 13.531586952209473,
+    "support": 0.7604153251647949
+  },
+  "optimizer_updates": 23800,
+  "record_sha256": "ddc1d5572b369251dc4f7db4dcf6e61d47ccb2c537a55b5a6d1232d2006a9fd6",
+  "seed": 45,
+  "selected_epoch": 208,
+  "selected_validation": {
+    "identity": 0.00047262952270102685,
+    "movement": 0.0665377613902092,
+    "objective": 0.048036002799664856,
+    "semantic_kl": 0.0044818727765232325,
+    "support": 0.7285544872283936
+  },
+  "selection": "lowest factual-validation objective, including epoch zero",
+  "signature": "db72c18e13fe24029510a32843ea8b99ebf81d796987d6b558e057457d73f714",
+  "support": {
+    "counts": {
+      "fit": [
+        170,
+        14,
+        0,
+        18,
+        2,
+        0,
+        0,
+        0,
+        0,
+        133,
+        67,
+        2,
+        125,
+        80,
+        4,
+        6,
+        3,
+        0,
+        9,
+        15,
+        3,
+        32,
+        92,
+        8,
+        9,
+        32,
+        4,
+        84,
+        34,
+        1,
+        44,
+        8,
+        0,
+        0,
+        0,
+        0,
+        31,
+        75,
+        9,
+        96,
+        152,
+        22,
+        10,
+        18,
+        2,
+        0,
+        8,
+        4,
+        6,
+        77,
+        28,
+        8,
+        61,
+        24,
+        51,
+        42,
+        4,
+        45,
+        54,
+        2,
+        4,
+        1,
+        0,
+        8,
+        42,
+        10,
+        30,
+        162,
+        33,
+        16,
+        48,
+        13,
+        0,
+        1,
+        2,
+        0,
+        29,
+        43,
+        3,
+        44,
+        62,
+        11,
+        32,
+        5,
+        36,
+        70,
+        18,
+        3,
+        11,
+        0,
+        0,
+        11,
+        15,
+        11,
+        125,
+        101,
+        4,
+        81,
+        72,
+        0,
+        0,
+        1,
+        0,
+        7,
+        30,
+        0,
+        37,
+        140
+      ],
+      "tune": [
+        20,
+        1,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        21,
+        11,
+        0,
+        13,
+        7,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        5,
+        13,
+        2,
+        0,
+        4,
+        0,
+        14,
+        4,
+        0,
+        7,
+        3,
+        0,
+        0,
+        0,
+        0,
+        5,
+        10,
+        0,
+        14,
+        13,
+        4,
+        1,
+        3,
+        0,
+        0,
+        0,
+        0,
+        2,
+        9,
+        5,
+        1,
+        8,
+        0,
+        3,
+        7,
+        1,
+        5,
+        2,
+        0,
+        1,
+        0,
+        0,
+        0,
+        2,
+        0,
+        5,
+        25,
+        4,
+        1,
+        9,
+        1,
+        0,
+        0,
+        0,
+        0,
+        8,
+        7,
+        0,
+        4,
+        11,
+        0,
+        3,
+        3,
+        4,
+        5,
+        1,
+        2,
+        1,
+        0,
+        0,
+        1,
+        1,
+        2,
+        16,
+        15,
+        1,
+        12,
+        11,
+        0,
+        0,
+        0,
+        0,
+        2,
+        3,
+        0,
+        5,
+        12
+      ]
+    },
+    "inference_policy": "retain all positive targets; absent factual states require extrapolation",
+    "missing_fit_states": [
+      2,
+      5,
+      6,
+      7,
+      8,
+      17,
+      32,
+      33,
+      34,
+      35,
+      45,
+      62,
+      72,
+      75,
+      89,
+      90,
+      99,
+      100,
+      102,
+      105
+    ],
+    "positive_target_states": 27,
+    "sparse_fit_states_below_10": 31,
+    "states": 108,
+    "unsupported_target_mass": {
+      "maximum": 0.07608941942453384,
+      "mean": 0.003249498549848795
+    }
+  },
+  "support_bank_ids": [
+    4598,
+    395,
+    4820,
+    720,
+    1591,
+    4142,
+    3521,
+    1561,
+    2321,
+    4552,
+    499,
+    4989,
+    1458,
+    334,
+    2542,
+    2450,
+    3268,
+    526,
+    2859,
+    2516,
+    4968,
+    1407,
+    1176,
+    3859,
+    4210,
+    3119,
+    1310,
+    2703,
+    4563,
+    3453,
+    3004,
+    4657,
+    3630,
+    888,
+    3765,
+    3364,
+    1567,
+    974,
+    4346,
+    3963,
+    1546,
+    1460,
+    734,
+    232,
+    1756,
+    2293,
+    2868,
+    1976,
+    1991,
+    4140,
+    2405,
+    3039,
+    3892,
+    2655,
+    2265,
+    2656,
+    645,
+    1243,
+    4909,
+    1194,
+    454,
+    390,
+    1362,
+    1197,
+    957,
+    2397,
+    3876,
+    2196,
+    1007,
+    3399,
+    3479,
+    4221,
+    3259,
+    719,
+    2013,
+    281,
+    2846,
+    4862,
+    1269,
+    1345,
+    2486,
+    2404,
+    3311,
+    3380,
+    2273,
+    2907,
+    2193,
+    3720,
+    326,
+    4966,
+    2464,
+    1957,
+    1622,
+    4621,
+    3762,
+    3487,
+    4714,
+    2981,
+    2501,
+    320,
+    2613,
+    1245,
+    280,
+    3235,
+    4165,
+    302,
+    2253,
+    2071,
+    1106,
+    4526,
+    4747,
+    129,
+    4433,
+    2121,
+    622,
+    2102,
+    2406,
+    2241,
+    4448,
+    1162,
+    1879,
+    4488,
+    3537,
+    3421,
+    1382,
+    450,
+    18,
+    2967
+  ],
+  "used_auxiliary_labels": false,
+  "used_official_test": false,
+  "used_oracle_targets": false,
+  "variant": "semantic_editor"
+}

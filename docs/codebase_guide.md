@@ -23,7 +23,7 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-    SIMCFG[exp/sim/config.yaml<br/>SCM, schema, intervention, data paths]
+    SIMCFG[exp/sim_talent/config.yaml<br/>SCM, schema, intervention, data paths]
     MODELCFG[src/config.yaml<br/>f, g, h_Z hyperparameters and path templates]
     SCHEMA[src/schema.py<br/>loads schema and experiment objects]
     LOAD[src/config.py::load_config<br/>CLI overrides + resolved paths]
@@ -40,7 +40,7 @@ flowchart TB
 
 | Specs | Main file | Main implementation |
 |---|---|---|
-| causal variables, intervention `do(...)` specification, sample count etc | `exp/sim/config.yaml` | `exp/sim/talent_sfm.py` |
+| causal variables, intervention `do(...)` specification, sample count etc | `exp/sim_talent/config.yaml` | `exp/sim_talent/talent_sfm.py` |
 | encoder specs | `src/config.yaml` / CLI | `src/encoder/protocols.py` |
 | locations info of all objects created during training | `src/config.yaml:paths` | `src/config.py`, `src/latent_writer.py` |
 | \(g\) architecture and training procedure | `src/config.yaml:semantic_decoder` | `src/semantic_decoder/model.py`, `src/semantic_decoder/training.py` |

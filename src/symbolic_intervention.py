@@ -2,7 +2,7 @@
 Access to the symbolic counterfactual kernel h_S(s' | s, delta).
 
 The framework does not implement h_S: the concrete kernel is a Python object in
-the data-generation half, referenced by dotted path in ``exp/sim/config.yaml``
+the data-generation half, referenced by dotted path in ``exp/sim_talent/config.yaml``
 (``objects.symbolic_kernel``). This module defines the interface the framework
 relies on and a loader that resolves the configured object.
 """

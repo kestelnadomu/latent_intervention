@@ -1,0 +1,81 @@
+{
+  "columns": [
+    "X"
+  ],
+  "completed_at": "2026-10-17T19:48:15.259526+00:00",
+  "deployment_seed": 42,
+  "final_runs": [
+    {
+      "best_epoch": 15,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+      "checkpoint_sha256": "3698d4e5d4e1101ac4409d76040f4ebf75944879c9f3c1cd4793b9cdcb0394f4",
+      "epochs_run": 45,
+      "seed": 42,
+      "validation_joint_nll": 0.012727759778499603
+    },
+    {
+      "best_epoch": 49,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+      "checkpoint_sha256": "0dcffa107b4fed83756b07bcdee49de6db8191485617524ccea90d7a61cb0e89",
+      "epochs_run": 61,
+      "seed": 43,
+      "validation_joint_nll": 0.02073792926967144
+    },
+    {
+      "best_epoch": 13,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+      "checkpoint_sha256": "1b7ea06f81325f1aabe6a1eb08e1a787ca69c22fdfba4ae672cbf6011e3379fa",
+      "epochs_run": 43,
+      "seed": 44,
+      "validation_joint_nll": 0.013320323079824448
+    },
+    {
+      "best_epoch": 16,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+      "checkpoint_sha256": "f6e653d17ad9cb0cd5ffc2c51a6555d3d86be711403fad1ec2927393b569a7e7",
+      "epochs_run": 46,
+      "seed": 45,
+      "validation_joint_nll": 0.026339195668697357
+    },
+    {
+      "best_epoch": 13,
+      "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+      "checkpoint_sha256": "af84125bf7d2f0eedbcbe11954be34c88fa66859fb61d83f360cf4986078bb80",
+      "epochs_run": 43,
+      "seed": 46,
+      "validation_joint_nll": 0.019193418323993683
+    }
+  ],
+  "rule": "minimum development joint NLL; seed fixed before fitting",
+  "seconds": 256.7360275387764,
+  "selected_trial": {
+    "epochs_run": 45,
+    "seconds": 7.338619694113731,
+    "settings": {
+      "dropout": 0.3,
+      "hidden_dim": 256,
+      "lr": 0.003,
+      "weight_decay": 1e-06
+    },
+    "trial": 7,
+    "validation_joint_nll": 0.012727759778499603
+  },
+  "state_space": "S3",
+  "test_evaluation": false,
+  "validation_joint_nll": {
+    "mean": 0.018463725224137306,
+    "std": 0.005636563137132249
+  },
+  "validation_marginals": {
+    "X": {
+      "accuracy": {
+        "mean": 0.9950000047683716,
+        "std": 0.0
+      },
+      "ece": {
+        "mean": 0.0032612943053245544,
+        "std": 0.0008198117678409754
+      }
+    }
+  }
+}

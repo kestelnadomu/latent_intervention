@@ -5,7 +5,7 @@ This is the single place the CV-screening numbers live. The structural equations
 are Table 9 of the LIBERTy paper (arXiv 2601.10700); text generation (elsewhere)
 follows its Appendix D.3. The structured-state schema (column names and
 cardinalities) is data in ``exp/sim/config_cv_screening.yaml`` (archived; the
-active experiment is ``exp/sim/talent_sfm.py``) and read via
+active experiment is ``exp/sim_talent/talent_sfm.py``) and read via
 ``src.schema.load_schema``; that config points the framework here through its
 ``objects:`` block. The builders default to the archived config.
 

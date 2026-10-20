@@ -22,7 +22,7 @@ import yaml
 from exp.sim.generate_text import DEFAULT_BASE_URL, GenerationResult
 from exp.sim.pairing import checked_ids
 
-CONFIG_PATH = Path(__file__).parent / "config.yaml"
+CONFIG_PATH = Path(__file__).parent.parent / "sim_talent" / "config.yaml"  # default experiment
 
 
 def load_sim_config(path: str | Path = CONFIG_PATH) -> dict[str, Any]:
@@ -152,7 +152,7 @@ def resolve_llm(config: Mapping[str, Any]) -> tuple[str, str | None]:
     llm = config.get("llm", {})
     base_url = llm.get("base_url", DEFAULT_BASE_URL)
     if "<resource-name>" in base_url:
-        raise ValueError("Fill in llm.base_url in exp/sim/config.yaml")
+        raise ValueError("Fill in llm.base_url in the sim config")
     env_name = llm.get("api_key_env")
     api_key = os.getenv(env_name) if env_name else None
     if env_name and not api_key:
@@ -176,8 +176,14 @@ def prepare_generated_csv(
     digest: str,
     *,
     create: bool,
+    allow_extension: bool = False,
 ) -> pd.DataFrame:
-    """Validate a resumable billed output before any API call."""
+    """Validate a resumable billed output before any API call.
+
+    The journal pins the expected IDs, so a coverage change is refused. With
+    ``allow_extension``, a strictly larger ID set with otherwise identical inputs is
+    accepted and recorded (existing rows stay valid); shrinking is still refused.
+    """
     info_path = generation_info_path(output)
     expected_info = {
         "input_digest": digest,
@@ -198,7 +204,16 @@ def prepare_generated_csv(
         pd.DataFrame(columns=schema).to_csv(output, index=False)
 
     info = json.loads(info_path.read_text(encoding="utf-8"))
-    if any(info.get(key) != value for key, value in expected_info.items()):
+    mismatched = {key for key, value in expected_info.items() if info.get(key) != value}
+    if (
+        allow_extension
+        and mismatched == {"expected_ids"}
+        and set(info.get("expected_ids") or []) < expected_ids
+    ):
+        info.update(expected_ids=sorted(expected_ids), complete=False)
+        write_json(info_path, info)
+        mismatched = set()
+    if mismatched:
         raise RuntimeError(f"{info_path} is incompatible with current generation inputs")
     frame = pd.read_csv(output)
     if list(frame.columns) != schema:

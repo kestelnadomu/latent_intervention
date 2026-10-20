@@ -1,13 +1,29 @@
-# `exp/sim` — the talent SFM experiment
+# `exp/sim` — data generation, and the talent SFM experiment
 
-Everything experiment-specific lives here: the concrete SCM, the codebook and
-prompts that verbalize a structured state into a CV, and the stage runner that
-produces the paired data. The generic framework in `src/` reaches this folder
-only through a sim config (default `exp/sim/config.yaml`, selected by
+**Layout.** `exp/sim/` holds the generic engine and stages (SCM engine, symbolic
+kernel, per-unit design, rendering, the stage runner), the shared pool prompts and
+inputs, and the archived CV-screening experiment. Each active experiment has its own
+directory with `config.yaml`, `codebook.yaml`, `prompts/cv_generation.yaml` and its
+SCM module:
+
+- `exp/sim_talent/` — the talent SFM described below (`talent_sfm.py`);
+- `exp/sim_talent_motivation/` — its sibling with motivation M (`talent_motivation.py`;
+  design in `docs/experiments/data_sim.md`).
+
+`exp/sim/config.yaml`, `exp/sim/codebook.yaml` and `exp/sim/prompts/cv_generation.yaml`
+are symlinks into `exp/sim_talent/`, and `exp/sim/talent_sfm.py` aliases
+`exp.sim_talent.talent_sfm`: trained decoders hash the talent config's bytes, and
+`src/config.yaml` and frozen benchmark protocols still use the old paths. Do not edit
+the talent config, codebook or prompt bytes, and do not remove these shims.
+
+The experiment directories hold everything experiment-specific: the concrete SCM, the
+codebook and prompts that verbalize a structured state into a CV. The stage runner
+here produces the paired data for whichever config it is given. The generic framework in `src/` reaches this folder
+only through a sim config (default `exp/sim_talent/config.yaml`, selected by
 `sim_config` in `src/config.yaml`, read via `src/schema.py`), never by importing
 it directly.
 
-**Active experiment — talent SFM** (`config.yaml`, `talent_sfm.py`). This is the
+**Active experiment — talent SFM** (`exp/sim_talent/`: `config.yaml`, `talent_sfm.py`). This is the
 standard fairness model of Plecko & Bareinboim:
 
 - **X**: country of origin. 4 regions, and a concrete country is sampled per region.
@@ -77,7 +93,7 @@ weights from `talent_sfm.py`; X and T are independent roots.
 
 The text generation keeps the LIBERTy App. D.3 recipe and adds an evidence block:
 the proxies are written "show, don't tell", at their exact level.
-Run `uv run python -m exp.sim.talent_sfm` for the proxy correlations, Cronbach's
+Run `uv run python -m exp.sim_talent.talent_sfm` for the proxy correlations, Cronbach's
 α and the Bayes-optimal T accuracy, which is the ceiling for the decoder's T head.
 
 **Archived experiment — LIBERTy CV screening** (`config_cv_screening.yaml`,
@@ -102,6 +118,8 @@ uv run python -m exp.sim.run generate-templates            # 50 calls  -> templa
 uv run python -m exp.sim.run generate-personas             # 100 calls -> personas.csv
 uv run python -m exp.sim.run generate-texts                # n calls   -> cv_factual.csv
 uv run python -m exp.sim.run generate-counterfactual-texts # configured train/test coverage -> cv_counterfactual.csv
+uv run python -m exp.sim.run generate-floor-texts --config exp/sim_talent_motivation/config.yaml  # noise floor (per-unit design only)
+uv run python -m exp.sim.run generate-held-out-texts --config exp/sim_talent_motivation/config.yaml  # test units in codebook_held_out (V_B)
 uv run python -m exp.sim.run validate-pairs                # checks the whole contract
 ```
 
@@ -119,7 +137,7 @@ Smoke tests that need no API key or generated data:
 
 ```bash
 uv run python -m exp.sim.scm            # generic SCM engine on random tensors
-uv run python -m exp.sim.talent_sfm     # the active talent SFM: proxy validity, do(X) invariance
+uv run python -m exp.sim_talent.talent_sfm     # the active talent SFM: proxy validity, do(X) invariance
 uv run python -m exp.sim.cv_screening   # the archived Table 9 equations
 uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the active config
 ```
@@ -133,7 +151,7 @@ uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the acti
 | `run.py` | CLI only: maps a stage name to its module and calls it. Start here. |
 | `stage_simulate.py` | `simulate`. Runs the SCM, builds the seeded split, archives the previous run's artifacts. |
 | `stage_pools.py` | `generate-templates` and `generate-personas`. Two thin wrappers over one billed row loop. |
-| `stage_cv.py` | `generate-texts` and `generate-counterfactual-texts` — one routine parameterized by world. |
+| `stage_cv.py` | `generate-texts`, `generate-counterfactual-texts`, `generate-floor-texts` (noise floor: factual state, the `design.floor_swap` choice moved to the next option) and `generate-held-out-texts` (test units' factual state in `codebook_held_out`, same plan) — one routine parameterized by world. |
 | `stage_validate.py` | `validate-pairs`. Coverage plus the cross-world checks that need X and X' side by side. |
 | `stage_reset.py` | `reset-attempts`. Clears spent retry budgets for IDs with no row yet. |
 
@@ -142,7 +160,8 @@ uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the acti
 | File | Role |
 | --- | --- |
 | `helpers.py` | Config loading, digests, and the resumable billed-output core (see below). No experiment knowledge. |
-| `paired_data.py` | Structured S/S': `simulation_record`, `load_pair_inputs`, and the fixed-do()-query check. |
+| `paired_data.py` | Structured S/S': `simulation_record`, `load_pair_inputs`, and the query check (fixed do(), or per-unit with a `design:` block). |
+| `design.py` | Opt-in per-unit design: drawn interventions, counterfactual states for every do() value and target (blocked edges), and the pool/dev/evaluation partition with label roles. |
 | `render.py` | `RenderContext` — codebook spec, pools, render plan and S/S' bundled — plus `validate_grounding`. |
 | `pairing.py` | Pure functions: the seeded split, the render plan, bin materialization, `PairingError`. |
 | `generate_text.py` | LLM plumbing. `generate_text_result` against any OpenAI-compatible endpoint. |
@@ -151,10 +170,11 @@ uv run python -m exp.sim.symbolic       # the closed-form kernel h_S of the acti
 
 | File | Role |
 | --- | --- |
-| `config.yaml` | Talent SFM: n, seed, split, the do() query, the schema (incl. `auxiliary`), object pointers, paths, prompts, billing caps. |
-| `talent_sfm.py` | **The only place the talent-SFM numbers live.** `build_scm()`, `build_symbolic_kernel()`, `talent_posterior_accuracy()`. |
-| `codebook.yaml` | Talent SFM level semantics: phrases, labels, `hidden` (T), `bins` (P), `choices` (countries per region), `evidence` (L, H, A guidance), `forbidden_terms`. |
-| `prompts/cv_generation.yaml` | Talent SFM CV prompt: Box D.14 plus the show-don't-tell evidence block. |
+| `exp/sim_talent/config.yaml` | Talent SFM: n, seed, split, the do() query, the schema (incl. `auxiliary`), object pointers, paths, prompts, billing caps. |
+| `exp/sim_talent/talent_sfm.py` | **The only place the talent-SFM numbers live.** `build_scm()`, `build_symbolic_kernel()`, `talent_posterior_accuracy()`. |
+| `exp/sim_talent/codebook.yaml` | Talent SFM level semantics: phrases, labels, `hidden` (T), `bins` (P), `choices` (countries per region), `evidence` (L, H, A guidance), `forbidden_terms`. |
+| `exp/sim_talent/prompts/cv_generation.yaml` | Talent SFM CV prompt: Box D.14 plus the show-don't-tell evidence block. |
+| `exp/sim_talent_motivation/` | The motivation sibling: the same four files, `talent_motivation.py` instead of `talent_sfm.py`, plus an opt-in `design:` block (per-unit interventions, path-specific targets, partitions; `design.py`). |
 | `prompts/{template,persona}_generation.yaml` | LIBERTy boxes D.12 and D.13; the pools they produced are shared by both experiments. |
 | `*_cv_screening.*`, `cv_screening.py` | The archived LIBERTy Table 9 experiment (config, codebook, CV prompt, SCM). |
 | `seed_statements.yaml`, `job_titles.yaml` | Curated inputs the two pool stages draw from. |
@@ -245,7 +265,7 @@ The codebook blocks, all optional except `columns`:
 | `hidden` | Schema columns that are decoded but never verbalized (T). |
 | `bins` | Numeric ranges; a concrete number is sampled inside the level's range. |
 | `choices` | Option lists per level. The render-plan quantile picks one, and the CV CSV stores its index. |
-| `evidence` | Not stated as a fact: rendered as writing guidance into the prompt's `{evidence_guidance}` block. |
+| `evidence` | Not stated as a fact: rendered as writing guidance into the prompt's `{evidence_guidance}` block. A level is one string or a list of variants of the same strength; with variants, the render plan picks one per unit by quantile (like `choices`) and the CV row stores its index. |
 | `forbidden_terms` | Inlined into the prompt as `{forbidden_terms}`; `validate-pairs` reports texts that use them. |
 
 If you change the structural equations in `talent_sfm.py`, keep `schema` here in

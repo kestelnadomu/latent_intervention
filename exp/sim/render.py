@@ -9,14 +9,17 @@ replays the plan to check a written CSV against it.
 
 from __future__ import annotations
 
+import copy
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 from exp.sim.generate_text import DEFAULT_BASE_URL, GenerationResult, load_codebook_spec
+from exp.sim.design import design_paths, load_design
 from exp.sim.helpers import (
     include_train_counterfactual_texts,
     input_digest,
@@ -66,15 +69,28 @@ def load_render_spec(config: Mapping[str, Any]) -> dict[str, Any]:
     return spec
 
 
+def varied_evidence(spec: Mapping[str, Any]) -> dict[str, dict[int, list[str]]]:
+    """Evidence columns with several guidance variants for at least one level."""
+    return {
+        column: levels
+        for column, levels in spec["evidence"].items()
+        if any(len(variants) > 1 for variants in levels.values())
+    }
+
+
 def sampled_columns(spec: Mapping[str, Any]) -> list[str]:
-    """Columns rendered from a render-plan quantile: bins first, then choices."""
-    return [*spec["bins"], *spec["choices"]]
+    """Columns rendered from a render-plan quantile: bins, choices, then varied evidence.
+
+    Codebooks without evidence variants keep exactly the earlier plan layout.
+    """
+    return [*spec["bins"], *spec["choices"], *varied_evidence(spec)]
 
 
 def cv_schema(spec: Mapping[str, Any]) -> tuple[list[str], dict[str, str]]:
     """Column layout of a generated CV CSV and the header of each sampled field.
 
-    A binned field stores the concrete number, a choice field the option index.
+    A binned field stores the concrete number, a choice field the option index, a
+    varied evidence field the guidance-variant index.
     """
     headers = {column: slug(spec["labels"].get(column, column)) for column in sampled_columns(spec)}
     return [
@@ -137,6 +153,78 @@ def generation_digest(config: Mapping[str, Any], counterfactual: bool) -> str:
         files["pair_index"] = Path(config["paths"]["pair_index"])
         files["factual_text"] = Path(config["paths"]["texts"])
         settings["intervention"] = config["intervention"]
+        if load_design(config) is not None:  # per-unit queries: the drawn values decide X'
+            files["interventions"] = design_paths(config)["interventions"]
+            settings["design"] = config["design"]
+    return input_digest(settings, files)
+
+
+def held_out_config(config: Mapping[str, Any]) -> dict[str, Any]:
+    """The config with ``codebook_held_out`` as its codebook (V_B rendering).
+
+    Everything else, in particular the render plan, is shared with the production
+    codebook, which must therefore have the same CV layout (sampled columns, labels).
+    """
+    if "codebook_held_out" not in config or "texts_held_out" not in config["paths"]:
+        raise ValueError("held-out texts need codebook_held_out and paths.texts_held_out")
+    held_out = copy.deepcopy(dict(config))
+    held_out["codebook"] = config["codebook_held_out"]
+    return held_out
+
+
+def held_out_ids(config: Mapping[str, Any], test_ids: set[int]) -> set[int]:
+    """The test units rendered in the held-out codebook.
+
+    A seeded permutation of the test units, of which the first ``held_out_fraction``
+    (default 1) are taken. Raising the fraction only extends the subset, so already
+    generated rows stay valid; the fraction is therefore not part of the digest.
+    """
+    fraction = float(config.get("held_out_fraction", 1.0))
+    if not 0 < fraction <= 1:
+        raise ValueError("held_out_fraction must lie in (0, 1]")
+    seed = int(config["split"]["seed"])
+    order = np.random.default_rng([seed, 5]).permutation(sorted(test_ids))
+    return {int(unit_id) for unit_id in order[: round(fraction * len(order))]}
+
+
+def held_out_digest(config: Mapping[str, Any]) -> str:
+    """Digest of every input the held-out (V_B) CV file depends on."""
+    sim_dir = Path(config["paths"]["sim_dir"])
+    files = {
+        "states": sim_dir / "sim_data_factual.csv",
+        "render_plan": Path(config["paths"]["render_plan"]),
+        "templates": Path(config["paths"]["templates"]),
+        "personas": Path(config["paths"]["personas"]),
+        "prompt": Path(config["prompts"]["cv"]),
+        "codebook": Path(config["codebook_held_out"]),
+        "pair_index": Path(config["paths"]["pair_index"]),
+    }
+    settings = {
+        "renderer": RENDERER_VERSION,
+        "world": "held_out",
+        "endpoint": config.get("llm", {}).get("base_url", DEFAULT_BASE_URL),
+    }
+    return input_digest(settings, files)
+
+
+def floor_digest(config: Mapping[str, Any]) -> str:
+    """Digest of every input the noise-floor CV file depends on."""
+    sim_dir = Path(config["paths"]["sim_dir"])
+    files = {
+        "states": sim_dir / "sim_data_factual.csv",
+        "render_plan": Path(config["paths"]["render_plan"]),
+        "templates": Path(config["paths"]["templates"]),
+        "personas": Path(config["paths"]["personas"]),
+        "prompt": Path(config["prompts"]["cv"]),
+        "codebook": Path(config["codebook"]),
+        "partition": design_paths(config)["partition"],
+    }
+    settings = {
+        "renderer": RENDERER_VERSION,
+        "world": "floor",
+        "swap": config["design"]["floor_swap"],
+        "endpoint": config.get("llm", {}).get("base_url", DEFAULT_BASE_URL),
+    }
     return input_digest(settings, files)
 
 
@@ -161,10 +249,16 @@ def _candidate_info(
     return "[" + ", ".join(parts) + "]"
 
 
-def _evidence_guidance(state: Mapping[str, Any], spec: Mapping[str, Any]) -> str:
-    """One bullet of writing guidance per evidence column, at the state's level."""
+def _evidence_guidance(
+    state: Mapping[str, Any], spec: Mapping[str, Any], concrete: Mapping[str, int]
+) -> str:
+    """One bullet of writing guidance per evidence column, at the state's level.
+
+    For a varied column, ``concrete`` holds the render plan's variant index.
+    """
     return "\n".join(
-        f"- {spec['labels'].get(column, column)}: {levels[int(state[column])]}"
+        f"- {spec['labels'].get(column, column)}: "
+        f"{levels[int(state[column])][concrete.get(column, 0)]}"
         for column, levels in spec["evidence"].items()
     )
 
@@ -216,20 +310,31 @@ class RenderContext:
         return Path(self.config["paths"][key])
 
     def render_inputs(
-        self, row_id: int, counterfactual: bool
+        self, row_id: int, counterfactual: bool, swap: str | None = None
     ) -> tuple[dict[str, Any], dict[str, int]]:
-        """Prompt sample and concrete binned values for one unit."""
+        """Prompt sample and concrete binned values for one unit.
+
+        ``swap`` names a choices column whose option is replaced by the next option
+        of the same level (wrapping): the noise-floor rendering of an unchanged state.
+        """
         state = self.states_by_id(counterfactual).loc[row_id]
         plan = self.plan_by_id.loc[row_id]
         template = self.templates.loc[int(plan["template_id"])]
         persona = self.personas.loc[int(plan["persona_id"])]
-        concrete = materialize_binned_values(state, self.spec["bins"], plan, self.spec["choices"])
+        concrete = materialize_binned_values(
+            state, self.spec["bins"], plan, {**self.spec["choices"], **varied_evidence(self.spec)}
+        )
+        if swap is not None:
+            options = self.spec["choices"][swap][int(state[swap])]
+            if len(options) < 2:
+                raise ValueError(f"{swap}={int(state[swap])} has no alternative option to swap to")
+            concrete[swap] = (concrete[swap] + 1) % len(options)
         sample = {
             "cv_template": template["text"],
             "candidate_info": _candidate_info(state, self.spec, concrete),
             "persona_details": f"Job Title: {persona['job_title']}\n{persona['text']}",
             # extra keys are ignored by prompts without these placeholders
-            "evidence_guidance": _evidence_guidance(state, self.spec),
+            "evidence_guidance": _evidence_guidance(state, self.spec, concrete),
             "forbidden_terms": ", ".join(self.spec["forbidden_terms"]),
         }
         return sample, concrete
@@ -292,15 +397,21 @@ def validate_grounding(
     *,
     counterfactual: bool,
     factual_text: pd.DataFrame | None = None,
+    swap: str | None = None,
 ) -> None:
-    """Replay the render plan and check a written CV file matches it row by row."""
+    """Replay the render plan and check a written CV file matches it row by row.
+
+    ``swap`` replays a noise-floor file (factual state, swapped choice option).
+    """
+    if swap is not None and counterfactual:
+        raise ValueError("noise-floor texts render the factual state")
     if output.empty:
         return
     factual_by_id = factual_text.set_index("id") if factual_text is not None else None
     for row in output.to_dict(orient="records"):
         row_id = int(row["id"])
         plan_row = ctx.plan_by_id.loc[row_id]
-        _, concrete = ctx.render_inputs(row_id, counterfactual)
+        _, concrete = ctx.render_inputs(row_id, counterfactual, swap)
         if int(row["template_id"]) != int(plan_row["template_id"]):
             raise ValueError(f"incorrect template for id={row_id}")
         if int(row["persona_id"]) != int(plan_row["persona_id"]):

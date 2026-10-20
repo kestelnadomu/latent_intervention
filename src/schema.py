@@ -5,7 +5,7 @@ Generic structured-state schema shared by the framework modules.
 (its columns and their cardinalities, in decoding order) and the SCM behind it
 live in the data-generation half; the framework reads them at run time:
 
-- the column schema is data in ``exp/sim/config.yaml`` (``schema:`` block), read
+- the column schema is data in the sim config (default ``exp/sim_talent/config.yaml``) (``schema:`` block), read
   by :func:`load_schema`;
 - the concrete SCM and its closed-form counterfactual kernel are Python objects
   in ``exp/sim/``, referenced by dotted path in the same config (``objects:``
@@ -24,7 +24,7 @@ import yaml
 
 # Default location of the data-generation config that carries the schema and the
 # dotted-path pointers. A repo-relative path, not experiment knowledge.
-SIM_CONFIG_PATH = Path(__file__).resolve().parent.parent / "exp" / "sim" / "config.yaml"
+SIM_CONFIG_PATH = Path(__file__).resolve().parent.parent / "exp" / "sim_talent" / "config.yaml"
 
 
 @dataclass(frozen=True)

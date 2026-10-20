@@ -1,0 +1,620 @@
+[
+  {
+    "columns": [
+      "X",
+      "T",
+      "D",
+      "U"
+    ],
+    "completed_at": "2026-10-17T19:57:06.907894+00:00",
+    "deployment_seed": 42,
+    "final_runs": [
+      {
+        "best_epoch": 134,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S1/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+        "checkpoint_sha256": "a977f9dfdb4ec04a4995e676972bceefeb5efa317041eb331c6e8abead06330c",
+        "epochs_run": 164,
+        "seed": 42,
+        "validation_joint_nll": 0.5581253170967102
+      },
+      {
+        "best_epoch": 137,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S1/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+        "checkpoint_sha256": "2f1b9dd9c32fb029e2ba3da9efbd537913d49b3b4cf9ec4f9556ed308dc7e7db",
+        "epochs_run": 167,
+        "seed": 43,
+        "validation_joint_nll": 0.526860237121582
+      },
+      {
+        "best_epoch": 129,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S1/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+        "checkpoint_sha256": "38e1025235c7dc6634827d81567b96eaeecee913f57aefe2965e1046ec6d4e98",
+        "epochs_run": 159,
+        "seed": 44,
+        "validation_joint_nll": 0.5548142194747925
+      },
+      {
+        "best_epoch": 162,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S1/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+        "checkpoint_sha256": "e33f111541ddaccbde50e14e55c51369d518000ed25cb29f64b8bcbd979fc358",
+        "epochs_run": 192,
+        "seed": 45,
+        "validation_joint_nll": 0.5473209619522095
+      },
+      {
+        "best_epoch": 136,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S1/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+        "checkpoint_sha256": "5a8f7c5cd57d0fb09f8b74551005e7888cddc90572bf4572ce82487da28b034a",
+        "epochs_run": 166,
+        "seed": 46,
+        "validation_joint_nll": 0.5447167158126831
+      }
+    ],
+    "rule": "minimum development joint NLL; seed fixed before fitting",
+    "seconds": 788.3321613818407,
+    "selected_trial": {
+      "epochs_run": 164,
+      "seconds": 14.890367731451988,
+      "settings": {
+        "dropout": 0.3,
+        "hidden_dim": 128,
+        "lr": 0.001,
+        "weight_decay": 0.0001
+      },
+      "trial": 10,
+      "validation_joint_nll": 0.5581253170967102
+    },
+    "state_space": "S1",
+    "test_evaluation": false,
+    "validation_joint_nll": {
+      "mean": 0.5463674902915955,
+      "std": 0.012183603899300162
+    },
+    "validation_marginals": {
+      "D": {
+        "accuracy": {
+          "mean": 0.9980000019073486,
+          "std": 0.00447213169003838
+        },
+        "ece": {
+          "mean": 0.011088936328887938,
+          "std": 0.003262217096311777
+        }
+      },
+      "T": {
+        "accuracy": {
+          "mean": 0.8570000171661377,
+          "std": 0.00908294240011533
+        },
+        "ece": {
+          "mean": 0.05730592587590218,
+          "std": 0.006014714440403704
+        }
+      },
+      "U": {
+        "accuracy": {
+          "mean": 0.9669999957084656,
+          "std": 0.008366620782814806
+        },
+        "ece": {
+          "mean": 0.03231515118479729,
+          "std": 0.00337154104649799
+        }
+      },
+      "X": {
+        "accuracy": {
+          "mean": 0.9950000047683716,
+          "std": 0.0
+        },
+        "ece": {
+          "mean": 0.0076408772468566895,
+          "std": 0.0013493916787986418
+        }
+      }
+    }
+  },
+  {
+    "columns": [
+      "X",
+      "D",
+      "U"
+    ],
+    "completed_at": "2026-10-17T19:58:38.063099+00:00",
+    "deployment_seed": 42,
+    "final_runs": [
+      {
+        "best_epoch": 51,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S2/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+        "checkpoint_sha256": "c6d43e10634b3c33966b2ba99066449a15a03d1d5e52c4d8748d70d06d310a85",
+        "epochs_run": 81,
+        "seed": 42,
+        "validation_joint_nll": 0.03380288556218147
+      },
+      {
+        "best_epoch": 60,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S2/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+        "checkpoint_sha256": "c91fc385bdcbac4ec30fd88f3e17e38f38f4e3b18fba31dc93456770184b4376",
+        "epochs_run": 90,
+        "seed": 43,
+        "validation_joint_nll": 0.04849589243531227
+      },
+      {
+        "best_epoch": 62,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S2/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+        "checkpoint_sha256": "fd95f31f6e09436e79f1d7f37648149c850953e1901bd2c5b604af46b1b0c4f2",
+        "epochs_run": 92,
+        "seed": 44,
+        "validation_joint_nll": 0.04168954957276583
+      },
+      {
+        "best_epoch": 56,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S2/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+        "checkpoint_sha256": "28c37005b105d4a8efdc786be8b6a1c18606512e72aed502194b16ab69c2202a",
+        "epochs_run": 86,
+        "seed": 45,
+        "validation_joint_nll": 0.024912139400839806
+      },
+      {
+        "best_epoch": 40,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S2/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+        "checkpoint_sha256": "2cee7de7cbe96e95f54f867b87ab669c35b97cc821569cd8dfbeba0df1ed793a",
+        "epochs_run": 70,
+        "seed": 46,
+        "validation_joint_nll": 0.03433234244585037
+      }
+    ],
+    "rule": "minimum development joint NLL; seed fixed before fitting",
+    "seconds": 879.404240205884,
+    "selected_trial": {
+      "epochs_run": 81,
+      "seconds": 13.752906709909439,
+      "settings": {
+        "dropout": 0.3,
+        "hidden_dim": 512,
+        "lr": 0.003,
+        "weight_decay": 0.0
+      },
+      "trial": 16,
+      "validation_joint_nll": 0.03380288556218147
+    },
+    "state_space": "S2",
+    "test_evaluation": false,
+    "validation_joint_nll": {
+      "mean": 0.03664656188338995,
+      "std": 0.008901925872919051
+    },
+    "validation_marginals": {
+      "D": {
+        "accuracy": {
+          "mean": 1.0,
+          "std": 0.0
+        },
+        "ece": {
+          "mean": 0.00033469152450561523,
+          "std": 0.0005137009143396775
+        }
+      },
+      "U": {
+        "accuracy": {
+          "mean": 0.997000002861023,
+          "std": 0.0027386101757811525
+        },
+        "ece": {
+          "mean": 0.007916329801082611,
+          "std": 0.0013415875617665725
+        }
+      },
+      "X": {
+        "accuracy": {
+          "mean": 0.9950000047683716,
+          "std": 0.0
+        },
+        "ece": {
+          "mean": 0.003984438538551331,
+          "std": 0.0007618812999241252
+        }
+      }
+    }
+  },
+  {
+    "columns": [
+      "X"
+    ],
+    "completed_at": "2026-10-17T19:48:15.259526+00:00",
+    "deployment_seed": 42,
+    "final_runs": [
+      {
+        "best_epoch": 15,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+        "checkpoint_sha256": "3698d4e5d4e1101ac4409d76040f4ebf75944879c9f3c1cd4793b9cdcb0394f4",
+        "epochs_run": 45,
+        "seed": 42,
+        "validation_joint_nll": 0.012727759778499603
+      },
+      {
+        "best_epoch": 49,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+        "checkpoint_sha256": "0dcffa107b4fed83756b07bcdee49de6db8191485617524ccea90d7a61cb0e89",
+        "epochs_run": 61,
+        "seed": 43,
+        "validation_joint_nll": 0.02073792926967144
+      },
+      {
+        "best_epoch": 13,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+        "checkpoint_sha256": "1b7ea06f81325f1aabe6a1eb08e1a787ca69c22fdfba4ae672cbf6011e3379fa",
+        "epochs_run": 43,
+        "seed": 44,
+        "validation_joint_nll": 0.013320323079824448
+      },
+      {
+        "best_epoch": 16,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+        "checkpoint_sha256": "f6e653d17ad9cb0cd5ffc2c51a6555d3d86be711403fad1ec2927393b569a7e7",
+        "epochs_run": 46,
+        "seed": 45,
+        "validation_joint_nll": 0.026339195668697357
+      },
+      {
+        "best_epoch": 13,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S3/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+        "checkpoint_sha256": "af84125bf7d2f0eedbcbe11954be34c88fa66859fb61d83f360cf4986078bb80",
+        "epochs_run": 43,
+        "seed": 46,
+        "validation_joint_nll": 0.019193418323993683
+      }
+    ],
+    "rule": "minimum development joint NLL; seed fixed before fitting",
+    "seconds": 256.7360275387764,
+    "selected_trial": {
+      "epochs_run": 45,
+      "seconds": 7.338619694113731,
+      "settings": {
+        "dropout": 0.3,
+        "hidden_dim": 256,
+        "lr": 0.003,
+        "weight_decay": 1e-06
+      },
+      "trial": 7,
+      "validation_joint_nll": 0.012727759778499603
+    },
+    "state_space": "S3",
+    "test_evaluation": false,
+    "validation_joint_nll": {
+      "mean": 0.018463725224137306,
+      "std": 0.005636563137132249
+    },
+    "validation_marginals": {
+      "X": {
+        "accuracy": {
+          "mean": 0.9950000047683716,
+          "std": 0.0
+        },
+        "ece": {
+          "mean": 0.0032612943053245544,
+          "std": 0.0008198117678409754
+        }
+      }
+    }
+  },
+  {
+    "columns": [
+      "X",
+      "T",
+      "U"
+    ],
+    "completed_at": "2026-10-17T19:56:05.797765+00:00",
+    "deployment_seed": 42,
+    "final_runs": [
+      {
+        "best_epoch": 121,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+        "checkpoint_sha256": "cab4fdaa3e01c5dd9eb2c0aefedb2cd33244824b9731a2f22094124ab46c0c2f",
+        "epochs_run": 151,
+        "seed": 42,
+        "validation_joint_nll": 0.5204899907112122
+      },
+      {
+        "best_epoch": 119,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+        "checkpoint_sha256": "d5ba3230f2c80ad78431a78d3700add3fb990f9b2b3aeab659cc20e017f505d3",
+        "epochs_run": 149,
+        "seed": 43,
+        "validation_joint_nll": 0.5167949795722961
+      },
+      {
+        "best_epoch": 104,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+        "checkpoint_sha256": "08073f4f9c9ccba709c8231752db828af78702792501e735fed02d9f349b9ccb",
+        "epochs_run": 134,
+        "seed": 44,
+        "validation_joint_nll": 0.5318193286657333
+      },
+      {
+        "best_epoch": 103,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+        "checkpoint_sha256": "b8adbc5f10ac2708aa73691482aa5637c7da0d8a7753c978da6a63feab919002",
+        "epochs_run": 133,
+        "seed": 45,
+        "validation_joint_nll": 0.5304547548294067
+      },
+      {
+        "best_epoch": 119,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S4/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+        "checkpoint_sha256": "623ab4fc0611bd0b5df9ee559e06bf470af7e70966e84fbf25159f733f5badc1",
+        "epochs_run": 149,
+        "seed": 46,
+        "validation_joint_nll": 0.5103020668029785
+      }
+    ],
+    "rule": "minimum development joint NLL; seed fixed before fitting",
+    "seconds": 727.24245429039,
+    "selected_trial": {
+      "epochs_run": 151,
+      "seconds": 14.507932290434837,
+      "settings": {
+        "dropout": 0.3,
+        "hidden_dim": 128,
+        "lr": 0.001,
+        "weight_decay": 0.0001
+      },
+      "trial": 10,
+      "validation_joint_nll": 0.5204899907112122
+    },
+    "state_space": "S4",
+    "test_evaluation": false,
+    "validation_joint_nll": {
+      "mean": 0.5219722241163254,
+      "std": 0.009139368741323395
+    },
+    "validation_marginals": {
+      "T": {
+        "accuracy": {
+          "mean": 0.8500000238418579,
+          "std": 0.006123718516919305
+        },
+        "ece": {
+          "mean": 0.05696841272711754,
+          "std": 0.00536934404953224
+        }
+      },
+      "U": {
+        "accuracy": {
+          "mean": 0.9569999814033509,
+          "std": 0.0027386101757811525
+        },
+        "ece": {
+          "mean": 0.03075975060462952,
+          "std": 0.00999220551620248
+        }
+      },
+      "X": {
+        "accuracy": {
+          "mean": 0.9950000047683716,
+          "std": 0.0
+        },
+        "ece": {
+          "mean": 0.006930430740118026,
+          "std": 0.0004691282066239592
+        }
+      }
+    }
+  },
+  {
+    "columns": [
+      "X",
+      "U"
+    ],
+    "completed_at": "2026-10-17T19:58:22.115742+00:00",
+    "deployment_seed": 42,
+    "final_runs": [
+      {
+        "best_epoch": 220,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S5/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+        "checkpoint_sha256": "9bfea6105771529f26fb2121dc8df5e9d75ef0713f6ce86b7f620dcc82ab027e",
+        "epochs_run": 250,
+        "seed": 42,
+        "validation_joint_nll": 0.04306410253047943
+      },
+      {
+        "best_epoch": 182,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S5/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+        "checkpoint_sha256": "846ff5c8b9e7f7a40335291e7a4af9d5feff35d1709390fa2bb706e8f40a01c0",
+        "epochs_run": 202,
+        "seed": 43,
+        "validation_joint_nll": 0.052624624222517014
+      },
+      {
+        "best_epoch": 163,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S5/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+        "checkpoint_sha256": "a525c0c358f30eb41a94067f4e49355ed0ef3880fd56d22ced7f65602a627fe2",
+        "epochs_run": 193,
+        "seed": 44,
+        "validation_joint_nll": 0.04138120263814926
+      },
+      {
+        "best_epoch": 114,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S5/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+        "checkpoint_sha256": "d174a3fc941622393afc35871885e979c74dcbba4f078d118b0d87eec7d5a7a4",
+        "epochs_run": 144,
+        "seed": 45,
+        "validation_joint_nll": 0.058424197137355804
+      },
+      {
+        "best_epoch": 137,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S5/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+        "checkpoint_sha256": "ff9d65eceee65f4207faaad7e55b8908a6f721e3c461f958d0610baa61fe3d41",
+        "epochs_run": 167,
+        "seed": 46,
+        "validation_joint_nll": 0.05492202192544937
+      }
+    ],
+    "rule": "minimum development joint NLL; seed fixed before fitting",
+    "seconds": 862.9222800731659,
+    "selected_trial": {
+      "epochs_run": 250,
+      "seconds": 53.871610671281815,
+      "settings": {
+        "dropout": 0.3,
+        "hidden_dim": 512,
+        "lr": 0.0003,
+        "weight_decay": 1e-05
+      },
+      "trial": 13,
+      "validation_joint_nll": 0.04306410253047943
+    },
+    "state_space": "S5",
+    "test_evaluation": false,
+    "validation_joint_nll": {
+      "mean": 0.050083229690790175,
+      "std": 0.007490623393921614
+    },
+    "validation_marginals": {
+      "U": {
+        "accuracy": {
+          "mean": 0.9960000038146972,
+          "std": 0.004183296143164483
+        },
+        "ece": {
+          "mean": 0.0170218460559845,
+          "std": 0.0037214889987153953
+        }
+      },
+      "X": {
+        "accuracy": {
+          "mean": 0.9950000047683716,
+          "std": 0.0
+        },
+        "ece": {
+          "mean": 0.0036994858980178833,
+          "std": 0.0003928648641219182
+        }
+      }
+    }
+  },
+  {
+    "columns": [
+      "X",
+      "T",
+      "D",
+      "U",
+      "M"
+    ],
+    "completed_at": "2026-10-17T19:59:09.628054+00:00",
+    "deployment_seed": 42,
+    "final_runs": [
+      {
+        "best_epoch": 229,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S6/runs/g-independent-s1-s6-v1/final/seed-42/semantic_decoder.pt",
+        "checkpoint_sha256": "49eb1db2d68d71cc537ed42b0d92af6b2a3e32ef82d31b971b5f41dd6a9a492a",
+        "epochs_run": 259,
+        "seed": 42,
+        "validation_joint_nll": 1.3228042423725128
+      },
+      {
+        "best_epoch": 259,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S6/runs/g-independent-s1-s6-v1/final/seed-43/semantic_decoder.pt",
+        "checkpoint_sha256": "fcf082eb81f336e09aee569cefdb6f44062a2abb8921199ca92db3082856a255",
+        "epochs_run": 289,
+        "seed": 43,
+        "validation_joint_nll": 1.2638852000236511
+      },
+      {
+        "best_epoch": 227,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S6/runs/g-independent-s1-s6-v1/final/seed-44/semantic_decoder.pt",
+        "checkpoint_sha256": "d17993d012311dc25227e6e747b2ad7e70aa697fee0073f52bc68b381270eb38",
+        "epochs_run": 257,
+        "seed": 44,
+        "validation_joint_nll": 1.2317194044589996
+      },
+      {
+        "best_epoch": 258,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S6/runs/g-independent-s1-s6-v1/final/seed-45/semantic_decoder.pt",
+        "checkpoint_sha256": "cd6c3eced4c6d3468629ce6076385a467153186ccfbc3a419444a28f349550e6",
+        "epochs_run": 288,
+        "seed": 45,
+        "validation_joint_nll": 1.2554343044757843
+      },
+      {
+        "best_epoch": 254,
+        "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S6/runs/g-independent-s1-s6-v1/final/seed-46/semantic_decoder.pt",
+        "checkpoint_sha256": "1519731461380110c88fdcf4111a3747f8d1bd34389a3c53bb28f158062a3a4c",
+        "epochs_run": 284,
+        "seed": 46,
+        "validation_joint_nll": 1.2667304277420044
+      }
+    ],
+    "rule": "minimum development joint NLL; seed fixed before fitting",
+    "seconds": 910.2927259802818,
+    "selected_trial": {
+      "epochs_run": 259,
+      "seconds": 27.941292867064476,
+      "settings": {
+        "dropout": 0.3,
+        "hidden_dim": 128,
+        "lr": 0.001,
+        "weight_decay": 0.0001
+      },
+      "trial": 10,
+      "validation_joint_nll": 1.3228042423725128
+    },
+    "state_space": "S6",
+    "test_evaluation": false,
+    "validation_joint_nll": {
+      "mean": 1.2681147158145905,
+      "std": 0.033526709101905326
+    },
+    "validation_marginals": {
+      "D": {
+        "accuracy": {
+          "mean": 0.9980000019073486,
+          "std": 0.0027386101757811525
+        },
+        "ece": {
+          "mean": 0.01093567144870758,
+          "std": 0.0010205571968676288
+        }
+      },
+      "M": {
+        "accuracy": {
+          "mean": 0.706000006198883,
+          "std": 0.02073644529125582
+        },
+        "ece": {
+          "mean": 0.060017837107181546,
+          "std": 0.019721676543076192
+        }
+      },
+      "T": {
+        "accuracy": {
+          "mean": 0.8480000138282776,
+          "std": 0.006708215305758658
+        },
+        "ece": {
+          "mean": 0.06209308058023453,
+          "std": 0.00753825135376841
+        }
+      },
+      "U": {
+        "accuracy": {
+          "mean": 0.9830000162124634,
+          "std": 0.007582868212457995
+        },
+        "ece": {
+          "mean": 0.027174382835626603,
+          "std": 0.0012263647508172614
+        }
+      },
+      "X": {
+        "accuracy": {
+          "mean": 0.9950000047683716,
+          "std": 0.0
+        },
+        "ece": {
+          "mean": 0.010313635349273681,
+          "std": 0.0007806016033398088
+        }
+      }
+    }
+  }
+]

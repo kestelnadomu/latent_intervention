@@ -1,0 +1,39 @@
+# Factual-only independent g; no test evaluation or downstream fitting.
+encoding_config: configs/encoding_talent_motivation.yaml
+run_id: g-independent-s1-s6-v1
+workers: 6
+threads_per_worker: 1
+label_budget: 1000
+expected_counts: {pool: 2800, dev: 200, eval: 1000, L: 1000, P: 1000}
+state_spaces:
+  S1: [X, T, D, U]
+  S2: [X, D, U]
+  S3: [X]
+  S4: [X, T, U]
+  S5: [X, U]
+  S6: [X, T, D, U, M]
+paths:
+  models: models/talent_motivation/embeddinggemma_768/g-independent
+  reports: reports/talent_motivation/reader_benchmarks
+training:
+  variant: independent
+  hidden_dim: 256
+  n_hidden: 2
+  dropout: 0.1
+  epochs: 500
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 0.0
+  calibration_bins: 10
+  early_stopping: {patience: 30, min_delta: 1.0e-4}
+  scheduler: {patience: 10, factor: 0.5, min_lr: 1.0e-6}
+  search:
+    trials: 20
+    seed: 20260922
+    initialization_seed: 42
+    final_seeds: [42, 43, 44, 45, 46]
+    deployment_seed: 42
+    lr: [1.0e-4, 3.0e-4, 1.0e-3, 3.0e-3]
+    weight_decay: [0.0, 1.0e-6, 1.0e-5, 1.0e-4, 1.0e-3]
+    dropout: [0.0, 0.1, 0.2, 0.3]
+    hidden_dim: [128, 256, 512]

@@ -9,14 +9,16 @@ For the behavior-preserving cleanup and a map of the smaller entry points, see t
 
 The pipeline builds counterfactual latent representations of text: an SCM simulates paired factual and counterfactual candidate attributes, an LLM verbalizes the approved worlds into CV personal statements, the configured frozen LangVAE, Nomic, Qwen3 or EmbeddingGemma encoder maps them into fixed-width latents, a semantic decoder grounds those latents in the SCM variables, and a latent manipulator learns to transform them analogously to the SCM's counterfactual operation. LangVAE uses 128 dimensions; the other encoders offer multiple embedding widths.
 
-The synthetic SCM follows the CV Screening setup of the LIBERTy paper ([arXiv 2601.10700](https://arxiv.org/abs/2601.10700)). Text generation is a protocol-faithful adaptation of its Appendix D.3: seed personal statements are abstracted into narrative templates, personas are generated for sampled job titles, and each rendered world combines a fixed template, persona, and the unit's attribute values. This is not a literal replication of the released benchmark.
+The active SCM is a standard fairness model (Plečko & Bareinboim): country of origin X, talent T (hidden, shown only through behavioural proxies), mediators degree D and university tier U, and qualification Y. A sibling experiment adds motivation M (see [Talent-motivation sibling](#talent-motivation-sibling)). The earlier CV Screening setup of the LIBERTy paper ([arXiv 2601.10700](https://arxiv.org/abs/2601.10700)) is archived in `exp/sim/`. Text generation is a protocol-faithful adaptation of LIBERTy's Appendix D.3: seed personal statements are abstracted into narrative templates, personas are generated for sampled job titles, and each rendered world combines a fixed template, persona, and the unit's attribute values. This is not a literal replication of the released benchmark.
 
 ## Repository layout
 
 | Path | Contents |
 | --- | --- |
-| `exp/sim/` | Data generation pipeline: Python SCM, codebook, generation prompts (`prompts/`), seed statements + job titles, LLM plumbing, stage runner, `config.yaml` (own README) |
+| `exp/sim/` | Generic data-generation engine and stages: SCM engine, symbolic kernel, per-unit design (`design.py`), rendering, LLM plumbing, stage runner; shared pool prompts, seed statements and job titles; the archived CV-screening experiment (own README) |
 | `exp/sim/R/` | Original SCM simulation in R, kept as the reference implementation (own README, renv) |
+| `exp/sim_talent/` | The talent SFM experiment: `talent_sfm.py`, `config.yaml`, `codebook.yaml`, `prompts/cv_generation.yaml`. `exp/sim/{config,codebook}.yaml`, `exp/sim/prompts/cv_generation.yaml` and `exp/sim/talent_sfm.py` still resolve to these files, because trained decoders hash the config's bytes; do not edit these four files |
+| `exp/sim_talent_motivation/` | The talent-motivation sibling: `talent_motivation.py`, `config.yaml` (with a per-unit `design:` block), `codebook.yaml` (V_A, with evidence variants), `codebook_vb.yaml` (held-out V_B wording), `prompts/cv_generation.yaml` |
 | `exp/encoding/` | Resumable encoding queues (Nomic/Qwen3/EmbeddingGemma dimension queues, preflight, setup, LangVAE-FT encoding, oracle targets); `requirements/` holds the hash-locked dependencies of the isolated Qwen3/EmbeddingGemma venvs |
 | `exp/langvae_ft/` | LangVAE fine-tuning on the generated CVs; `environment/` is its pinned CUDA 12.4 uv project |
 | `exp/benchmarks/` | The all-encoder g benchmark (`semantic_decoder/`) and the nine-family h_Z benchmark (`latent_intervention/`) |
@@ -37,7 +39,7 @@ Requires Python ≥ 3.12 and [uv](https://docs.astral.sh/uv/). Run all commands 
 uv sync --extra dev --frozen
 ```
 
-All billed stages—templates, personas, and CVs—use the single endpoint in `exp/sim/config.yaml`. The default configuration targets Azure OpenAI and reads `AZURE_OPENAI_API_KEY`. The key must grant access to that endpoint and to the deployment named `gpt-5.4` in `exp/sim/prompts/*.yaml`.
+All billed stages—templates, personas, and CVs—use the endpoint in the experiment's config (`exp/sim_talent/config.yaml`, or `exp/sim_talent_motivation/config.yaml` for the sibling). The default configuration targets Azure OpenAI and reads `AZURE_OPENAI_API_KEY`. The key must grant access to that endpoint and to the deployment named `gpt-5.4` in the prompt YAMLs (`exp/sim/prompts/`, `exp/sim_talent*/prompts/`).
 
 Provide the key locally, never in a committed file. Either create an ignored root `.env` file:
 
@@ -55,6 +57,8 @@ For another OpenAI-compatible provider, change `llm.base_url`, `llm.api_key_env`
 
 ## Pipeline
 
+### Talent SFM
+
 The active talent experiment uses one fixed query, `do(X=3)`. Units already in region `X=3` are identity pairs; the other units receive the nontrivial intervention. It does not generate the opposite-value queries or an orbit of interventions.
 
 The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test split, and whether the structured intervention is an identity. Artifact coverage is:
@@ -69,7 +73,7 @@ The seeded `pair_index.csv` contains each integer unit ID, its 80/20 train/test 
 
 By default (`generation.include_train_counterfactual_texts: true` or omitted), `X'` is created for every unit; setting the option to `false` creates `X'` for test units only. Selected identity units copy `X'=X` without another LLM call, and identity test units use `Z'=Z` without another encoding. Nonidentity worlds reuse the same template, persona, and bin quantiles. Training `X'` is available for future work but does not enter the current training losses; `Z'` and counterfactual recovery evaluation remain test-only.
 
-Data generation is configured by `exp/sim/config.yaml`. Every billed stage appends successful rows and resumes from missing IDs. Each active billed output CSV must remain together and be committed with its `*.generation.json` information file; the dated template CSV is only a legacy archive. `generation.limit` controls how many IDs are sent to the API per invocation; free identity copies do not count. Each selected ID permits at most `generation.max_attempts` API calls. Set `generation.limit: 1` for a small billed smoke test of at most three calls, inspect the result, then restore `null` and rerun the same stage to completion before advancing.
+Data generation is configured by `exp/sim_talent/config.yaml`. Every billed stage appends successful rows and resumes from missing IDs. Each active billed output CSV must remain together and be committed with its `*.generation.json` information file; the dated template CSV is only a legacy archive. `generation.limit` controls how many IDs are sent to the API per invocation; free identity copies do not count. Each selected ID permits at most `generation.max_attempts` API calls. Set `generation.limit: 1` for a small billed smoke test of at most three calls, inspect the result, then restore `null` and rerun the same stage to completion before advancing.
 
 For a complete fresh run, execute these stages in order:
 
@@ -90,7 +94,84 @@ The simulation-data pipeline is complete only when `validate-pairs` reports:
 validated <factual units> factual units and <selected units> counterfactual pairs
 ```
 
+### Talent-motivation sibling
+
+Design: [docs/experiments/data_sim.md](docs/experiments/data_sim.md); the experiments that use
+it: [docs/experiments/wrong_symbolic_model.md](docs/experiments/wrong_symbolic_model.md). It is
+the talent SFM plus motivation M: a root with the same marginal as T, a parent of Y with the
+weight of T (Y's noise mean lowered by 0.40 to keep its marginal), verbalized as evidence, and
+outside the structured state S = {X, T, D, U}. Every stage takes
+`--config exp/sim_talent_motivation/config.yaml`; the template and persona pools are shared with
+the talent SFM, so they are not generated again.
+
+The config's `design:` block replaces the single fixed query:
+
+- **One intervention per unit:** a non-identity `do(X=k)` drawn per unit (`interventions.csv`).
+- **Counterfactual states for everything, texts for little:** `sim_data_counterfactual_states.csv`
+  holds every unit under every `do(X=k)` and every target (total effect; `D` blocked; `D` and `U`
+  blocked). Only the total target under the drawn intervention is rendered as text, and only
+  for the evaluation units. All other metrics read the simulated states.
+- **Partitions:** `partition.csv` fixes a training pool (2,800), dev (200) and evaluation units
+  (1,000; the `test` split of `pair_index.csv`), the reader's nested label subset `L`, the
+  evaluation reader's disjoint subset `P`, five cross-fitting folds, and 200 noise-floor units.
+- **Noise floor:** `generate-floor-texts` re-renders the floor units' factual state with another
+  country of the same region (`design.floor_swap: X`), so only the surface changes.
+- **Evidence variants:** each level of the L, H, A and M evidence has three guidance variants of
+  the same strength; the render plan picks one per unit, and X and X' share it. Generation stays
+  deterministic at temperature 0. `codebook_vb.yaml` is a held-out paraphrase set (V_B) for the
+  reader robustness check. It is a separate file, so editing it never touches the production
+  texts.
+
+| Object | Coverage | Artifact (`data/sim_talent_motivation/`, `data/text_talent_motivation/`) |
+| --- | --- | --- |
+| `S`, drawn `S'` | All units | `sim_data_{factual,counterfactual}.csv`, `interventions.csv` |
+| All `S'` (every k, every target) | All units | `sim_data_counterfactual_states.csv` |
+| Partitions and label roles | All units | `partition.csv` |
+| `X` | All 4,000 units | `cv_factual.csv` |
+| `X'` | 1,000 evaluation units | `cv_counterfactual.csv` |
+| Noise-floor texts | 200 evaluation units | `cv_floor.csv` |
+| Held-out-wording texts (V_B) | 500 evaluation units (`held_out_fraction: 0.5`) | `cv_factual_vb.csv` |
+
+```bash
+CFG=exp/sim_talent_motivation/config.yaml
+uv run python -m exp.sim.run simulate --config $CFG                       # free; done
+uv run python -m exp.sim.run generate-texts --config $CFG                 # 4,000 billed calls
+uv run python -m exp.sim.run generate-counterfactual-texts --config $CFG  # 1,000 billed calls
+uv run python -m exp.sim.run generate-floor-texts --config $CFG           # 200 billed calls
+uv run python -m exp.sim.run generate-held-out-texts --config $CFG        # 500 billed calls (V_B, reader robustness check)
+uv run python -m exp.sim.run validate-pairs --config $CFG                 # coverage and grounding of all three files
+uv run python -m exp.sim_talent_motivation.talent_motivation              # smoke test: marginals, Bayes-optimal Y accuracy
+```
+
+For a pilot, cap the billed calls without editing the config. A later full run continues
+from the next ID, so pilot texts are not paid for twice:
+
+```bash
+uv run python -c "
+from exp.sim.helpers import load_sim_config
+from exp.sim.stage_cv import stage_generate_texts
+config = load_sim_config('exp/sim_talent_motivation/config.yaml')
+config['generation']['limit'] = 50
+stage_generate_texts(config)
+"
+```
+
+`validate-pairs` needs complete files; for a partial pilot, run `validate_grounding`,
+`report_forbidden_terms` and `report_text_lengths` directly on `cv_factual.csv`. The first
+pilot (single evidence sentences) is kept in `data/{sim,text}_talent_motivation/pilot_v0/`.
+`generate-held-out-texts` renders the factual state of a seeded half of the evaluation units
+(`held_out_fraction`) with `codebook_vb.yaml` and the same render plan (template, persona,
+country, variant positions). Raising the fraction later extends the subset and keeps the
+existing rows. It needs the
+complete factual file, and `validate-pairs` checks it once it exists.
+
 Stop here for the data-generation handoff. Encoding and model training below are separate work.
+
+## Encoding and training
+
+The commands below run on the talent SFM's data (`src/config.yaml`: `sim_config:
+exp/sim/config.yaml`). The sibling's encoding and the benchmarks of
+[wrong_symbolic_model.md](docs/experiments/wrong_symbolic_model.md) are not wired yet.
 
 Paired latent encoding and the existing training/evaluation stages use `src/config.yaml`:
 
@@ -281,7 +362,7 @@ train a no-op. Other schema-valid flow interventions are accepted for explorator
 inference with a warning, but are outside training support. Downstream stages read
 the existing 5,000-unit dataset and its official split; they do not regenerate the
 data, re-encode CVs, or retrain the frozen semantic decoder. The small generation
-example in `exp/sim/config.yaml` is not the size of those stored artifacts.
+example in `exp/sim_talent/config.yaml` is not the size of those stored artifacts.
 
 The separate `langvae_ft` baseline uses native LangVAE fine-tuned on CV passages,
 with unchanged architecture. See the [checkpoint and downstream handoff](docs/experiments/langvae_ft_handoff.md)
@@ -466,14 +547,20 @@ The modules `benchmark_matrix`, `training`/`validation`, `evaluation`, and `repo
 `src/latent_intervention/` separate planning, fitting, evaluation, and reporting; only small
 optional epoch-control hooks were added to the established trainers.
 
-### Projected C-sym
+### Clean semantic editors
 
-`c_sym_project` is the supported standalone factual state-effect editor, with
-mandatory preservation projection and portable 256D/768D checkpoints (768D is
-the lead configuration). It needs frozen `g` and `h_S`, but no flow teacher or
-paired counterfactual training embeddings. Existing nine-family benchmarks are unchanged.
-See [the C-sym guide](docs/experiments/csym_project.md) for commands, guarantees,
-results, provenance and the single record of retired experimental variants.
+`semantic_editor` and the redesigned `ot_editor` use the same target-only symbolic
+mixture and factual-validation objective. They use visible states, frozen `g` and
+analytic `h_S`, without proxy labels, projection, teachers or paired training
+counterfactuals. See [the editor guide](docs/experiments/semantic_editor.md) for
+the modular implementation, prepared 20-fit queue, limitations and retirement history.
+
+### Factual-only optimal transport
+
+`ot_gaussian` and `ot_flow` provide non-oracle transport baselines for
+EmbeddingGemma 256D/768D. Their separate protocol and four-case detached launcher
+leave the existing benchmark unchanged; audits and test evaluation are explicit
+separate steps. See [the OT guide](docs/experiments/ot_baselines.md).
 
 ## Publish
 
