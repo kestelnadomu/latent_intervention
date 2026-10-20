@@ -9,6 +9,12 @@ the [original handoff](embeddinggemma_text_inversion_handoff.md) describes the
 motivation. This document preserves the findings without changing the trained
 models, historical reports, or downstream workflow.
 
+**Archive update (2026-10-20):** the 1B pilot's code, checkpoint, resume state,
+and local reports were moved under the [decoder archive](../../.archive/README.md).
+The two retained active checkpoints are the original 270M and the separate
+oracle-exposed 270M comparator. Archived artifacts are Git-ignored; the linked
+files below resolve only on this machine unless transferred separately.
+
 ## Conclusion and retained decision
 
 Replacing the selected 270M text decoder with a 1B decoder, while retaining the
@@ -63,7 +69,7 @@ weight decay 0.01, 5% warmup, cosine decay, gradient clipping at 1.0, gradient
 checkpointing, at most 30 epochs, and early-stopping patience five. Each run's
 checkpoint is selected by minimum tune token NLL, not by its best generated CVs.
 
-The [1B configuration](../../configs/text_realizer_embeddinggemma_768_gemma1b.yaml)
+The [archived 1B configuration](../../.archive/code/configs/text_realizer_embeddinggemma_768_gemma1b.yaml)
 and immutable run plans record the exact settings. This was a one-seed,
 one-configuration pilot, not a 1B hyperparameter search or a clean parameter-count
 ablation: the backbone, attention implementation, microbatching, and resulting
@@ -348,18 +354,20 @@ The following identifiers locate the complete local evidence:
 | 1B training/evaluation run | `cv-text-1b-pilot-20261015-1026.lora-compact.seed-42` |
 | Backend compatibility diagnostics | `1b-pilot-compatibility-20261015` |
 
-Reports are under `reports/talent/embeddinggemma_768/text-realizer/`; models are
-under `models/talent/embeddinggemma_768/text-realizer/`. Relevant direct links:
+The compared trial, 1B pilot, and compatibility reports are under
+`.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/`; archived
+models are under `.archive/artifacts/models/talent/embeddinggemma_768/text-realizer/`.
+Relevant local links:
 
-- [Pilot decision and paired comparison](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/pilot_result.json).
-- [Immutable pilot plan](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/plan.json), with configuration/input/source identity; the adjacent `source/` directory preserves implementation snapshots.
-- [1B tune metrics, controls, and per-CV outputs](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/factual_tune.json) and [270M comparator](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719.lora-compact.seed-42/factual_tune.json).
-- [1B learning curve](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/history.json) and [270M learning curve](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719.lora-compact.seed-42/history.json).
-- [First 20 fixed-order tune comparisons](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/tune_examples.json); these are not audit examples.
-- [1B checkpoint reload verification](../../reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/verify.json).
-- [270M real-CV backend checks](../../reports/talent/embeddinggemma_768/text-realizer/1b-pilot-compatibility-20261015/270m-attention-real-cvs.json) and [unchanged 270M reload verification](../../reports/talent/embeddinggemma_768/text-realizer/1b-pilot-compatibility-20261015/270m-reload.json).
-- [1B preflight measurements](../../data/latents/talent/embeddinggemma_768/text-realizer-prepared/gemma1b-pilot/aca7014d6ceba4ea3b08674ebfdcd7567157452199d60cb1f7a6fa726b23eea8/preflight.json).
-- [Selected 1B inference checkpoint](../../models/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/best.pt) and [rolling training/resume checkpoint](../../models/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/last.pt).
+- [Pilot decision and paired comparison](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/pilot_result.json).
+- [Immutable pilot plan](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/plan.json), with configuration/input/source identity; the adjacent `source/` directory preserves implementation snapshots.
+- [1B tune metrics, controls, and per-CV outputs](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/factual_tune.json) and [270M comparator](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719.lora-compact.seed-42/factual_tune.json).
+- [1B learning curve](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/history.json) and [270M learning curve](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719.lora-compact.seed-42/history.json).
+- [First 20 fixed-order tune comparisons](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/tune_examples.json); these are not audit examples.
+- [1B checkpoint reload verification](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026/verify.json).
+- [270M real-CV backend checks](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/1b-pilot-compatibility-20261015/270m-attention-real-cvs.json) and [unchanged 270M reload verification](../../.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/1b-pilot-compatibility-20261015/270m-reload.json).
+- [1B preflight measurements](../../.archive/artifacts/data/latents/talent/embeddinggemma_768/text-realizer-prepared/gemma1b-pilot/aca7014d6ceba4ea3b08674ebfdcd7567157452199d60cb1f7a6fa726b23eea8/preflight.json).
+- [Selected 1B inference checkpoint](../../.archive/artifacts/models/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/best.pt) and [rolling training/resume checkpoint](../../.archive/artifacts/models/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/last.pt).
 - [Preserved 270M deployment checkpoint](../../models/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719/selected/seed-42.pt).
 
 SHA-256 anchors, verified when this writeup was created:

@@ -30,8 +30,11 @@ correction are deliberately excluded from this first campaign.
 The pilot completed on 2026-10-16. Its [results and interpretation](text_realizer_gemma1b_results.md)
 record the negative reconstruction result, conditioning diagnostics, numerical
 caveats, and preserved checkpoints. The 270M decoder remains the reference.
+The 1B-specific code, configuration, checkpoints, and reports were moved to the
+[local decoder archive](../../.archive/README.md) on 2026-10-20. The commands
+in this section are historical and require restoring those archived files.
 
-`configs/text_realizer_embeddinggemma_768_gemma1b.yaml` defines an audit-informed
+`.archive/code/configs/text_realizer_embeddinggemma_768_gemma1b.yaml` defines an audit-informed
 follow-up, **not** a continuation or replacement of the completed 270M campaign.
 It pins `google/gemma-3-1b-pt` at
 `fcf18a2a879aab110ca39f8bffbccd5d49d8eb29`, trains only the compact projector and
@@ -59,7 +62,7 @@ identical. Fit/tune targets have at most 486 tokens (503 including prefix/BOS),
 below the 512-token boundary. Thus the longer-forward discrepancy does **not**
 by itself show that the historical reconstruction scores were wrong. Evidence
 is preserved in
-`reports/talent/embeddinggemma_768/text-realizer/1b-pilot-compatibility-20261015/270m-attention-real-cvs.json`.
+`.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer/1b-pilot-compatibility-20261015/270m-attention-real-cvs.json`.
 The corrected launch `cv-text-1b-pilot-20261015-1026` initially ran preflight only.
 After explicit authorization, its single training run started on 2026-10-15 at
 approximately 15:02 Berlin time and completed with tune evaluation and reload
@@ -290,7 +293,7 @@ ID-aligned `[N, 768]` tensor. Paired canonical artifacts are rejected.
 
 ```bash
 "$tr_python" -m exp.text_realizer generate \
-  --checkpoint models/talent/embeddinggemma_768/text-realizer/cv-text-v1/selected/seed-42.pt \
+  --checkpoint models/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719/selected/seed-42.pt \
   --latents edited_vectors.pt --device cuda:0 --output generated_cvs.json
 ```
 

@@ -13,6 +13,12 @@ while four-field factual accuracy declined. The corrector was not promoted and
 no counterfactual training began. See the [full results and decision record](text_corrector_results.md)
 for the comparison, limitations, conditioning controls, and artifact hashes.
 
+**Archive update (2026-10-20):** this unpromoted corrector's code, checkpoints,
+optimizer state, and local reports are under the [decoder archive](../../.archive/README.md).
+The commands below document the historical run and require restoring the code
+and artifacts to their original paths before use. Archived artifacts are not
+included in Git.
+
 ## Scope and isolation
 
 The only external inference input remains a finite `[batch, 768]` tensor:
@@ -30,11 +36,11 @@ Original factual CVs are training targets only. The same API accepts an edited
 vector without silently unit-normalizing it, but performance on edited vectors
 has not been established by this factual pilot.
 
-- New reusable code: `src/text_corrector/`.
-- New experiment code: `exp/text_corrector/`.
-- New configuration: `configs/text_corrector_embeddinggemma_768.yaml`.
-- New tests: `tests/text_corrector/`.
-- New launcher: `scripts/run_text_corrector.sh`.
+- Archived reusable code: `.archive/code/src/text_corrector/`.
+- Archived experiment code: `.archive/code/exp/text_corrector/`.
+- Archived configuration: `.archive/code/configs/text_corrector_embeddinggemma_768.yaml`.
+- Archived tests: `.archive/code/tests/text_corrector/`.
+- Archived launcher: `.archive/code/scripts/run_text_corrector.sh`.
 - Reuses the existing isolated `exp/text_realizer/environment/.venv`; no root
   dependency, environment, encoder, `g`, `h_Z`, or baseline changes.
 - Generated artifacts use new `text-corrector/` subdirectories under the existing

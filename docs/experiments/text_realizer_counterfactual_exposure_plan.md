@@ -1,8 +1,8 @@
 # Counterfactual-exposed EmbeddingGemma-to-CV decoder: paired-data check and pilot plan
 
-Recorded: 2026-10-17; updated 2026-10-19. Status: **paired-data readiness
-verified; isolated pilot implemented; GPU preflight passed; both 600-update
-comparison arms completed and reload-verified; tune-only evaluation running**.
+Recorded: 2026-10-17; updated 2026-10-20. Status: **paired-data readiness
+verified; both 600-update arms and the tune-only comparison completed; the
+predeclared replication gate failed**.
 This is a separate,
 privileged-supervision comparator for text reconstruction, not a continuation of
 the [failed factual-only corrector](text_corrector_results.md) and not a change to
@@ -299,11 +299,38 @@ The former used no counterfactual latent or text in training; the latter used
 both, as predeclared. The unchanged original decoder remains arm A.
 
 The 320-unit tune-only comparison of A, B, and C began on 2026-10-19 at
-10:55 CEST. As of this update it is still running, so **there is no pilot
-outcome or advancement decision yet**. The completed arms' 80-unit factual
-checkpoint-selection scores must not be treated as counterfactual evaluation.
+10:55 CEST and finished at 18:21 CEST. The completed arms' 80-unit factual
+checkpoint-selection scores are not the counterfactual evaluation.
+
+### Tune-only result and retained decision (2026-10-20)
+
+The primary population was the 238 changed tune-evaluation CVs. All three
+models received the same true oracle `Z'` vectors in this comparison; none
+received an `h_Z` prediction. Character similarity and the independent
+four-field macro factual accuracy were:
+
+| Arm | Changed-CV character similarity | Changed-CV four-field macro | Factual-CV character similarity | Factual-CV four-field macro |
+|---|---:|---:|---:|---:|
+| A: original factual-only | 0.33033 | 0.66962 | 0.33075 | 0.68515 |
+| B: factual-only continuation | 0.33115 | 0.68428 | 0.33102 | 0.73104 |
+| C: oracle-exposed continuation | 0.34563 | 0.72379 | 0.34151 | 0.74744 |
+
+C's paired mean character gain was `+0.01530` versus A (bootstrap 95% interval
+`[+0.00775, +0.02286]`) and `+0.01448` versus B (`[+0.00719, +0.02193]`).
+Both intervals exclude zero, but **both gains miss the predeclared `+0.02`
+minimum**, so the two primary character gates fail. C passed the macro-factual
+gain and factual-retention gates. Relative to A on changed CVs, university-tier
+accuracy rose by `+0.12605` and project-count accuracy by `+0.11628`; country
+fell by `-0.01702` and degree by `-0.00862`, both within the predeclared
+`-0.02` field-regression tolerance. No arm hit the 1,024-token length limit
+or produced an exact normalized fit-set copy in these subsets.
+
+The combined decision is **`worth_replication: false`**. Do not launch seeds
+43/44, open the audit or official test, or promote C as a faithful CV inverter
+under this protocol. At the user's request, the selected A and C inference
+checkpoints remain available as separate baselines, with C clearly labelled
+oracle-supervised and exploratory. B's checkpoint, resume state, and arm-specific
+report are now in the [local archive](../../.archive/README.md), while the
+combined per-ID A/B/C comparison remains in the Git-ignored
+`reports/talent/embeddinggemma_768/text-realizer-cf/cv-cf-pilot-v1/result.json`.
 Audit, official test, and `h_Z` output vectors remain unopened by this pilot.
-Local training records are under
-`reports/talent/embeddinggemma_768/text-realizer-cf/cv-cf-pilot-v1/`;
-checkpoints are in the corresponding ignored model tree. This documentation-only
-Git commit does not include the implementation, generated reports, or weights.
