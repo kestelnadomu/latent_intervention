@@ -8,6 +8,11 @@ preflight, training recipe, and decision rule. This file records the measured re
 without changing the original 270M decoder or promoting the corrector. It follows
 the completed [270M/1B comparison](text_realizer_gemma1b_results.md).
 
+**Archive update (2026-10-20):** all corrector-specific code, weights, optimizer
+state, and local reports were moved to the [decoder archive](../../.archive/README.md).
+The negative result and its hashes remain documented here; archived artifacts
+are Git-ignored and must be transferred separately if needed elsewhere.
+
 ## Conclusion and retained decision
 
 One learned correction pass produced a very small mean character-similarity gain
@@ -162,14 +167,15 @@ corrector with privileged inputs is not justified by its result.
 **Follow-up (updated 2026-10-19):** the aligned-pair check passed, and the
 separate [counterfactual-exposed decoder pilot](text_realizer_counterfactual_exposure_plan.md)
 specifies the comparison and gates. Its two 600-update arms completed and
-reload-verified on 2026-10-17; the tune-only comparison is now running. No
+reload-verified on 2026-10-17; the tune-only comparison subsequently missed its
+predeclared replication gate. No
 counterfactual result should be inferred from this failed corrector or from the
 new arms' training completion alone.
 
 ## Artifact provenance and preservation
 
-The local, Git-ignored run directory is
-`reports/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/`.
+The local, Git-ignored run directory is now
+`.archive/artifacts/reports/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/`.
 Its `plan.json` and `source/` preserve the immutable inputs/configuration and
 source snapshot; `preflight.json`, `training.json`, `history.json`, `verify.json`,
 and `result.json` preserve execution and evaluation. The full report contains
@@ -179,10 +185,9 @@ documentation or automatically uploaded.
 | Artifact | Local path / integrity marker |
 |---|---|
 | Run identity | `a9914996550716385b785690f6c1218916e14755b21a2044b6c2f8a2b5c5ddd1` |
-| Selected corrector bundle | `models/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/best.pt`; SHA256 `8ff75fd2c682904607147ff590cb156e3a1d90040f2b38d1a00efef426175bc1` |
-| Full local report | `reports/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/result.json`; SHA256 `f85eedf8bc7b3513665b3b43db5e23a3e7a306d908e6168e4ef05d2b4c3a46e8` |
+| Selected corrector bundle | `.archive/artifacts/models/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/best.pt`; SHA256 `8ff75fd2c682904607147ff590cb156e3a1d90040f2b38d1a00efef426175bc1` |
+| Full local report | `.archive/artifacts/reports/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/result.json`; SHA256 `f85eedf8bc7b3513665b3b43db5e23a3e7a306d908e6168e4ef05d2b4c3a46e8` |
 
 This Markdown summary is the portable result; weights and the full report remain
 local ignored artifacts unless intentionally transferred through a separate,
-approved workflow. Nothing was staged, committed, pushed, or promoted by writing
-this record.
+approved workflow. Archiving did not promote the corrector or upload its weights.

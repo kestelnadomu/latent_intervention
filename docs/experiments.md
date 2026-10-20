@@ -20,9 +20,13 @@ factual supervision. The `Z'`-free loss restriction above defines the main
 `h_Z` method. The counterfactual-exposed `D_text` comparator is a separately
 labelled, privileged-supervision experiment, not a silent change to that method.
 Both 600-update comparison arms completed and reload-verified on 2026-10-17;
-their tune-only comparison began on 2026-10-19 and has no result recorded here
-yet. This documentation-first branch does not include the new implementation,
-training data, or model weights; artifact paths below identify local records.
+their tune-only comparison finished on 2026-10-19. Oracle exposure improved
+some factual checks but missed the predeclared character-similarity gain, so
+replication and audit were not opened. Only the original factual decoder and
+the oracle-exposed comparator remain in the active model tree; the other decoder
+experiments and optimizer states are mapped in the [local archive](../.archive/README.md).
+Archived weight/report/data files are Git-ignored and are not transferred by a
+documentation commit.
 
 - [EmbeddingGemma CV reconstruction workflow](experiments/text_realizer.md):
   isolated implementation and runbook.
@@ -36,7 +40,8 @@ training data, or model weights; artifact paths below identify local records.
 - [Counterfactual-exposed 270M decoder pilot plan](experiments/text_realizer_counterfactual_exposure_plan.md):
   verified aligned training pairs, privileged-supervision boundary, isolated
   three-arm comparison, predeclared advancement gates, passing GPU preflight,
-  completed training, and ongoing tune-only evaluation (2026-10-19).
+  completed tune-only evaluation, and the negative replication decision
+  (2026-10-19).
 
 ---
 
