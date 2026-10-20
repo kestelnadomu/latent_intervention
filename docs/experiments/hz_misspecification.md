@@ -6,6 +6,11 @@ This implements the first regime of [the study design](wrong_symbolic_model.md),
 not its label-budget, downstream-Y, cross-fitting or wording-generation extensions.
 Preparation does not launch training or official-test evaluation.
 
+The active run was split across machines on 20 October 2026. See the
+[50-fit remote agent handoff](hz_misspecification_remote50_handoff.md) for the
+disjoint assignment, portable bundle and shard-only launch/return commands.
+Do not resume the original `train --all` queue while this split is active.
+
 ## Data and roles
 
 Use the persisted `talent_motivation` partition and existing EmbeddingGemma 768D
