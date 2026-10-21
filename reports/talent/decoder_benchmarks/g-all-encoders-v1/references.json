@@ -1,0 +1,81 @@
+{
+  "bayes_optimal": {
+    "given": [
+      "X",
+      "D",
+      "U",
+      "P",
+      "L",
+      "H",
+      "A"
+    ],
+    "metrics": {
+      "test": {
+        "joint_map_accuracy": 0.939,
+        "joint_nll": 0.17481842129000374,
+        "marginal_accuracy": {
+          "D": 1.0,
+          "T": 0.939,
+          "U": 1.0,
+          "X": 1.0
+        }
+      },
+      "validation": {
+        "joint_map_accuracy": 0.94625,
+        "joint_nll": 0.15901698839500764,
+        "marginal_accuracy": {
+          "D": 1.0,
+          "T": 0.94625,
+          "U": 1.0,
+          "X": 1.0
+        }
+      }
+    },
+    "t_prior": [
+      0.25,
+      0.5,
+      0.25
+    ]
+  },
+  "note": "Latent-free references on the benchmark split. The Bayes-optimal predictor uses the exact SCM posterior given the verbalized variables; it bounds any reader of the text in expectation, not on every finite sample.",
+  "prior": {
+    "cardinalities": {
+      "D": 3,
+      "T": 3,
+      "U": 3,
+      "X": 4
+    },
+    "metrics": {
+      "test": {
+        "joint_map_accuracy": 0.036,
+        "joint_nll": 3.963564419866261,
+        "marginal_accuracy": {
+          "D": 0.516,
+          "T": 0.487,
+          "U": 0.483,
+          "X": 0.225
+        }
+      },
+      "validation": {
+        "joint_map_accuracy": 0.04875,
+        "joint_nll": 3.9210338796052575,
+        "marginal_accuracy": {
+          "D": 0.4875,
+          "T": 0.4825,
+          "U": 0.475,
+          "X": 0.25625
+        }
+      }
+    }
+  },
+  "run_id": "g-all-encoders-v1",
+  "source": {
+    "sim_factual": "data/sim_talent/sim_data_factual.csv",
+    "sim_factual_sha256": "98de23e96b27135c36d181cb51ce52e02d526c4c1f3c81a7a5f835c347e69150"
+  },
+  "split_sizes": {
+    "fit": 3200,
+    "test": 1000,
+    "validation": 800
+  }
+}

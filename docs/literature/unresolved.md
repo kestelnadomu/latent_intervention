@@ -28,7 +28,7 @@ These were discussed in project material but do not uniquely specify a bibliogra
 | Blog Authorship Corpus | notes/leo/semantic_decoder.md:74 | Resolve dataset origin and accompanying publication. |
 | TrustPilot demographic corpus | notes/leo/semantic_decoder.md:75 | Determine which dataset/release and paper are intended. |
 | FYelp/Amazon, Yelp, GYAFC | notes/leo/semantic_decoder.md:85 | Resolve dataset versions if selected for experiments; not each generic dataset name is a paper. |
-| Generic HSIC and energy score/distance | implementation/theory discussions | Objective names were often used without explicit bibliographic citations. Resolve exact foundational sources before citing; do not guess from a method name alone. |
+| Generic HSIC and energy score/distance | implementation/theory discussions | Partially resolved by the web search: [Gneiting and Raftery (2007)](papers/gneiting2007proper-scoring.md) is a primary energy-score source. The precise HSIC and energy-distance references intended in earlier discussions remain unresolved. |
 
 ## Corrections already recorded, originals intentionally unchanged
 
@@ -47,4 +47,4 @@ These were discussed in project material but do not uniquely specify a bibliogra
 
 The [import report](imports/2026-10-16-windows.md) identifies 23 project subagent threads with metadata but no locally accessible messages, plus an imported ChatGPT discussion whose old internal citation markers do not resolve to public sources. Another device may recover those references.
 
-Primary-source pages were checked selectively for identities and conflicts, not for every record. No exhaustive full-text review, citation-network expansion, novelty search or systematic-review protocol has been completed. Every entry still needs substantive reading before it supports a scientific claim.
+Primary-source pages were checked selectively for identities and conflicts, not for every record. The [2026-10-19 web search](imports/2026-10-19-web-search.md) adds targeted external discovery and comparison screening, but no exhaustive full-text review, citation-network search or systematic-review protocol has been completed. Every entry still needs substantive reading before it supports a scientific claim.

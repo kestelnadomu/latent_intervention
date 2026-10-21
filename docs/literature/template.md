@@ -37,6 +37,6 @@ What was checked, against which source and when. Metadata verification is not a 
 - Local Codex thread ID and message ID, with a brief topic label if useful.
 ```
 
-Allowed topics: `fairness`, `causal`, `editing`, `abstraction`, `concepts`, `identifiability`, `encoders`, `benchmarks`. Use multiple topics when helpful, but index a record once in its primary category.
+Broad discovery tags: `fairness`, `causal`, `editing`, `abstraction`, `concepts`, `identifiability`, `encoders`, `benchmarks`. Use multiple tags when helpful; they are not the primary taxonomy. Assign the record exactly once to a subgroup in [the topic index](index.md), which also provides the dedicated OT, text-realization and evaluation clusters. Use cluster cross-links for overlap and update the counts; no new card field is required.
 
 After a full review, optionally add “Contribution”, “Assumptions and limitations”, “Relevant result” (page/section/theorem), and “Comparison with our method”. Separate direct evidence from interpretation; use short paraphrases and source links. Add cross-links using `[label](other-record.md)`.

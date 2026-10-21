@@ -1,0 +1,40 @@
+{
+  "bayes_optimal": {
+    "given": [
+      "X",
+      "D",
+      "U",
+      "P",
+      "L",
+      "H",
+      "A"
+    ],
+    "metrics": {
+      "all": {
+        "realized_joint_accuracy": 0.695,
+        "realized_joint_nll": 0.8094003009900007,
+        "units": 1000
+      },
+      "identity": {
+        "realized_joint_accuracy": 0.9375,
+        "realized_joint_nll": 0.16459525097664046,
+        "units": 256
+      },
+      "nonidentity": {
+        "realized_joint_accuracy": 0.6115591397849462,
+        "realized_joint_nll": 1.031268705295673,
+        "units": 744
+      }
+    }
+  },
+  "intervention": {
+    "X": 3
+  },
+  "note": "Bayes-optimal prediction of the realized counterfactual state from the factual CV content (exact SCM posterior pushed through h_S). It bounds every latent editor's realized-state accuracy in expectation, not on every finite sample.",
+  "run_id": "editor-clean-v1",
+  "sources": {
+    "data/sim_talent/pair_index.csv": "67616f395548dfffb7f063b554338b6b63731f5a77136134ffc3b2936b5d51ee",
+    "data/sim_talent/sim_data_counterfactual.csv": "e6e2f2ee1f4be2938abff051ea6fa9c875811de1c7fc3f1a7c73bb069609dd4c",
+    "data/sim_talent/sim_data_factual.csv": "98de23e96b27135c36d181cb51ce52e02d526c4c1f3c81a7a5f835c347e69150"
+  }
+}
