@@ -7,7 +7,7 @@ import json
 from contextlib import nullcontext
 from pathlib import Path
 
-from .settings import DEFAULT_CONFIG
+from .settings import DEFAULT_CONFIG, PILOT_CONFIG
 
 
 def parser() -> argparse.ArgumentParser:
@@ -52,6 +52,12 @@ def parser() -> argparse.ArgumentParser:
             )
         else:
             sub.add_argument("--latents", type=Path, required=True)
+    pilot = commands.add_parser("pilot", help="bounded historical 1B tune-only pilot")
+    pilot.add_argument("--config", type=Path, default=PILOT_CONFIG)
+    pilot.add_argument("--run-id", required=True)
+    pilot.add_argument("--device", default="cuda:0")
+    pilot.add_argument("--resume", action="store_true")
+    pilot.add_argument("--train-after-preflight", action="store_true")
     return cli
 
 
@@ -75,6 +81,19 @@ def main() -> None:
         campaign(
             read_config(args.config), args.config.resolve(), args.run_id, args.gpus
         )
+        return
+    if args.command == "pilot":
+        from .pilot import pilot
+
+        result = pilot(
+            read_config(args.config),
+            args.config.resolve(),
+            args.run_id,
+            device=args.device,
+            resume=args.resume,
+            train_after_preflight=args.train_after_preflight,
+        )
+        print(json.dumps(result, indent=2))
         return
     if args.command == "freeze":
         # Each fresh verification subprocess acquires its own GPU lease.

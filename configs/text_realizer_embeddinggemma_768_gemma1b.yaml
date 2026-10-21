@@ -1,0 +1,93 @@
+# Audit-informed, one-seed scaling pilot. Never invokes the 270M campaign.
+format_version: 1
+inputs:
+  factual: data/text_talent/cv_factual.csv
+  pairs: data/sim_talent/pair_index.csv
+  latents: data/latents/talent/embeddinggemma_768/z_pairs.pt
+  info: data/latents/talent/embeddinggemma_768/z_pairs.info.json
+  split_plan: reports/talent/hz_benchmarks/hz-gemma-v1/plan.json
+  sha256:
+    factual: e2845bd8b16360ae9c92f51240af0942f92b26b94b1331cf0ffdb75253f67294
+    pairs: 67616f395548dfffb7f063b554338b6b63731f5a77136134ffc3b2936b5d51ee
+    latents: 4722d665c2f7fc955925202eefeb49391f4fae51138beb718cd8ce0b38720a03
+    split_plan: 6698da61c789e3dad586d051e8bdad40157786e01c858212d89b95d5ee90b4be
+paths:
+  prepared: data/latents/talent/embeddinggemma_768/text-realizer-prepared/gemma1b-pilot
+  models: models/talent/embeddinggemma_768/text-realizer
+  reports: reports/talent/embeddinggemma_768/text-realizer
+  cache: .cache/huggingface/hub
+encoder:
+  embeddinggemma_model_name: google/embeddinggemma-300m
+  embeddinggemma_model_revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
+  embeddinggemma_latent_dim: 768
+  embeddinggemma_max_len: 2048
+model:
+  name: google/gemma-3-1b-pt
+  revision: fcf18a2a879aab110ca39f8bffbccd5d49d8eb29
+  # Default SDPA failed cached/full parity on Torch 2.6 + RTX 2080 Ti.
+  # Persist the verified backend in checkpoints; leave 270M defaults unchanged.
+  attention_implementation: eager
+  latent_dim: 768
+  prefix_tokens: 16
+  input_scaling: sqrt_latent_dim
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+split:
+  fit_count: 3200
+  validation_count: 800
+  test_count: 1000
+  audit_seed: 20261007
+training:
+  epochs: 30
+  effective_batch: 32
+  projector_lr: 0.001
+  lora_lr: 0.0002
+  weight_decay: 0.01
+  warmup_fraction: 0.05
+  clip: 1.0
+  patience: 5
+  min_delta: 0.0001
+  checkpoint_every: 25
+  precision: float32
+  gradient_checkpointing: true
+selection:
+  nll_gap: 0.05
+  character_gap: 0.02
+  seeds: [42]
+  deployment_seed: 42
+generation:
+  minimum_budget: 1024
+  budget_multiple: 128
+  batch_size: 1
+evaluation:
+  bootstrap_samples: 2000
+  bootstrap_seed: 20261012
+  minimum_retrieval_gain: 0.02
+  examples: 20
+preflight:
+  variant: lora-compact
+  microbatches: [1]
+  native_checks: true
+  smoke_updates: 20
+  benchmark_steps: 100
+  overfit_updates: 500
+  overfit_character_similarity: 0.95
+  memory_headroom: 0.15
+pilot:
+  variant: lora-compact
+  seed: 42
+  audit_informed: true
+  baseline_prepared: data/latents/talent/embeddinggemma_768/text-realizer-prepared/aca7014d6ceba4ea3b08674ebfdcd7567157452199d60cb1f7a6fa726b23eea8
+  baseline_report: reports/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719.lora-compact.seed-42
+  baseline_sha256:
+    manifest: 218e854905653303fd6c4abc2f6a028c2a31c81b9fc5eef9d94ee7f9d9e278b2
+    plan: 39468606e5ff6e5d9c53ea6e32f44fe7f06471cbc9e5799bab9d5d750c0b34ca
+    factual_tune: 745873bb24823846b6debe1e12aef22a2a60e1af522d0d0d92a2088772ad3473
+  # Absolute gains, not percentages of the existing metric. Exclude region
+  # from the macro average to avoid counting country/region evidence twice.
+  minimum_character_gain: 0.02
+  factual_fields: [country, degree, university_tier, project_count]
+  minimum_macro_factual_gain: 0.02
+  maximum_field_regression: 0.02

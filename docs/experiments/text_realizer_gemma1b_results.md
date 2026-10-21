@@ -9,8 +9,11 @@ the [original handoff](embeddinggemma_text_inversion_handoff.md) describes the
 motivation. This document preserves the findings without changing the trained
 models, historical reports, or downstream workflow.
 
-**Archive update (2026-10-20):** the 1B pilot's code, checkpoint, resume state,
-and local reports were moved under the [decoder archive](../../.archive/README.md).
+**Transfer update (2026-10-21):** the 1B pilot's code/config/tests/launcher are
+again in the active tree for Git transfer. Its checkpoint, resume state, and
+local reports remain under the [decoder archive](../../.archive/README.md).
+The restored source is not the completed run's immutable source snapshot; a
+fresh experiment needs a new run ID and its pinned comparison artifacts.
 The two retained active checkpoints are the original 270M and the separate
 oracle-exposed 270M comparator. Archived artifacts are Git-ignored; the linked
 files below resolve only on this machine unless transferred separately.
@@ -69,7 +72,7 @@ weight decay 0.01, 5% warmup, cosine decay, gradient clipping at 1.0, gradient
 checkpointing, at most 30 epochs, and early-stopping patience five. Each run's
 checkpoint is selected by minimum tune token NLL, not by its best generated CVs.
 
-The [archived 1B configuration](../../.archive/code/configs/text_realizer_embeddinggemma_768_gemma1b.yaml)
+The [1B configuration](../../configs/text_realizer_embeddinggemma_768_gemma1b.yaml)
 and immutable run plans record the exact settings. This was a one-seed,
 one-configuration pilot, not a 1B hyperparameter search or a clean parameter-count
 ablation: the backbone, attention implementation, microbatching, and resulting

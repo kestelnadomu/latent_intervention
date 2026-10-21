@@ -30,11 +30,17 @@ correction are deliberately excluded from this first campaign.
 The pilot completed on 2026-10-16. Its [results and interpretation](text_realizer_gemma1b_results.md)
 record the negative reconstruction result, conditioning diagnostics, numerical
 caveats, and preserved checkpoints. The 270M decoder remains the reference.
-The 1B-specific code, configuration, checkpoints, and reports were moved to the
-[local decoder archive](../../.archive/README.md) on 2026-10-20. The commands
-in this section are historical and require restoring those archived files.
+The 1B-specific code, configuration, launcher, and tests were restored to the
+active tree on 2026-10-21 for Git transfer. Checkpoints, prepared caches, and
+reports remain in the [local decoder archive](../../.archive/README.md). The
+commands in this section reproduce a historical, negative-result pilot; they
+require its pinned 270M development bundle and tune report to be restored to
+their original paths. Neither decoder's weights are included in Git.
+Restoring the code changes the source identity, so the completed 2026-10-15
+pilot is a historical result, not a run to resume under the new source tree.
+Use a new run ID for any reproduction or follow-up.
 
-`.archive/code/configs/text_realizer_embeddinggemma_768_gemma1b.yaml` defines an audit-informed
+`configs/text_realizer_embeddinggemma_768_gemma1b.yaml` defines an audit-informed
 follow-up, **not** a continuation or replacement of the completed 270M campaign.
 It pins `google/gemma-3-1b-pt` at
 `fcf18a2a879aab110ca39f8bffbccd5d49d8eb29`, trains only the compact projector and
@@ -81,6 +87,10 @@ tr_python=exp/text_realizer/environment/.venv/bin/python
 tr_config=configs/text_realizer_embeddinggemma_768_gemma1b.yaml
 # Requires personally accepted model terms; never accepts them automatically.
 "$tr_python" -m exp.text_realizer.setup --config "$tr_config" --download-models
+
+# Optional real-1B numerical check after caching the pinned model and selecting a GPU.
+TEXT_REALIZER_1B_GPU_TESTS=1 "$tr_python" -m pytest -q -s \
+  tests/text_realizer/test_integration_1b.py
 
 # Detached preflight only; one explicitly selected physical GPU.
 bash scripts/run_text_realizer_pilot.sh cv-text-1b-pilot-v1 0

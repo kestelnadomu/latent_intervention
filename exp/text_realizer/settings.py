@@ -13,6 +13,9 @@ import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "configs/text_realizer_embeddinggemma_768.yaml"
+PILOT_CONFIG = ROOT / "configs/text_realizer_embeddinggemma_768_gemma1b.yaml"
+PILOT_MODEL = "google/gemma-3-1b-pt"
+PILOT_REVISION = "fcf18a2a879aab110ca39f8bffbccd5d49d8eb29"
 VARIANTS = ("prefix-compact", "prefix-wide", "lora-compact", "lora-wide")
 
 
@@ -29,8 +32,9 @@ def read_config(path=DEFAULT_CONFIG) -> dict:
     if config["format_version"] != 1:
         raise ValueError("unsupported text-realizer configuration")
     model = config["model"]
+    is_pilot = "pilot" in config
     if (
-        model["name"] != "google/gemma-3-270m"
+        model["name"] != (PILOT_MODEL if is_pilot else "google/gemma-3-270m")
         or not re.fullmatch(r"[0-9a-f]{40}", model["revision"])
         or model["latent_dim"] != 768
         or model["prefix_tokens"] != 16
@@ -41,7 +45,7 @@ def read_config(path=DEFAULT_CONFIG) -> dict:
         )
     if config["training"]["precision"] != "float32":
         raise ValueError("this campaign is explicitly FP32")
-    if config["selection"]["seeds"] != [42, 43, 44]:
+    if config["selection"]["seeds"] != ([42] if is_pilot else [42, 43, 44]):
         raise ValueError("the predeclared seeds differ from this experiment")
     if config["selection"]["deployment_seed"] != 42:
         raise ValueError("deployment seed must remain 42")
@@ -61,13 +65,20 @@ def read_config(path=DEFAULT_CONFIG) -> dict:
     if config["encoder"]["embeddinggemma_model_revision"] != EMBEDDINGGEMMA_REVISION:
         raise ValueError("canonical EmbeddingGemma revision changed")
     embeddinggemma_protocol(config["encoder"])
+    if is_pilot:
+        from .pilot_protocol import validate_pilot_config
+
+        validate_pilot_config(config)
     return config
 
 
 def require_command(config: dict, command: str) -> None:
-    """Archived 1B pilot configurations cannot be used by the active CLI."""
+    """Keep the historical 1B pilot's audit and oracle gates closed."""
     if "pilot" in config:
-        raise ValueError("the 1B pilot is archived under .archive/code")
+        if command not in {"pilot", "preflight", "train"}:
+            raise ValueError("the 1B pilot's audit and oracle gates are closed")
+    elif command == "pilot":
+        raise ValueError("the 1B pilot requires its separate pinned configuration")
 
 
 def resolve(path: str | Path) -> Path:
@@ -103,6 +114,7 @@ def source_hashes() -> dict:
             "exp/text_realizer/environment/uv.lock",
             "scripts/setup_text_realizer.sh",
             "scripts/run_text_realizer.sh",
+            "scripts/run_text_realizer_pilot.sh",
         )
     )
     return {str(p.relative_to(ROOT)): sha256_file(p) for p in sorted(set(files))}
