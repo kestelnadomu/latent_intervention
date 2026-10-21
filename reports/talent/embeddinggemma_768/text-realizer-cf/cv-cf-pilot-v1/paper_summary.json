@@ -1,0 +1,259 @@
+{
+  "audit_original": {
+    "character_similarity_mean": 0.32833407985762036,
+    "character_similarity_sd": 0.0008278680341613823,
+    "retrieval_character_similarity": 0.3141655671784113,
+    "seeds": [
+      42,
+      43,
+      44
+    ],
+    "units": 400
+  },
+  "rows": {
+    "counterfactual": {
+      "oracle": {
+        "character_similarity": 0.3456268723985278,
+        "chrf": 0.5926398858332256,
+        "facts": {
+          "degree": {
+            "accuracy": 0.9612068965517241,
+            "scorable": 232,
+            "unparseable": 7
+          },
+          "project_count": {
+            "accuracy": 0.27906976744186046,
+            "scorable": 172,
+            "unparseable": 42
+          },
+          "region": {
+            "accuracy": 0.9702127659574468,
+            "scorable": 235,
+            "unparseable": 6
+          },
+          "university_tier": {
+            "accuracy": 0.7016806722689075,
+            "scorable": 238,
+            "unparseable": 1
+          }
+        },
+        "rouge_l": 0.34423110297568754,
+        "units": 238
+      },
+      "original": {
+        "character_similarity": 0.33032695448490706,
+        "chrf": 0.5698772068959446,
+        "facts": {
+          "degree": {
+            "accuracy": 0.9698275862068966,
+            "scorable": 232,
+            "unparseable": 6
+          },
+          "project_count": {
+            "accuracy": 0.16279069767441862,
+            "scorable": 172,
+            "unparseable": 36
+          },
+          "region": {
+            "accuracy": 0.9787234042553191,
+            "scorable": 235,
+            "unparseable": 4
+          },
+          "university_tier": {
+            "accuracy": 0.5756302521008403,
+            "scorable": 238,
+            "unparseable": 4
+          }
+        },
+        "rouge_l": 0.31657498713968146,
+        "units": 238
+      },
+      "retrieval": {
+        "character_similarity": 0.3221158441515004,
+        "chrf": 0.583571604966637,
+        "facts": {
+          "degree": {
+            "accuracy": 0.7758620689655172,
+            "scorable": 232,
+            "unparseable": 4
+          },
+          "project_count": {
+            "accuracy": 0.14534883720930233,
+            "scorable": 172,
+            "unparseable": 40
+          },
+          "region": {
+            "accuracy": 0.9659574468085106,
+            "scorable": 235,
+            "unparseable": 2
+          },
+          "university_tier": {
+            "accuracy": 0.44537815126050423,
+            "scorable": 238,
+            "unparseable": 0
+          }
+        },
+        "rouge_l": 0.30417541097085343,
+        "units": 238
+      },
+      "unedited": {
+        "character_similarity": 0.4350612913162951,
+        "chrf": 0.6665904175333802,
+        "facts": {
+          "degree": {
+            "accuracy": 0.47844827586206895,
+            "scorable": 232,
+            "unparseable": 13
+          },
+          "project_count": {
+            "accuracy": 0.872093023255814,
+            "scorable": 172,
+            "unparseable": 22
+          },
+          "region": {
+            "accuracy": 0.0,
+            "scorable": 235,
+            "unparseable": 3
+          },
+          "university_tier": {
+            "accuracy": 0.3403361344537815,
+            "scorable": 238,
+            "unparseable": 0
+          }
+        },
+        "rouge_l": 0.45833667176174875,
+        "units": 238
+      }
+    },
+    "reconstruction": {
+      "oracle": {
+        "character_similarity": 0.3415149391808329,
+        "chrf": 0.5855140067766531,
+        "facts": {
+          "degree": {
+            "accuracy": 0.9471947194719472,
+            "scorable": 303,
+            "unparseable": 14
+          },
+          "project_count": {
+            "accuracy": 0.27419354838709675,
+            "scorable": 248,
+            "unparseable": 46
+          },
+          "region": {
+            "accuracy": 0.9684542586750788,
+            "scorable": 317,
+            "unparseable": 7
+          },
+          "university_tier": {
+            "accuracy": 0.809375,
+            "scorable": 320,
+            "unparseable": 3
+          }
+        },
+        "rouge_l": 0.3332062162340922,
+        "units": 320
+      },
+      "original": {
+        "character_similarity": 0.33075322613941077,
+        "chrf": 0.5721899425873574,
+        "facts": {
+          "degree": {
+            "accuracy": 0.9306930693069307,
+            "scorable": 303,
+            "unparseable": 14
+          },
+          "project_count": {
+            "accuracy": 0.15725806451612903,
+            "scorable": 248,
+            "unparseable": 48
+          },
+          "region": {
+            "accuracy": 0.9716088328075709,
+            "scorable": 317,
+            "unparseable": 3
+          },
+          "university_tier": {
+            "accuracy": 0.703125,
+            "scorable": 320,
+            "unparseable": 4
+          }
+        },
+        "rouge_l": 0.31374387350960403,
+        "units": 320
+      },
+      "retrieval": {
+        "character_similarity": 0.317437106519888,
+        "chrf": 0.577582910552769,
+        "facts": {
+          "degree": {
+            "accuracy": 0.7161716171617162,
+            "scorable": 303,
+            "unparseable": 9
+          },
+          "project_count": {
+            "accuracy": 0.16532258064516128,
+            "scorable": 248,
+            "unparseable": 39
+          },
+          "region": {
+            "accuracy": 0.9873817034700315,
+            "scorable": 317,
+            "unparseable": 0
+          },
+          "university_tier": {
+            "accuracy": 0.48125,
+            "scorable": 320,
+            "unparseable": 0
+          }
+        },
+        "rouge_l": 0.2938383118436051,
+        "units": 320
+      },
+      "shuffled": {
+        "character_similarity": 0.2742973683671449,
+        "chrf": 0.47052564767774846,
+        "facts": {
+          "degree": {
+            "accuracy": 0.38613861386138615,
+            "scorable": 303,
+            "unparseable": 14
+          },
+          "project_count": {
+            "accuracy": 0.10483870967741936,
+            "scorable": 248,
+            "unparseable": 57
+          },
+          "region": {
+            "accuracy": 0.27129337539432175,
+            "scorable": 317,
+            "unparseable": 4
+          },
+          "university_tier": {
+            "accuracy": 0.378125,
+            "scorable": 320,
+            "unparseable": 5
+          }
+        },
+        "rouge_l": 0.22943461648192107,
+        "units": 320
+      }
+    }
+  },
+  "run": "cv-cf-pilot-v1",
+  "scope": "development tune units; decoder A was selected on them; one training seed per decoder",
+  "sources_sha256": {
+    "data\\latents\\talent\\embeddinggemma_768\\oracle_train\\z_prime.pt": "7a3e94f15d7343dcba38772553ce0d3aef9234a0aa091d5acdd5df64b8da02d4",
+    "data\\latents\\talent\\embeddinggemma_768\\z_pairs.pt": "4722d665c2f7fc955925202eefeb49391f4fae51138beb718cd8ce0b38720a03",
+    "data\\sim_talent\\pair_index.csv": "cf47773f1511f12e8aa9cd1dbc36e07d65397e0b1e8b2b8a274263b50a2eafc9",
+    "data\\text_talent\\cv_counterfactual.csv": "34b3a3ac0747bdd65ab8d7175c8582a9e9d38fcf06ec31f436b5c499ec9f993c",
+    "data\\text_talent\\cv_factual.csv": "e2845bd8b16360ae9c92f51240af0942f92b26b94b1331cf0ffdb75253f67294",
+    "reports\\talent\\embeddinggemma_768\\text-realizer-cf\\cv-cf-pilot-v1\\result.json": "d7821defb72987e1d8d547360fba5e0687fc48ac3e79491af4df12e7d5db074b",
+    "reports\\talent\\embeddinggemma_768\\text-realizer\\cv-text-v1-20261012-1719\\tune-seed-42.json": "85d7fc52f253b57fa7bf77967256834a456a90d40c6492fe0a6b6846367f16b1"
+  },
+  "units": {
+    "counterfactual": 238,
+    "identity_excluded": 82,
+    "reconstruction": 320
+  }
+}
