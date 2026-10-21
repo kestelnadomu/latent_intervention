@@ -1,0 +1,174 @@
+{
+  "state": "completed",
+  "variant": "dropout_vae",
+  "selected_checkpoint": {
+    "path": "checkpoint-001-40573413",
+    "epoch": 1,
+    "sha256": {
+      "weights.pt": "3873b67c2e0a5aaba7a5f80da1cd8a0b73975f9cc2bba44438099b25626dcdce",
+      "probe.pt": "2a7d388a8165a2fd0ca55b21f9bfc41af9b089347dabbde0ddaaeb209cd0f4a3",
+      "model.json": "a331aba3bab6b4f4407c6323c9fc0390177efac7a5d5f5df7c4ed7eb096e65d2"
+    }
+  },
+  "stop_reason": "epoch_budget",
+  "quality_gates": {
+    "sufficient_audit_size": false,
+    "reference_extraction_coverage": false,
+    "every_fact_accuracy": false,
+    "whole_profile_accuracy": false,
+    "contradictions": true,
+    "facts_use_latent": false,
+    "ordered_overlap": false,
+    "repetition": false,
+    "frozen_base_unchanged": true,
+    "offline_reload": true
+  },
+  "automatic_quality_passed": false,
+  "accepted_for_downstream": false,
+  "requires_manual_fact_fluency_and_latent_edit_review": true,
+  "deterministic_diagnostic_only": false,
+  "final_validation": {
+    "loss": 2743.8253784179688,
+    "reconstruction_nll": 2734.8544311523438,
+    "raw_kl": 448.5447235107422,
+    "weighted_kl": 8.97089409828186,
+    "correct_token_nll": 6.815836588541667,
+    "shuffled_token_nll": 6.86178765698014,
+    "zero_token_nll": 3.949506699036215,
+    "latent_nll_gap": 0.045951068438473186,
+    "zero_nll_gap": -2.866329889505452,
+    "active_dimensions": 128,
+    "correct_full_cv_f1": 0.043582561248940915,
+    "shuffled_full_cv_f1": 0.04261164302234192,
+    "zero_full_cv_f1": 0.050715935332742546,
+    "unique_correct_outputs": 8,
+    "correct_full_cv_lcs_f1": 0.03631366624206647,
+    "correct_repeated_trigram_fraction": 0.7599629198522353,
+    "examples": 8,
+    "facts": {
+      "country": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "occupation": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "degree": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "university": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "projects": {
+        "accuracy": 0.0,
+        "reference_coverage": 0.875,
+        "correct": 0,
+        "evaluated": 7
+      },
+      "macro_accuracy": 0.0,
+      "minimum_accuracy": 0.0,
+      "minimum_coverage": 0.875,
+      "all_five_correct_rate": 0.0,
+      "contradiction_rate": 0.0
+    },
+    "shuffled_facts": {
+      "country": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "occupation": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "degree": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "university": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "projects": {
+        "accuracy": 0.0,
+        "reference_coverage": 0.875,
+        "correct": 0,
+        "evaluated": 7
+      },
+      "macro_accuracy": 0.0,
+      "minimum_accuracy": 0.0,
+      "minimum_coverage": 0.875,
+      "all_five_correct_rate": 0.0,
+      "contradiction_rate": 0.0
+    },
+    "zero_facts": {
+      "country": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "occupation": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "degree": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "university": {
+        "accuracy": 0.0,
+        "reference_coverage": 1.0,
+        "correct": 0,
+        "evaluated": 8
+      },
+      "projects": {
+        "accuracy": 0.0,
+        "reference_coverage": 0.875,
+        "correct": 0,
+        "evaluated": 7
+      },
+      "macro_accuracy": 0.0,
+      "minimum_accuracy": 0.0,
+      "minimum_coverage": 0.875,
+      "all_five_correct_rate": 0.0,
+      "contradiction_rate": 0.0
+    },
+    "audited_ids": [
+      45,
+      20,
+      21,
+      49,
+      51,
+      1,
+      16,
+      44
+    ],
+    "latent_signal_noise_ratio": 534.7472534179688
+  },
+  "seconds": 71.28519965708256,
+  "mean_update_seconds": 0.4805474653840065,
+  "peak_gpu_allocated_gib": 5.280136585235596
+}

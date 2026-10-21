@@ -1,0 +1,176 @@
+{
+  "state": "completed",
+  "workers": {
+    "reconstruction": {
+      "pid": 309074,
+      "exit_code": 0,
+      "state": "completed",
+      "mean_update_seconds": 0.9085328447558577
+    },
+    "weak_vae": {
+      "pid": 309075,
+      "exit_code": 0,
+      "state": "completed",
+      "mean_update_seconds": 0.8931094083189964
+    },
+    "dropout_vae": {
+      "pid": 309076,
+      "exit_code": 0,
+      "state": "completed",
+      "mean_update_seconds": 0.89226637016154
+    }
+  },
+  "seconds": 10502.814458876848,
+  "best_reconstructor": "weak_vae",
+  "best_vae": "weak_vae",
+  "accepted_for_downstream": false,
+  "results": {
+    "reconstruction": {
+      "selected_checkpoint": {
+        "path": "checkpoint-006-14767614",
+        "epoch": 6,
+        "sha256": {
+          "weights.pt": "0d98ced225c6d4bef2d41e3d8a45e47a8b51bf0dc8a50fe6bb6705d05707aebe",
+          "probe.pt": "7898f1af2b704a68000361a231f6a453e6ab94e4f24733674d34a0f4de418cca",
+          "model.json": "af8ea776a0d95051827416cb12a76c27bda43a7f7274207a18d9b86b6c3f0cfb"
+        }
+      },
+      "automatic_quality_passed": false,
+      "facts": {
+        "country": {
+          "accuracy": 0.18387909319899245,
+          "reference_coverage": 0.9925,
+          "correct": 73,
+          "evaluated": 397
+        },
+        "occupation": {
+          "accuracy": 0.9122807017543859,
+          "reference_coverage": 0.9975,
+          "correct": 364,
+          "evaluated": 399
+        },
+        "degree": {
+          "accuracy": 0.44329896907216493,
+          "reference_coverage": 0.97,
+          "correct": 172,
+          "evaluated": 388
+        },
+        "university": {
+          "accuracy": 0.54,
+          "reference_coverage": 1.0,
+          "correct": 216,
+          "evaluated": 400
+        },
+        "projects": {
+          "accuracy": 0.15463917525773196,
+          "reference_coverage": 0.97,
+          "correct": 60,
+          "evaluated": 388
+        },
+        "macro_accuracy": 0.4468195878566551,
+        "minimum_accuracy": 0.15463917525773196,
+        "minimum_coverage": 0.97,
+        "all_five_correct_rate": 0.0075,
+        "contradiction_rate": 0.3575
+      }
+    },
+    "weak_vae": {
+      "selected_checkpoint": {
+        "path": "checkpoint-010-0730f173",
+        "epoch": 10,
+        "sha256": {
+          "weights.pt": "c86cf09d53bc893bce8622e4a98d2b96f8b5a0cc5507e48a0e209d5f4dc58d2a",
+          "probe.pt": "b94d2c2cdc22c328dde73da1553e87bf1bde6ebb999ba6bed8f6cface3bc51e0",
+          "model.json": "73578cd1599d8dcfe008375a115d38484bfdd0397fb5211711329ebeea5d404c"
+        }
+      },
+      "automatic_quality_passed": false,
+      "facts": {
+        "country": {
+          "accuracy": 0.1964735516372796,
+          "reference_coverage": 0.9925,
+          "correct": 78,
+          "evaluated": 397
+        },
+        "occupation": {
+          "accuracy": 0.9047619047619048,
+          "reference_coverage": 0.9975,
+          "correct": 361,
+          "evaluated": 399
+        },
+        "degree": {
+          "accuracy": 0.4742268041237113,
+          "reference_coverage": 0.97,
+          "correct": 184,
+          "evaluated": 388
+        },
+        "university": {
+          "accuracy": 0.5675,
+          "reference_coverage": 1.0,
+          "correct": 227,
+          "evaluated": 400
+        },
+        "projects": {
+          "accuracy": 0.18041237113402062,
+          "reference_coverage": 0.97,
+          "correct": 70,
+          "evaluated": 388
+        },
+        "macro_accuracy": 0.4646749263313833,
+        "minimum_accuracy": 0.18041237113402062,
+        "minimum_coverage": 0.97,
+        "all_five_correct_rate": 0.01,
+        "contradiction_rate": 0.3
+      }
+    },
+    "dropout_vae": {
+      "selected_checkpoint": {
+        "path": "checkpoint-008-127aa4c6",
+        "epoch": 8,
+        "sha256": {
+          "weights.pt": "6871562c11214cd620d88a463586a8c49a3a29d8350306a9ac44f213206ae62b",
+          "probe.pt": "65a1d49b928432defdf62cd02264f5d1664cb5ef02cafb73fd14aeb8466a7e33",
+          "model.json": "f996dc1a70053fc9c578e73fad764835002d9571aeee223a2f99dce5f8529abc"
+        }
+      },
+      "automatic_quality_passed": false,
+      "facts": {
+        "country": {
+          "accuracy": 0.1889168765743073,
+          "reference_coverage": 0.9925,
+          "correct": 75,
+          "evaluated": 397
+        },
+        "occupation": {
+          "accuracy": 0.9523809523809523,
+          "reference_coverage": 0.9975,
+          "correct": 380,
+          "evaluated": 399
+        },
+        "degree": {
+          "accuracy": 0.4690721649484536,
+          "reference_coverage": 0.97,
+          "correct": 182,
+          "evaluated": 388
+        },
+        "university": {
+          "accuracy": 0.5925,
+          "reference_coverage": 1.0,
+          "correct": 237,
+          "evaluated": 400
+        },
+        "projects": {
+          "accuracy": 0.17268041237113402,
+          "reference_coverage": 0.97,
+          "correct": 67,
+          "evaluated": 388
+        },
+        "macro_accuracy": 0.47511008125496945,
+        "minimum_accuracy": 0.17268041237113402,
+        "minimum_coverage": 0.97,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.4275
+      }
+    }
+  }
+}

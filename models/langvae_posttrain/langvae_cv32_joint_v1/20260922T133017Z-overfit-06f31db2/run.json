@@ -1,0 +1,133 @@
+{
+  "schema": 1,
+  "config": {
+    "seed": 42,
+    "sim_config": "exp/sim/config.yaml",
+    "encoder": {
+      "variant": "langvae",
+      "model_name": "neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128",
+      "model_revision": "7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6",
+      "langvae_encoder_model_name": "bert-base-cased",
+      "langvae_encoder_model_revision": "cd5ef92a9fb2f889e972770a36d4ed042daf221e",
+      "langvae_decoder_model_name": "gpt2",
+      "langvae_decoder_model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "local_checkpoint": null,
+      "tag": null,
+      "nomic_model_name": "nomic-ai/nomic-embed-text-v1.5",
+      "nomic_model_revision": "e5cf08aadaa33385f5990def41f7a23405aec398",
+      "nomic_code_revision": "7710840340a098cfb869c4f65e87cf2b1b70caca",
+      "nomic_task": "classification",
+      "max_len": 512,
+      "batch_size": 16,
+      "device": "cpu",
+      "deterministic": true
+    },
+    "semantic_decoder": {
+      "variant": "independent",
+      "tag": null,
+      "hidden_dim": 256,
+      "n_hidden": 2,
+      "dropout": 0.1,
+      "epochs": 50,
+      "batch_size": 64,
+      "lr": 0.001,
+      "calibration_split": 0.2,
+      "calibration_bins": 10,
+      "autoregressive": {
+        "embed_dim": 16
+      }
+    },
+    "latent_intervention": {
+      "variant": "baseline",
+      "tag": null,
+      "d_model": 128,
+      "nhead": 4,
+      "dim_feedforward": 256,
+      "dropout": 0.1,
+      "epochs": 50,
+      "batch_size": 64,
+      "lr": 0.0001,
+      "sparsity_weight": 1.0,
+      "proximity_weight": 1.0,
+      "pre_additive": {
+        "noise_std": 1.0,
+        "n_samples": 8
+      },
+      "dist": {
+        "embed_dim": 16,
+        "top_k": 16,
+        "pretrain_epochs": 30,
+        "joint_epochs": 20,
+        "realiser_l1": 1.0,
+        "realiser_l2": 1.0
+      }
+    },
+    "finetune_vae": {
+      "mode": "joint_full_cv_prefix",
+      "tag": "langvae_cv32_joint_v1",
+      "sequence_length": 32,
+      "include_counterfactual": false,
+      "device": "cuda:1",
+      "precision": "fp16",
+      "initial_loss_scale": 128.0,
+      "epochs": 3,
+      "batch_size": 16,
+      "accumulation_steps": 1,
+      "eval_batch_size": 4,
+      "feature_batch_size": 16,
+      "lr": 0.0001,
+      "encoder_lr": 1e-05,
+      "weight_decay": 0.0,
+      "clip_grad_norm": 1.0,
+      "max_beta": 1.0,
+      "n_cycles": 1,
+      "target_kl": 2.0,
+      "val_split": 0.1,
+      "generation_eval_examples": 32,
+      "minimum_latent_gap": 0.01,
+      "log_every": 10,
+      "cpu_threads": 4,
+      "output_dir": "models/langvae_posttrain"
+    },
+    "paths": {
+      "texts": "data/text_talent/cv_factual.csv",
+      "texts_counterfactual": "data/text_talent/cv_counterfactual.csv",
+      "pair_index": "data/sim_talent/pair_index.csv",
+      "sim_factual": "data/sim_talent/sim_data_factual.csv",
+      "sim_counterfactual": "data/sim_talent/sim_data_counterfactual.csv",
+      "latents": "data/latents/talent/langvae/z_pairs.pt",
+      "decoder_model": "models/talent/langvae/g-independent/semantic_decoder.pt",
+      "decoder_report": "reports/talent/langvae/g-independent/semantic_decoder.json",
+      "manipulator_model": "models/talent/langvae/g-independent/h-baseline/latent_intervention.pt",
+      "eval_report": "reports/talent/langvae/g-independent/h-baseline/eval.json"
+    }
+  },
+  "stage": "overfit",
+  "limits": [
+    16,
+    4,
+    10
+  ],
+  "provenance": {
+    "git_commit": "403b068e4286bd6b781319574c8bd30c4b9986a0",
+    "git_dirty": true,
+    "source_sha256": {
+      "src/finetune_vae.py": "0bde0f1147c24b7f69dffb7035be3f3173abb6ce6d78b1b917a4966c1f6a93c1",
+      "src/vae_data.py": "fcd6b0f9f5cedf098fcd53e583eb0b7ca80bfb9151b5773f41c293613035a99a",
+      "src/vae_training.py": "91e3f6ec39226b390e844ec377730794b0386b4c3378aa6c02ce8945c610b0eb",
+      "src/vae_artifacts.py": "015cd77ed47fa20796c0e6ffe12d0232bc44e0a0ab2fbfe4de1d560e5e2ae99e",
+      "src/encoder.py": "ea7ac728b61b4d43604cf50df9def7f0cbe1f69e8e3d130631c87d807c620767",
+      "src/config.yaml": "b6b4c5db7fe6cacaf5c98aa14460b9ee861d62b9f5bd1d0fcf12fa2bc2ca1bf3",
+      "environments/langvae-cu124/pyproject.toml": "896e74f359a3bd07acf2f8a1e62f3939f3dcc171fd2860d6edfeff82cb6a6b13",
+      "environments/langvae-cu124/uv.lock": "2ff4524571337bf994a16b98514cb30ebe2daf4008fe1d088d8aed7fc87ffa6b"
+    },
+    "packages": {
+      "torch": "2.6.0+cu124",
+      "langvae": "0.6.13",
+      "transformers": "4.48.0",
+      "huggingface-hub": "0.36.2"
+    }
+  },
+  "device": "cuda:1",
+  "gpu": "NVIDIA GeForce RTX 2080 Ti"
+}

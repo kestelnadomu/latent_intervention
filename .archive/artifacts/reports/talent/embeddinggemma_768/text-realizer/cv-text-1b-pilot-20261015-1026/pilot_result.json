@@ -1,0 +1,63 @@
+{
+  "audit_gate": "closed",
+  "audit_informed": true,
+  "baseline_numerics_caveat": "The existing 270M checkpoint failed cached/full SDPA parity on this GPU/software stack; eager attention passed. The pilot uses eager. Improvement against historical results cannot be attributed solely to model size; the 270M baseline needs numerical reassessment.",
+  "baseline_sha256": {
+    "factual_tune": "745873bb24823846b6debe1e12aef22a2a60e1af522d0d0d92a2088772ad3473",
+    "manifest": "218e854905653303fd6c4abc2f6a028c2a31c81b9fc5eef9d94ee7f9d9e278b2",
+    "plan": "39468606e5ff6e5d9c53ea6e32f44fe7f06471cbc9e5799bab9d5d750c0b34ca"
+  },
+  "checkpoint": "/home/boustanip/projects/latent_intervention/models/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/best.pt",
+  "checkpoint_sha256": "59af957c6fdf29a86154efb40d66bbde4038ad82f5818a7a3afa0fcd133d84af",
+  "comparison_scope": "historical_270m_not_pure_capacity_ablation",
+  "complete": true,
+  "conditioning": {
+    "character_gap": 0.0412387307381723,
+    "nll_gap": 0.19485127834693727
+  },
+  "evaluation_partition": "tune",
+  "factual_fields": {
+    "country": {
+      "baseline": 0.9521410579345088,
+      "gain": 0.032745591939546626,
+      "pilot": 0.9848866498740554
+    },
+    "degree": {
+      "baseline": 0.9310344827586207,
+      "gain": -0.08488063660477452,
+      "pilot": 0.8461538461538461
+    },
+    "project_count": {
+      "baseline": 0.1501597444089457,
+      "gain": -0.025559105431309917,
+      "pilot": 0.12460063897763578
+    },
+    "university_tier": {
+      "baseline": 0.705,
+      "gain": -0.13249999999999995,
+      "pilot": 0.5725
+    }
+  },
+  "gates": {
+    "character_gain": false,
+    "conditioning_character": true,
+    "conditioning_nll": true,
+    "macro_factual_gain": false,
+    "no_material_field_regression": false
+  },
+  "macro_factual_gain": -0.05254853752413444,
+  "note": "Tune is selection-biased; bootstrap intervals are descriptive. No confirmatory or counterfactual claim.",
+  "oracle_gate": "sealed",
+  "paired_character_gain": {
+    "lower_95": -0.027060945677697738,
+    "mean": -0.02124481523087609,
+    "samples": 2000,
+    "seed": 20261012,
+    "upper_95": -0.015481396233638544
+  },
+  "promising": false,
+  "reload_verified": true,
+  "replication_authorized": false,
+  "tune_report_sha256": "e724e6b55fc79bcda4f10488212b2bf07a14c4de8d587e0cf638da9bd346ef1c",
+  "verification_sha256": "c043ba84a426de033f8b165835b311aabcc1214e787997da1c6c3eda2cf5ebfb"
+}

@@ -1,0 +1,154 @@
+{
+  "audit_gate": "closed",
+  "config": {
+    "format_version": 1,
+    "generation": {
+      "batch_size": 1,
+      "max_new_tokens": 1024
+    },
+    "inputs": {
+      "baseline_checkpoint": ".archive/artifacts/models/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/best.pt",
+      "counterfactual_text": "data/text_talent/cv_counterfactual.csv",
+      "factual_prepared": "data/latents/talent/embeddinggemma_768/text-realizer-prepared/815a05b566bc35114b8c2a4fa03f1e5f372b26ce5e224a9fffb5b661f7590223",
+      "oracle_info": "data/latents/talent/embeddinggemma_768/oracle_train/z_prime.info.json",
+      "oracle_vectors": "data/latents/talent/embeddinggemma_768/oracle_train/z_prime.pt",
+      "pair_index": "data/sim_talent/pair_index.csv",
+      "sha256": {
+        "baseline_checkpoint": "59af957c6fdf29a86154efb40d66bbde4038ad82f5818a7a3afa0fcd133d84af",
+        "counterfactual_text": "34b3a3ac0747bdd65ab8d7175c8582a9e9d38fcf06ec31f436b5c499ec9f993c",
+        "factual_manifest": "218e854905653303fd6c4abc2f6a028c2a31c81b9fc5eef9d94ee7f9d9e278b2",
+        "oracle_info": "90945421e6b0f2601c92ddc663f4b713e2c53db2cde4a6bc3e4aac7fd58b3963",
+        "oracle_vectors": "7a3e94f15d7343dcba38772553ce0d3aef9234a0aa091d5acdd5df64b8da02d4",
+        "pair_index": "67616f395548dfffb7f063b554338b6b63731f5a77136134ffc3b2936b5d51ee"
+      }
+    },
+    "model": {
+      "attention_implementation": "eager",
+      "latent_dim": 768,
+      "lora_alpha": 32,
+      "lora_dropout": 0.05,
+      "lora_rank": 16,
+      "lora_targets": [
+        "q_proj",
+        "k_proj",
+        "v_proj",
+        "o_proj",
+        "gate_proj",
+        "up_proj",
+        "down_proj"
+      ],
+      "name": "google/gemma-3-1b-pt",
+      "prefix_tokens": 16,
+      "projector_hidden": 768,
+      "revision": "fcf18a2a879aab110ca39f8bffbccd5d49d8eb29",
+      "variant": "lora-compact"
+    },
+    "paths": {
+      "cache": ".cache/huggingface/hub",
+      "models": "models/talent/embeddinggemma_768/text-realizer-cf-1b",
+      "prepared": "data/latents/talent/embeddinggemma_768/text-realizer-cf-1b-prepared",
+      "reports": "reports/talent/embeddinggemma_768/text-realizer-cf-1b"
+    },
+    "preflight": {
+      "benchmark_updates": 10,
+      "memory_headroom": 0.15,
+      "microbatches": [
+        1
+      ],
+      "smoke_updates": 20
+    },
+    "selection": {
+      "bootstrap_samples": 2000,
+      "bootstrap_seed": 20261017,
+      "factual_fields": [
+        "country",
+        "degree",
+        "university_tier",
+        "project_count"
+      ],
+      "factual_tune_ids": 80,
+      "maximum_factual_regression": 0.02,
+      "maximum_field_regression": 0.02,
+      "minimum_character_gain": 0.02,
+      "minimum_macro_factual_gain": 0.02
+    },
+    "training": {
+      "checkpoint_every": 25,
+      "clip": 1.0,
+      "effective_batch": 32,
+      "evaluate_every": 100,
+      "gradient_checkpointing": true,
+      "lora_lr": 5e-05,
+      "oracle_per_batch": 16,
+      "precision": "float32",
+      "projector_lr": 0.0003,
+      "seed": 42,
+      "updates": 600,
+      "warmup_fraction": 0.05,
+      "weight_decay": 0.01
+    }
+  },
+  "identity": {
+    "config_sha256": "cc5150102c4c44a5a87bbf92b7c92540e02f03c5abdb6da5cc6e23f4c54b7b88",
+    "packages": {
+      "accelerate": "1.10.1",
+      "huggingface-hub": "0.36.2",
+      "numpy": "2.5.4",
+      "peft": "0.17.1",
+      "python": "3.12.12",
+      "rapidfuzz": "3.14.1",
+      "sacrebleu": "2.5.1",
+      "safetensors": "0.8.0",
+      "sentence-transformers": "5.1.2",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.57.6"
+    },
+    "prepared_manifest_sha256": "43b15610a7eec8e20dc49ad8b0043a80734986fe596a076b2708c16f18ec0ce2",
+    "source_sha256": {
+      "configs/text_realizer_counterfactual_exposure.yaml": "b12c921371731ecdcda5e0ebc5a078a33792e9bd40ca800b21daa25c0a073e78",
+      "configs/text_realizer_counterfactual_exposure_gemma1b.yaml": "9a01fc829120f732294a2ae4cf5d522503b220e70eba370b66fc24e8beffad58",
+      "exp/sim/codebook.yaml": "ef1921d3a125968bb2b7103d2c377b9cfe0b316c7cb08b278db91c97a976a7af",
+      "exp/text_realizer/campaign.py": "e616b49de005ba206120782406ac8ad85df1a3e86bd2342cbee10542941550cb",
+      "exp/text_realizer/data.py": "1e95eefb76de66550614fb45280a05d63e253bd37f29daaf58259e5d7cc08274",
+      "exp/text_realizer/environment/pyproject.toml": "d152496cf2e72a10306bb9b6a0c026e7626cef650b38eb2084839a76a1018920",
+      "exp/text_realizer/environment/uv.lock": "04b84796cc7cc5f3b37325713386e6147f93fc1368980ff4c1f318563651cfcb",
+      "exp/text_realizer/evaluation.py": "e7bb0a27e11a25b8d0d8563ce20b3661b37bd9888c25b928f44189db0b07e336",
+      "exp/text_realizer/experiment.py": "dff74c23c11dcfd69ef0625f7dd182a5850667a42d4fce257f96f070f1472d27",
+      "exp/text_realizer/facts.py": "d2f40ae0181cf500a74991f10f6b100ec71a92a4ea5cc77e4a6d5bac046f9bef",
+      "exp/text_realizer/protocol.py": "a602b5da44884a29ebcf03645bfbf2a2a3e6c4ebffe3f59337ec4792b9b57499",
+      "exp/text_realizer/runtime.py": "93dd369171655c1850fe57c20ef131f1872ab566948ff50e52d4c1600676744a",
+      "exp/text_realizer/sanity.py": "2048c41afc89df4a26f9c2082da56a9f0b8c050bf992614cf45f4a6a69d25c32",
+      "exp/text_realizer/settings.py": "88883cdb547ad5733da3603a83ca612eace88c8886496df93b858c8c03b81af6",
+      "exp/text_realizer_cf/__init__.py": "48c4ab5e0bc0c9d79c24246100be091562193e2128520885b98af3bc9f39dc52",
+      "exp/text_realizer_cf/__main__.py": "665f2d2e13e2547f6070a776f58c83a6c30e46feb686caf24bbc65790ceab750",
+      "exp/text_realizer_cf/data.py": "ee29f6a34df6e2e409bccc19dead1e87004961c167a0a2139c93df509bb493b4",
+      "exp/text_realizer_cf/evaluation.py": "f844a6e8396445d15c2b8fdeb32604201fac11385d192f2925e4c641a1918844",
+      "exp/text_realizer_cf/model.py": "5b90fb42959cc07dc1b53b96ef11749004df53d96e024f8d85d7c57f5f726897",
+      "exp/text_realizer_cf/pilot_1b.py": "dddd592017267b18c61821835db913b2510814148b8ee405e214245f4408f91e",
+      "exp/text_realizer_cf/preflight.py": "b4b8bc9f301ae26165953c53bcae0c062adc9055625b1b54e3d4593556b3173b",
+      "exp/text_realizer_cf/preflight_1b.py": "12e8401bed385f8cba2baada7c8c0f23423de24df87679343cf2c648c1e8a246",
+      "exp/text_realizer_cf/protocol.py": "3509b96fe7bf4708e404251ae1fa3df111368057cb3c4554ff11b18ad898049d",
+      "exp/text_realizer_cf/sampling.py": "2f55d4af2c1b9d4d65773e424796500d0239cb66d1a718dc8b44a3c3992dc275",
+      "exp/text_realizer_cf/selection.py": "3a3cbccdad7163f245c7250c1af207699ba325da602e0304785eb32498169230",
+      "exp/text_realizer_cf/settings.py": "3d18dd5b390b0a0bd973af132208bda9961d9136283094901fe68c8ab5c211da",
+      "exp/text_realizer_cf/training.py": "0e963d21e0f8506153bd007c775a764247297de6135dd2695f815407495898fc",
+      "scripts/run_text_realizer_cf.sh": "d491511e5f1321bec397a955fbb33dba29ad3a7d6f5b6de78e8ed998088b84bb",
+      "scripts/run_text_realizer_cf_1b.sh": "92b2640aca25ee902f8139a9bcad99eb0f992dbea0fc0b1efe71e908fb7f605a",
+      "src/artifact_io.py": "1cf8efb12816b060615aff7ab55ef279acbc847bb07652a8acbf4925696e8d63",
+      "src/encoder/embeddinggemma.py": "b9f6058b92b7fc26ca8282d42d68739ef4fa3b8f614347880ba144a6c3d02037",
+      "src/encoder/protocols.py": "44408fdee2384ef78afaca1948d179c8d5ad09cedabdc03904f478be889dda4b",
+      "src/text_realizer/__init__.py": "b1f44fcf5569fb8abfc9445bd0a56271f07aa0f4d239b0606f7cb96b4137f5cc",
+      "src/text_realizer/artifacts.py": "77304e6b710c38613a889cc6eb2578184b34f6be8703f04be9fcf5a05e1703cc",
+      "src/text_realizer/generation.py": "9726745279c129993a0749409a56cd8f1f3db7a5724e2ea9fb52c684b4bde6be",
+      "src/text_realizer/metrics.py": "598de2d5534398058ea452b481faef7f2b127f6e105edae8e90ca1498509f64c",
+      "src/text_realizer/model.py": "50a00246581196eb2c5c0dae6a0195dd42146a98641a975f2a58575468f5dad2",
+      "src/text_realizer/training.py": "4d59e797747ef1d569a5f3f2d0b88a598d7a38c36f82f7eec4b4a0c345bff811"
+    }
+  },
+  "kind": "gemma1b-oracle-exposure-pilot",
+  "official_test_gate": "sealed",
+  "physical_gpus": {
+    "factual": "0",
+    "oracle": "1"
+  }
+}

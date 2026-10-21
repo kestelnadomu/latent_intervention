@@ -1,0 +1,52 @@
+{
+  "state": "completed",
+  "stage": "overfit",
+  "selected_checkpoint": "checkpoint-epoch-001-5ed86474",
+  "quality_gates": {
+    "validation_nll_improved": true,
+    "generated_prefix_f1_improved": true,
+    "latent_dependency": true,
+    "generation_latent_dependency": false,
+    "frozen_bases_unchanged": true,
+    "tiny_set_nll_reduced_10_percent": true,
+    "fresh_process_reload": true
+  },
+  "prefix_candidate_accepted": false,
+  "baseline": {
+    "loss": 459.72174072265625,
+    "reconstruction_nll": 326.8397521972656,
+    "raw_kl": 132.8820037841797,
+    "weighted_kl": 132.8820037841797,
+    "correct_token_nll": 10.21374225616455,
+    "shuffled_token_nll": 10.25206470489502,
+    "zero_token_nll": 11.842105865478516,
+    "latent_nll_gap": 0.03832244873046875,
+    "zero_nll_gap": 1.6283636093139648,
+    "active_dimensions": 100,
+    "correct_prefix_f1": 0.18626067448255898,
+    "shuffled_prefix_f1": 0.20832029620358783,
+    "zero_prefix_f1": 0.13161021984551396,
+    "unique_correct_outputs": 4,
+    "examples": 4
+  },
+  "selected_validation": {
+    "loss": 402.6532287597656,
+    "reconstruction_nll": 270.2951354980469,
+    "raw_kl": 132.3580780029297,
+    "weighted_kl": 132.3580780029297,
+    "correct_token_nll": 8.446722984313965,
+    "shuffled_token_nll": 8.478777885437012,
+    "zero_token_nll": 11.819377899169922,
+    "latent_nll_gap": 0.032054901123046875,
+    "zero_nll_gap": 3.372654914855957,
+    "active_dimensions": 100,
+    "correct_prefix_f1": 0.20346005423445973,
+    "shuffled_prefix_f1": 0.2051288068418857,
+    "zero_prefix_f1": 0.13161021984551396,
+    "unique_correct_outputs": 4,
+    "examples": 4
+  },
+  "seconds": 36.364660039544106,
+  "peak_gpu_allocated_gib": 2.4634337425231934,
+  "scope": "32-token prefix pilot; not full-CV fidelity or downstream fairness validation"
+}

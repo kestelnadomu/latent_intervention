@@ -4,11 +4,13 @@ Archived on 2026-10-20. This folder preserves experiments that are **not active
 decoders**. On 2026-10-21 the 1B pilot source/config/tests/launcher were restored
 to the active code tree for Git transfer; its trained artifacts remain here.
 Other retired experiment-specific source is in `code/`, and local checkpoints,
-optimizer states, prepared caches, and reports are under `artifacts/`. The latter
-is Git-ignored because it contains several gigabytes of weights and per-CV text;
-committing this README or code does **not** transfer those artifacts to another
-machine. Only this README is intended for Git from this archive; `code/` stays
-local.
+optimizer states, prepared caches, and reports are under `artifacts/`.
+On 2026-10-21 the user approved publishing the full result reports, including
+generated CV text. JSON/Markdown files under `artifacts/reports/` are now tracked
+at their archived paths. See the [results index and checksums](../docs/experiments/decoder_results.md).
+Weights, optimizer states, prepared caches, historical report `source/` snapshots,
+and `code/` remain local; committing the reports does **not** transfer those
+artifacts or reactivate a retired decoder.
 
 ## The two retained inference checkpoints
 

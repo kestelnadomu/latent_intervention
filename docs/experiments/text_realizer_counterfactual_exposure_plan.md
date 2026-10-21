@@ -331,6 +331,8 @@ under this protocol. At the user's request, the selected A and C inference
 checkpoints remain available as separate baselines, with C clearly labelled
 oracle-supervised and exploratory. B's checkpoint, resume state, and arm-specific
 report are now in the [local archive](../../.archive/README.md), while the
-combined per-ID A/B/C comparison remains in the Git-ignored
+combined per-ID A/B/C comparison is now tracked, with generated CV text, in
 `reports/talent/embeddinggemma_768/text-realizer-cf/cv-cf-pilot-v1/result.json`.
+The [results index](decoder_results.md) describes its schema, populations, and
+checksums, as well as the archived original factual-tune reports.
 Audit, official test, and `h_Z` output vectors remain unopened by this pilot.

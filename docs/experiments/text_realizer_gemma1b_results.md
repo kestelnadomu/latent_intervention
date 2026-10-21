@@ -15,8 +15,9 @@ local reports remain under the [decoder archive](../../.archive/README.md).
 The restored source is not the completed run's immutable source snapshot; a
 fresh experiment needs a new run ID and its pinned comparison artifacts.
 The two retained active checkpoints are the original 270M and the separate
-oracle-exposed 270M comparator. Archived artifacts are Git-ignored; the linked
-files below resolve only on this machine unless transferred separately.
+oracle-exposed 270M comparator. Archived report JSONs are now tracked, including
+generated text; see the [results index](decoder_results.md). Weights, prepared
+caches, and source snapshots still need separate transfer.
 
 ## Conclusion and retained decision
 

@@ -10,8 +10,10 @@ the completed [270M/1B comparison](text_realizer_gemma1b_results.md).
 
 **Archive update (2026-10-20):** all corrector-specific code, weights, optimizer
 state, and local reports were moved to the [decoder archive](../../.archive/README.md).
-The negative result and its hashes remain documented here; archived artifacts
-are Git-ignored and must be transferred separately if needed elsewhere.
+The negative result and its hashes remain documented here. On 2026-10-21 the
+user approved tracking the full archived JSON reports, including generated text;
+see the [results index](decoder_results.md). Code, weights, optimizer states,
+prepared data, and source snapshots still require separate transfer.
 
 ## Conclusion and retained decision
 
@@ -174,13 +176,13 @@ new arms' training completion alone.
 
 ## Artifact provenance and preservation
 
-The local, Git-ignored run directory is now
+The archived report directory is now
 `.archive/artifacts/reports/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/`.
 Its `plan.json` and `source/` preserve the immutable inputs/configuration and
 source snapshot; `preflight.json`, `training.json`, `history.json`, `verify.json`,
-and `result.json` preserve execution and evaluation. The full report contains
-per-ID CV text and was deliberately **not** copied into this repository
-documentation or automatically uploaded.
+and `result.json` preserve execution and evaluation. JSON reports, including
+per-ID CV text, are now tracked at these paths; the `source/` snapshot remains
+local. Publishing these historical results does not promote the corrector.
 
 | Artifact | Local path / integrity marker |
 |---|---|

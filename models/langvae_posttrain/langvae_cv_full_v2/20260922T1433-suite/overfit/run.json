@@ -1,0 +1,135 @@
+{
+  "architecture": "langvae_fixed_prefix_v2",
+  "config": {
+    "seed": 42,
+    "sim_config": "exp/sim/config.yaml",
+    "encoder": {
+      "variant": "langvae",
+      "model_name": "neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128",
+      "model_revision": "7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6",
+      "langvae_encoder_model_name": "bert-base-cased",
+      "langvae_encoder_model_revision": "cd5ef92a9fb2f889e972770a36d4ed042daf221e",
+      "langvae_decoder_model_name": "gpt2",
+      "langvae_decoder_model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+      "local_checkpoint": null,
+      "tag": null,
+      "nomic_model_name": "nomic-ai/nomic-embed-text-v1.5",
+      "nomic_model_revision": "e5cf08aadaa33385f5990def41f7a23405aec398",
+      "nomic_code_revision": "7710840340a098cfb869c4f65e87cf2b1b70caca",
+      "nomic_task": "classification",
+      "max_len": 512,
+      "batch_size": 16,
+      "device": "cpu",
+      "deterministic": true
+    },
+    "semantic_decoder": {
+      "variant": "independent",
+      "tag": null,
+      "hidden_dim": 256,
+      "n_hidden": 2,
+      "dropout": 0.1,
+      "epochs": 50,
+      "batch_size": 64,
+      "lr": 0.001,
+      "calibration_split": 0.2,
+      "calibration_bins": 10,
+      "autoregressive": {
+        "embed_dim": 16
+      }
+    },
+    "latent_intervention": {
+      "variant": "baseline",
+      "tag": null,
+      "d_model": 128,
+      "nhead": 4,
+      "dim_feedforward": 256,
+      "dropout": 0.1,
+      "epochs": 50,
+      "batch_size": 64,
+      "lr": 0.0001,
+      "sparsity_weight": 1.0,
+      "proximity_weight": 1.0,
+      "pre_additive": {
+        "noise_std": 1.0,
+        "n_samples": 8
+      },
+      "dist": {
+        "embed_dim": 16,
+        "top_k": 16,
+        "pretrain_epochs": 30,
+        "joint_epochs": 20,
+        "realiser_l1": 1.0,
+        "realiser_l2": 1.0
+      }
+    },
+    "finetune_vae": {
+      "tag": "langvae_cv_full_v2",
+      "mode": "joint_full_cv_fixed_prefix",
+      "sequence_length": 512,
+      "prefix_length": 8,
+      "prefix_hidden_size": 256,
+      "include_counterfactual": false,
+      "val_split": 0.1,
+      "device": "cuda:0",
+      "epochs": 3,
+      "batch_size": 1,
+      "accumulation_steps": 8,
+      "eval_batch_size": 1,
+      "generation_batch_size": 2,
+      "generation_eval_examples": 8,
+      "feature_batch_size": 16,
+      "warmup_steps": 100,
+      "encoder_lr": 1e-05,
+      "lr": 0.0001,
+      "max_beta": 1.0,
+      "target_kl": 2.0,
+      "clip_grad_norm": 1.0,
+      "cpu_threads": 4,
+      "log_every": 10,
+      "output_dir": "models/langvae_posttrain",
+      "overfit_examples": 16,
+      "overfit_steps": 200,
+      "overfit_warmup_steps": 20,
+      "overfit_nll_ratio": 0.8,
+      "overfit_minimum_lcs_f1": 0.25,
+      "overfit_maximum_repetition": 0.1
+    },
+    "paths": {
+      "texts": "data/text_talent/cv_factual.csv",
+      "texts_counterfactual": "data/text_talent/cv_counterfactual.csv",
+      "pair_index": "data/sim_talent/pair_index.csv",
+      "sim_factual": "data/sim_talent/sim_data_factual.csv",
+      "sim_counterfactual": "data/sim_talent/sim_data_counterfactual.csv",
+      "latents": "data/latents/talent/langvae/z_pairs.pt",
+      "decoder_model": "models/talent/langvae/g-independent/semantic_decoder.pt",
+      "decoder_report": "reports/talent/langvae/g-independent/semantic_decoder.json",
+      "manipulator_model": "models/talent/langvae/g-independent/h-baseline/latent_intervention.pt",
+      "eval_report": "reports/talent/langvae/g-independent/h-baseline/eval.json"
+    }
+  },
+  "stage": "overfit",
+  "provenance": {
+    "git_commit": "403b068e4286bd6b781319574c8bd30c4b9986a0",
+    "git_dirty": true,
+    "source_sha256": {
+      "src/finetune_vae.py": "0c32ecb4f44d6115ebd4d82d2520e313e4e31506a29dee1e8f6f15e4a6bb22b3",
+      "src/vae_data.py": "fcd6b0f9f5cedf098fcd53e583eb0b7ca80bfb9151b5773f41c293613035a99a",
+      "src/vae_training.py": "91e3f6ec39226b390e844ec377730794b0386b4c3378aa6c02ce8945c610b0eb",
+      "src/vae_artifacts.py": "015cd77ed47fa20796c0e6ffe12d0232bc44e0a0ab2fbfe4de1d560e5e2ae99e",
+      "src/encoder.py": "ea7ac728b61b4d43604cf50df9def7f0cbe1f69e8e3d130631c87d807c620767",
+      "src/config.yaml": "b6b4c5db7fe6cacaf5c98aa14460b9ee861d62b9f5bd1d0fcf12fa2bc2ca1bf3",
+      "environments/langvae-cu124/pyproject.toml": "896e74f359a3bd07acf2f8a1e62f3939f3dcc171fd2860d6edfeff82cb6a6b13",
+      "environments/langvae-cu124/uv.lock": "2ff4524571337bf994a16b98514cb30ebe2daf4008fe1d088d8aed7fc87ffa6b",
+      "/home/boustanip/projects/latent_intervention/src/finetune_vae_v2.py": "7e76776322a6f0ebd5b02277135ac055b87dc05cdecb56930d00ab2dbaff20ad",
+      "/home/boustanip/projects/latent_intervention/src/vae_prefix.py": "9e9f0a8c328b756dc6f73b643bec94be24572ee2c11e9e08f031f2421cb9d2f9",
+      "/home/boustanip/projects/latent_intervention/src/config.py": "83ceaa49a11020e58e11e02a1c7996fdbbfcfc392a102644641f5416e990f282",
+      "/home/boustanip/projects/latent_intervention/configs/langvae_cv_v2.yaml": "c73fb50ac0766f0240a508619b9b37d3715db2707a8d9439c17989c157a9b544"
+    },
+    "packages": {
+      "torch": "2.6.0+cu124",
+      "langvae": "0.6.13",
+      "transformers": "4.48.0",
+      "huggingface-hub": "0.36.2"
+    }
+  }
+}

@@ -1,0 +1,1746 @@
+[
+  {
+    "epoch": 2,
+    "validation": {
+      "loss": 747.7279461669922,
+      "reconstruction_nll": 739.9465237426758,
+      "raw_kl": 389.07096099853516,
+      "weighted_kl": 7.781419036388397,
+      "correct_token_nll": 1.7990105207791995,
+      "shuffled_token_nll": 2.7989100453588747,
+      "zero_token_nll": 2.8277958643130443,
+      "latent_nll_gap": 0.9998995245796751,
+      "zero_nll_gap": 1.0287853435338448,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.5415353298223897,
+      "shuffled_full_cv_f1": 0.4408659671717463,
+      "zero_full_cv_f1": 0.335300093424197,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.29809692071025934,
+      "correct_repeated_trigram_fraction": 0.1872386062066488,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.08196721311475409,
+          "reference_coverage": 0.953125,
+          "correct": 5,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.921875,
+          "reference_coverage": 1.0,
+          "correct": 59,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.2727272727272727,
+          "reference_coverage": 0.859375,
+          "correct": 15,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.375,
+          "reference_coverage": 1.0,
+          "correct": 24,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.11290322580645161,
+          "reference_coverage": 0.96875,
+          "correct": 7,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.3528945423296957,
+        "minimum_accuracy": 0.08196721311475409,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.015625,
+        "contradiction_rate": 0.671875
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.03278688524590164,
+          "reference_coverage": 0.953125,
+          "correct": 2,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.03125,
+          "reference_coverage": 1.0,
+          "correct": 2,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.12727272727272726,
+          "reference_coverage": 0.859375,
+          "correct": 7,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.28125,
+          "reference_coverage": 1.0,
+          "correct": 18,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.0967741935483871,
+          "reference_coverage": 0.96875,
+          "correct": 6,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.1138667612134032,
+        "minimum_accuracy": 0.03125,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.671875
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.06557377049180328,
+          "reference_coverage": 0.953125,
+          "correct": 4,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.3090909090909091,
+          "reference_coverage": 0.859375,
+          "correct": 17,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.5625,
+          "reference_coverage": 1.0,
+          "correct": 36,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.16129032258064516,
+          "reference_coverage": 0.96875,
+          "correct": 10,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.21969100043267148,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 433.2042236328125
+    },
+    "score": [
+      0.0704405737704918,
+      0.3528945423296957,
+      0.015625,
+      -0.671875,
+      0.29809692071025934,
+      -0.1872386062066488,
+      -1.7990105207791995
+    ],
+    "selected": {
+      "path": "checkpoint-002-78590072",
+      "epoch": 2,
+      "sha256": {
+        "weights.pt": "abd18291f6a1ddeb080576af2fb802f8d225fbdd95b69b5d6ae2a82920a994a1",
+        "probe.pt": "01e77d37ed04e0e640f91d1dea785a01db1a0c16d08d19052a14448520437d6f",
+        "model.json": "b7991f3134096354236f3eb586aaee7a4e8eafa3d1be212632f92da648b3a9df"
+      }
+    }
+  },
+  {
+    "epoch": 4,
+    "validation": {
+      "loss": 610.7456799316407,
+      "reconstruction_nll": 602.8055731201172,
+      "raw_kl": 397.00535400390623,
+      "weighted_kl": 7.94010694026947,
+      "correct_token_nll": 1.4655837098687141,
+      "shuffled_token_nll": 2.885029477409931,
+      "zero_token_nll": 2.8513233594773317,
+      "latent_nll_gap": 1.4194457675412169,
+      "zero_nll_gap": 1.3857396496086176,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.5913079402588469,
+      "shuffled_full_cv_f1": 0.45735690949776303,
+      "zero_full_cv_f1": 0.42328600286536394,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.3381396642169759,
+      "correct_repeated_trigram_fraction": 0.11237635005445235,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.14754098360655737,
+          "reference_coverage": 0.953125,
+          "correct": 9,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.875,
+          "reference_coverage": 1.0,
+          "correct": 56,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.3090909090909091,
+          "reference_coverage": 0.859375,
+          "correct": 17,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.53125,
+          "reference_coverage": 1.0,
+          "correct": 34,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.08064516129032258,
+          "reference_coverage": 0.96875,
+          "correct": 5,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.3887054107975578,
+        "minimum_accuracy": 0.08064516129032258,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.453125
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.01639344262295082,
+          "reference_coverage": 0.953125,
+          "correct": 1,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.015625,
+          "reference_coverage": 1.0,
+          "correct": 1,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.23636363636363636,
+          "reference_coverage": 0.859375,
+          "correct": 13,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.359375,
+          "reference_coverage": 1.0,
+          "correct": 23,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.04838709677419355,
+          "reference_coverage": 0.96875,
+          "correct": 3,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.13522883515215614,
+        "minimum_accuracy": 0.015625,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.453125
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.06557377049180328,
+          "reference_coverage": 0.953125,
+          "correct": 4,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.36363636363636365,
+          "reference_coverage": 0.859375,
+          "correct": 20,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.5625,
+          "reference_coverage": 1.0,
+          "correct": 36,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.06451612903225806,
+          "reference_coverage": 0.96875,
+          "correct": 4,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.211245252632085,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 417.38421630859375
+    },
+    "score": [
+      0.06930443548387097,
+      0.3887054107975578,
+      0.0,
+      -0.453125,
+      0.3381396642169759,
+      -0.11237635005445235,
+      -1.4655837098687141
+    ],
+    "selected": {
+      "path": "checkpoint-002-78590072",
+      "epoch": 2,
+      "sha256": {
+        "weights.pt": "abd18291f6a1ddeb080576af2fb802f8d225fbdd95b69b5d6ae2a82920a994a1",
+        "probe.pt": "01e77d37ed04e0e640f91d1dea785a01db1a0c16d08d19052a14448520437d6f",
+        "model.json": "b7991f3134096354236f3eb586aaee7a4e8eafa3d1be212632f92da648b3a9df"
+      }
+    }
+  },
+  {
+    "epoch": 6,
+    "validation": {
+      "loss": 562.0341537475585,
+      "reconstruction_nll": 554.0801863098145,
+      "raw_kl": 397.6982702636719,
+      "weighted_kl": 7.953965220451355,
+      "correct_token_nll": 1.3471190899487886,
+      "shuffled_token_nll": 2.9708271659716177,
+      "zero_token_nll": 2.8902908004017203,
+      "latent_nll_gap": 1.623708076022829,
+      "zero_nll_gap": 1.5431717104529317,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.6147402586030177,
+      "shuffled_full_cv_f1": 0.4625597029832875,
+      "zero_full_cv_f1": 0.45467837564679603,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.3754782015303455,
+      "correct_repeated_trigram_fraction": 0.09074881233631067,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.14754098360655737,
+          "reference_coverage": 0.953125,
+          "correct": 9,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.890625,
+          "reference_coverage": 1.0,
+          "correct": 57,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.4,
+          "reference_coverage": 0.859375,
+          "correct": 22,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.625,
+          "reference_coverage": 1.0,
+          "correct": 40,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.0967741935483871,
+          "reference_coverage": 0.96875,
+          "correct": 6,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.43198803543098896,
+        "minimum_accuracy": 0.0967741935483871,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.609375
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.08196721311475409,
+          "reference_coverage": 0.953125,
+          "correct": 5,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.03125,
+          "reference_coverage": 1.0,
+          "correct": 2,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.2727272727272727,
+          "reference_coverage": 0.859375,
+          "correct": 15,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.4375,
+          "reference_coverage": 1.0,
+          "correct": 28,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.06451612903225806,
+          "reference_coverage": 0.96875,
+          "correct": 4,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.177592122974857,
+        "minimum_accuracy": 0.03125,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.609375
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.953125,
+          "correct": 0,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.36363636363636365,
+          "reference_coverage": 0.859375,
+          "correct": 20,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.5625,
+          "reference_coverage": 1.0,
+          "correct": 36,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.12903225806451613,
+          "reference_coverage": 0.96875,
+          "correct": 8,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.21103372434017595,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 431.02471923828125
+    },
+    "score": [
+      0.08316532258064516,
+      0.43198803543098896,
+      0.0,
+      -0.609375,
+      0.3754782015303455,
+      -0.09074881233631067,
+      -1.3471190899487886
+    ],
+    "selected": {
+      "path": "checkpoint-006-90f3f1f0",
+      "epoch": 6,
+      "sha256": {
+        "weights.pt": "107a32df34141ef54b0e1d5b702b7445b80210ba803394e787024cb289ee6e6e",
+        "probe.pt": "3e389b635949b84a62f2cf3f57a426183d4f3e6be574f4465e590264287100cd",
+        "model.json": "0ba1a14fa4ee943cca94b073d2dcc6d4b84f22a94f6c6b0155beeb5ed74ae949"
+      }
+    }
+  },
+  {
+    "epoch": 8,
+    "validation": {
+      "loss": 539.8510144042968,
+      "reconstruction_nll": 531.8794053649902,
+      "raw_kl": 398.5803733825684,
+      "weighted_kl": 7.97160728931427,
+      "correct_token_nll": 1.2931429793411056,
+      "shuffled_token_nll": 3.080873960400151,
+      "zero_token_nll": 2.9107577684688275,
+      "latent_nll_gap": 1.7877309810590454,
+      "zero_nll_gap": 1.617614789127722,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.6354786689507456,
+      "shuffled_full_cv_f1": 0.4686421578143178,
+      "zero_full_cv_f1": 0.4459426188908694,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.3978732076404364,
+      "correct_repeated_trigram_fraction": 0.06286124850096333,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.16393442622950818,
+          "reference_coverage": 0.953125,
+          "correct": 10,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.921875,
+          "reference_coverage": 1.0,
+          "correct": 59,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.38181818181818183,
+          "reference_coverage": 0.859375,
+          "correct": 21,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.65625,
+          "reference_coverage": 1.0,
+          "correct": 42,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.22580645161290322,
+          "reference_coverage": 0.96875,
+          "correct": 14,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.46993681193211867,
+        "minimum_accuracy": 0.16393442622950818,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.4375
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.04918032786885246,
+          "reference_coverage": 0.953125,
+          "correct": 3,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.015625,
+          "reference_coverage": 1.0,
+          "correct": 1,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.2545454545454545,
+          "reference_coverage": 0.859375,
+          "correct": 14,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.4375,
+          "reference_coverage": 1.0,
+          "correct": 28,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.08064516129032258,
+          "reference_coverage": 0.96875,
+          "correct": 5,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.1674991887409259,
+        "minimum_accuracy": 0.015625,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.4375
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.953125,
+          "correct": 0,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.36363636363636365,
+          "reference_coverage": 0.859375,
+          "correct": 20,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.96875,
+          "correct": 0,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.07272727272727272,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 440.60662841796875
+    },
+    "score": [
+      0.1408811475409836,
+      0.46993681193211867,
+      0.0,
+      -0.4375,
+      0.3978732076404364,
+      -0.06286124850096333,
+      -1.2931429793411056
+    ],
+    "selected": {
+      "path": "checkpoint-008-127aa4c6",
+      "epoch": 8,
+      "sha256": {
+        "weights.pt": "6871562c11214cd620d88a463586a8c49a3a29d8350306a9ac44f213206ae62b",
+        "probe.pt": "65a1d49b928432defdf62cd02264f5d1664cb5ef02cafb73fd14aeb8466a7e33",
+        "model.json": "f996dc1a70053fc9c578e73fad764835002d9571aeee223a2f99dce5f8529abc"
+      }
+    }
+  },
+  {
+    "epoch": 10,
+    "validation": {
+      "loss": 534.3863635253906,
+      "reconstruction_nll": 526.3682229614258,
+      "raw_kl": 400.9069718933105,
+      "weighted_kl": 8.018139238357543,
+      "correct_token_nll": 1.2797438091358,
+      "shuffled_token_nll": 3.208012948381932,
+      "zero_token_nll": 2.9573687891828766,
+      "latent_nll_gap": 1.9282691392461322,
+      "zero_nll_gap": 1.6776249800470766,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.6337275849546312,
+      "shuffled_full_cv_f1": 0.4650585344927688,
+      "zero_full_cv_f1": 0.42980680089885864,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.39182934691309257,
+      "correct_repeated_trigram_fraction": 0.07047213655287944,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.26229508196721313,
+          "reference_coverage": 0.953125,
+          "correct": 16,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.96875,
+          "reference_coverage": 1.0,
+          "correct": 62,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.43636363636363634,
+          "reference_coverage": 0.859375,
+          "correct": 24,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.65625,
+          "reference_coverage": 1.0,
+          "correct": 42,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.12903225806451613,
+          "reference_coverage": 0.96875,
+          "correct": 8,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.4905381952790731,
+        "minimum_accuracy": 0.12903225806451613,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.328125
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.08196721311475409,
+          "reference_coverage": 0.953125,
+          "correct": 5,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.03125,
+          "reference_coverage": 1.0,
+          "correct": 2,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.2727272727272727,
+          "reference_coverage": 0.859375,
+          "correct": 15,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.484375,
+          "reference_coverage": 1.0,
+          "correct": 31,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.08064516129032258,
+          "reference_coverage": 0.96875,
+          "correct": 5,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.19019292942646987,
+        "minimum_accuracy": 0.03125,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.328125
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.953125,
+          "correct": 0,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.3090909090909091,
+          "reference_coverage": 0.859375,
+          "correct": 17,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.12903225806451613,
+          "reference_coverage": 0.96875,
+          "correct": 8,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.08762463343108504,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 454.4434509277344
+    },
+    "score": [
+      0.11088709677419355,
+      0.4905381952790731,
+      0.0,
+      -0.328125,
+      0.39182934691309257,
+      -0.07047213655287944,
+      -1.2797438091358
+    ],
+    "selected": {
+      "path": "checkpoint-008-127aa4c6",
+      "epoch": 8,
+      "sha256": {
+        "weights.pt": "6871562c11214cd620d88a463586a8c49a3a29d8350306a9ac44f213206ae62b",
+        "probe.pt": "65a1d49b928432defdf62cd02264f5d1664cb5ef02cafb73fd14aeb8466a7e33",
+        "model.json": "f996dc1a70053fc9c578e73fad764835002d9571aeee223a2f99dce5f8529abc"
+      }
+    }
+  },
+  {
+    "epoch": 12,
+    "validation": {
+      "loss": 528.8728492736816,
+      "reconstruction_nll": 520.7877563476562,
+      "raw_kl": 404.25448959350587,
+      "weighted_kl": 8.085089581012726,
+      "correct_token_nll": 1.2661761668670328,
+      "shuffled_token_nll": 3.268583549939636,
+      "zero_token_nll": 2.981253447763098,
+      "latent_nll_gap": 2.0024073830726032,
+      "zero_nll_gap": 1.715077280896065,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.6418159525523137,
+      "shuffled_full_cv_f1": 0.46577319578967946,
+      "zero_full_cv_f1": 0.3945508184882065,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.40874034228219935,
+      "correct_repeated_trigram_fraction": 0.06813495467488026,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.19672131147540983,
+          "reference_coverage": 0.953125,
+          "correct": 12,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.984375,
+          "reference_coverage": 1.0,
+          "correct": 63,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.5272727272727272,
+          "reference_coverage": 0.859375,
+          "correct": 29,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.6875,
+          "reference_coverage": 1.0,
+          "correct": 44,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.16129032258064516,
+          "reference_coverage": 0.96875,
+          "correct": 10,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.5114318722657565,
+        "minimum_accuracy": 0.16129032258064516,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.03125,
+        "contradiction_rate": 0.375
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.11475409836065574,
+          "reference_coverage": 0.953125,
+          "correct": 7,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.03125,
+          "reference_coverage": 1.0,
+          "correct": 2,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.2909090909090909,
+          "reference_coverage": 0.859375,
+          "correct": 16,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.484375,
+          "reference_coverage": 1.0,
+          "correct": 31,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.12903225806451613,
+          "reference_coverage": 0.96875,
+          "correct": 8,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.21006408946685254,
+        "minimum_accuracy": 0.03125,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.375
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.953125,
+          "correct": 0,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.859375,
+          "correct": 0,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.16129032258064516,
+          "reference_coverage": 0.96875,
+          "correct": 10,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.03225806451612903,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 473.33978271484375
+    },
+    "score": [
+      0.13860887096774194,
+      0.5114318722657565,
+      0.03125,
+      -0.375,
+      0.40874034228219935,
+      -0.06813495467488026,
+      -1.2661761668670328
+    ],
+    "selected": {
+      "path": "checkpoint-008-127aa4c6",
+      "epoch": 8,
+      "sha256": {
+        "weights.pt": "6871562c11214cd620d88a463586a8c49a3a29d8350306a9ac44f213206ae62b",
+        "probe.pt": "65a1d49b928432defdf62cd02264f5d1664cb5ef02cafb73fd14aeb8466a7e33",
+        "model.json": "f996dc1a70053fc9c578e73fad764835002d9571aeee223a2f99dce5f8529abc"
+      }
+    }
+  },
+  {
+    "epoch": 14,
+    "validation": {
+      "loss": 530.7705828857422,
+      "reconstruction_nll": 522.6156881713868,
+      "raw_kl": 407.74471405029294,
+      "weighted_kl": 8.154894106388092,
+      "correct_token_nll": 1.2706203745306508,
+      "shuffled_token_nll": 3.385711648219398,
+      "zero_token_nll": 3.0124429286435257,
+      "latent_nll_gap": 2.115091273688747,
+      "zero_nll_gap": 1.741822554112875,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.6412615724378079,
+      "shuffled_full_cv_f1": 0.4595212269263063,
+      "zero_full_cv_f1": 0.4508814691689037,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.40630739689874645,
+      "correct_repeated_trigram_fraction": 0.06849327000041854,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.18032786885245902,
+          "reference_coverage": 0.953125,
+          "correct": 11,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 1.0,
+          "reference_coverage": 1.0,
+          "correct": 64,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.4727272727272727,
+          "reference_coverage": 0.859375,
+          "correct": 26,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.640625,
+          "reference_coverage": 1.0,
+          "correct": 41,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.12903225806451613,
+          "reference_coverage": 0.96875,
+          "correct": 8,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.4845424799288495,
+        "minimum_accuracy": 0.12903225806451613,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.328125
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.08196721311475409,
+          "reference_coverage": 0.953125,
+          "correct": 5,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.03125,
+          "reference_coverage": 1.0,
+          "correct": 2,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.2909090909090909,
+          "reference_coverage": 0.859375,
+          "correct": 16,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.40625,
+          "reference_coverage": 1.0,
+          "correct": 26,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.08064516129032258,
+          "reference_coverage": 0.96875,
+          "correct": 5,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.17820429306283353,
+        "minimum_accuracy": 0.03125,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.328125
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.953125,
+          "correct": 0,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.36363636363636365,
+          "reference_coverage": 0.859375,
+          "correct": 20,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.96875,
+          "correct": 0,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.07272727272727272,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 493.5489196777344
+    },
+    "score": [
+      0.11088709677419355,
+      0.4845424799288495,
+      0.0,
+      -0.328125,
+      0.40630739689874645,
+      -0.06849327000041854,
+      -1.2706203745306508
+    ],
+    "selected": {
+      "path": "checkpoint-008-127aa4c6",
+      "epoch": 8,
+      "sha256": {
+        "weights.pt": "6871562c11214cd620d88a463586a8c49a3a29d8350306a9ac44f213206ae62b",
+        "probe.pt": "65a1d49b928432defdf62cd02264f5d1664cb5ef02cafb73fd14aeb8466a7e33",
+        "model.json": "f996dc1a70053fc9c578e73fad764835002d9571aeee223a2f99dce5f8529abc"
+      }
+    }
+  },
+  {
+    "epoch": 16,
+    "validation": {
+      "loss": 536.6167243957519,
+      "reconstruction_nll": 528.3980458068847,
+      "raw_kl": 410.93381912231445,
+      "weighted_kl": 8.218676266670228,
+      "correct_token_nll": 1.2846788489251884,
+      "shuffled_token_nll": 3.465935367533149,
+      "zero_token_nll": 3.052769223613492,
+      "latent_nll_gap": 2.1812565186079604,
+      "zero_nll_gap": 1.7680903746883034,
+      "active_dimensions": 128,
+      "correct_full_cv_f1": 0.6464568637869955,
+      "shuffled_full_cv_f1": 0.46444600234559524,
+      "zero_full_cv_f1": 0.4095490351026135,
+      "unique_correct_outputs": 64,
+      "correct_full_cv_lcs_f1": 0.4063501575377973,
+      "correct_repeated_trigram_fraction": 0.053106090781188164,
+      "examples": 64,
+      "facts": {
+        "country": {
+          "accuracy": 0.16393442622950818,
+          "reference_coverage": 0.953125,
+          "correct": 10,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.984375,
+          "reference_coverage": 1.0,
+          "correct": 63,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.4727272727272727,
+          "reference_coverage": 0.859375,
+          "correct": 26,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.703125,
+          "reference_coverage": 1.0,
+          "correct": 45,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.0967741935483871,
+          "reference_coverage": 0.96875,
+          "correct": 6,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.4841871785010336,
+        "minimum_accuracy": 0.0967741935483871,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.3125
+      },
+      "shuffled_facts": {
+        "country": {
+          "accuracy": 0.09836065573770492,
+          "reference_coverage": 0.953125,
+          "correct": 6,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.03125,
+          "reference_coverage": 1.0,
+          "correct": 2,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.36363636363636365,
+          "reference_coverage": 0.859375,
+          "correct": 20,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.4375,
+          "reference_coverage": 1.0,
+          "correct": 28,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.08064516129032258,
+          "reference_coverage": 0.96875,
+          "correct": 5,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.20227843613287821,
+        "minimum_accuracy": 0.03125,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.3125
+      },
+      "zero_facts": {
+        "country": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.953125,
+          "correct": 0,
+          "evaluated": 61
+        },
+        "occupation": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "degree": {
+          "accuracy": 0.3090909090909091,
+          "reference_coverage": 0.859375,
+          "correct": 17,
+          "evaluated": 55
+        },
+        "university": {
+          "accuracy": 0.0,
+          "reference_coverage": 1.0,
+          "correct": 0,
+          "evaluated": 64
+        },
+        "projects": {
+          "accuracy": 0.0,
+          "reference_coverage": 0.96875,
+          "correct": 0,
+          "evaluated": 62
+        },
+        "macro_accuracy": 0.061818181818181814,
+        "minimum_accuracy": 0.0,
+        "minimum_coverage": 0.859375,
+        "all_five_correct_rate": 0.0,
+        "contradiction_rate": 0.0
+      },
+      "audited_ids": [
+        4410,
+        1333,
+        137,
+        4223,
+        4919,
+        538,
+        680,
+        533,
+        3729,
+        4555,
+        1157,
+        4286,
+        546,
+        3593,
+        905,
+        1314,
+        3864,
+        4210,
+        3239,
+        4062,
+        129,
+        3708,
+        4377,
+        1707,
+        2968,
+        3512,
+        2274,
+        3215,
+        2296,
+        4556,
+        4085,
+        4902,
+        1498,
+        906,
+        3293,
+        1692,
+        235,
+        3150,
+        179,
+        4236,
+        2903,
+        738,
+        3521,
+        4061,
+        1111,
+        2985,
+        4562,
+        3689,
+        1193,
+        214,
+        3206,
+        4340,
+        4011,
+        869,
+        2388,
+        4045,
+        3017,
+        2861,
+        4732,
+        4477,
+        1003,
+        115,
+        923,
+        1458
+      ],
+      "latent_signal_noise_ratio": 511.6262512207031
+    },
+    "score": [
+      0.08316532258064516,
+      0.4841871785010336,
+      0.0,
+      -0.3125,
+      0.4063501575377973,
+      -0.053106090781188164,
+      -1.2846788489251884
+    ],
+    "selected": {
+      "path": "checkpoint-008-127aa4c6",
+      "epoch": 8,
+      "sha256": {
+        "weights.pt": "6871562c11214cd620d88a463586a8c49a3a29d8350306a9ac44f213206ae62b",
+        "probe.pt": "65a1d49b928432defdf62cd02264f5d1664cb5ef02cafb73fd14aeb8466a7e33",
+        "model.json": "f996dc1a70053fc9c578e73fad764835002d9571aeee223a2f99dce5f8529abc"
+      }
+    }
+  }
+]

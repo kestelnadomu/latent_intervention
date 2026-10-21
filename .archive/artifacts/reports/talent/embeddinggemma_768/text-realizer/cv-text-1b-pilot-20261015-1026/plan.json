@@ -1,0 +1,199 @@
+{
+  "audit_gate": "closed",
+  "audit_informed": true,
+  "baseline_sha256": {
+    "factual_tune": "745873bb24823846b6debe1e12aef22a2a60e1af522d0d0d92a2088772ad3473",
+    "manifest": "218e854905653303fd6c4abc2f6a028c2a31c81b9fc5eef9d94ee7f9d9e278b2",
+    "plan": "39468606e5ff6e5d9c53ea6e32f44fe7f06471cbc9e5799bab9d5d750c0b34ca"
+  },
+  "identity": {
+    "config": {
+      "encoder": {
+        "embeddinggemma_latent_dim": 768,
+        "embeddinggemma_max_len": 2048,
+        "embeddinggemma_model_name": "google/embeddinggemma-300m",
+        "embeddinggemma_model_revision": "57c266a740f537b4dc058e1b0cda161fd15afa75"
+      },
+      "evaluation": {
+        "bootstrap_samples": 2000,
+        "bootstrap_seed": 20261012,
+        "examples": 20,
+        "minimum_retrieval_gain": 0.02
+      },
+      "format_version": 1,
+      "generation": {
+        "batch_size": 1,
+        "budget_multiple": 128,
+        "minimum_budget": 1024
+      },
+      "inputs": {
+        "factual": "data/text_talent/cv_factual.csv",
+        "info": "data/latents/talent/embeddinggemma_768/z_pairs.info.json",
+        "latents": "data/latents/talent/embeddinggemma_768/z_pairs.pt",
+        "pairs": "data/sim_talent/pair_index.csv",
+        "sha256": {
+          "factual": "e2845bd8b16360ae9c92f51240af0942f92b26b94b1331cf0ffdb75253f67294",
+          "latents": "4722d665c2f7fc955925202eefeb49391f4fae51138beb718cd8ce0b38720a03",
+          "pairs": "67616f395548dfffb7f063b554338b6b63731f5a77136134ffc3b2936b5d51ee",
+          "split_plan": "6698da61c789e3dad586d051e8bdad40157786e01c858212d89b95d5ee90b4be"
+        },
+        "split_plan": "reports/talent/hz_benchmarks/hz-gemma-v1/plan.json"
+      },
+      "model": {
+        "attention_implementation": "eager",
+        "input_scaling": "sqrt_latent_dim",
+        "latent_dim": 768,
+        "lora_alpha": 32,
+        "lora_dropout": 0.05,
+        "lora_rank": 16,
+        "lora_targets": [
+          "q_proj",
+          "k_proj",
+          "v_proj",
+          "o_proj",
+          "gate_proj",
+          "up_proj",
+          "down_proj"
+        ],
+        "name": "google/gemma-3-1b-pt",
+        "prefix_tokens": 16,
+        "revision": "fcf18a2a879aab110ca39f8bffbccd5d49d8eb29"
+      },
+      "paths": {
+        "cache": ".cache/huggingface/hub",
+        "models": "models/talent/embeddinggemma_768/text-realizer",
+        "prepared": "data/latents/talent/embeddinggemma_768/text-realizer-prepared/gemma1b-pilot",
+        "reports": "reports/talent/embeddinggemma_768/text-realizer"
+      },
+      "pilot": {
+        "audit_informed": true,
+        "baseline_prepared": "data/latents/talent/embeddinggemma_768/text-realizer-prepared/aca7014d6ceba4ea3b08674ebfdcd7567157452199d60cb1f7a6fa726b23eea8",
+        "baseline_report": "reports/talent/embeddinggemma_768/text-realizer/cv-text-v1-20261012-1719.lora-compact.seed-42",
+        "baseline_sha256": {
+          "factual_tune": "745873bb24823846b6debe1e12aef22a2a60e1af522d0d0d92a2088772ad3473",
+          "manifest": "218e854905653303fd6c4abc2f6a028c2a31c81b9fc5eef9d94ee7f9d9e278b2",
+          "plan": "39468606e5ff6e5d9c53ea6e32f44fe7f06471cbc9e5799bab9d5d750c0b34ca"
+        },
+        "factual_fields": [
+          "country",
+          "degree",
+          "university_tier",
+          "project_count"
+        ],
+        "maximum_field_regression": 0.02,
+        "minimum_character_gain": 0.02,
+        "minimum_macro_factual_gain": 0.02,
+        "seed": 42,
+        "variant": "lora-compact"
+      },
+      "preflight": {
+        "benchmark_steps": 100,
+        "memory_headroom": 0.15,
+        "microbatches": [
+          1
+        ],
+        "native_checks": true,
+        "overfit_character_similarity": 0.95,
+        "overfit_updates": 500,
+        "smoke_updates": 20,
+        "variant": "lora-compact"
+      },
+      "selection": {
+        "character_gap": 0.02,
+        "deployment_seed": 42,
+        "nll_gap": 0.05,
+        "seeds": [
+          42
+        ]
+      },
+      "split": {
+        "audit_seed": 20261007,
+        "fit_count": 3200,
+        "test_count": 1000,
+        "validation_count": 800
+      },
+      "training": {
+        "checkpoint_every": 25,
+        "clip": 1.0,
+        "effective_batch": 32,
+        "epochs": 30,
+        "gradient_checkpointing": true,
+        "lora_lr": 0.0002,
+        "min_delta": 0.0001,
+        "patience": 5,
+        "precision": "float32",
+        "projector_lr": 0.001,
+        "warmup_fraction": 0.05,
+        "weight_decay": 0.01
+      }
+    },
+    "packages": {
+      "accelerate": "1.10.1",
+      "huggingface-hub": "0.36.2",
+      "numpy": "2.5.4",
+      "peft": "0.17.1",
+      "python": "3.12.12",
+      "rapidfuzz": "3.14.1",
+      "sacrebleu": "2.5.1",
+      "safetensors": "0.8.0",
+      "sentence-transformers": "5.1.2",
+      "torch": "2.6.0+cu124",
+      "transformers": "4.57.6"
+    },
+    "prepared_manifest_sha256": "218e854905653303fd6c4abc2f6a028c2a31c81b9fc5eef9d94ee7f9d9e278b2",
+    "source_sha256": {
+      "exp/sim/codebook.yaml": "ef1921d3a125968bb2b7103d2c377b9cfe0b316c7cb08b278db91c97a976a7af",
+      "exp/text_realizer/__init__.py": "fec22e23fa6dd54c532c3dc028b46120b0bc5f10411c29eb469589ef5e08c7e5",
+      "exp/text_realizer/__main__.py": "fb21046168991a91bc879e549e4524b844ff12feb65ef6ab7683eaa1d91bc8b1",
+      "exp/text_realizer/campaign.py": "e616b49de005ba206120782406ac8ad85df1a3e86bd2342cbee10542941550cb",
+      "exp/text_realizer/data.py": "1e95eefb76de66550614fb45280a05d63e253bd37f29daaf58259e5d7cc08274",
+      "exp/text_realizer/environment/pyproject.toml": "d152496cf2e72a10306bb9b6a0c026e7626cef650b38eb2084839a76a1018920",
+      "exp/text_realizer/environment/uv.lock": "04b84796cc7cc5f3b37325713386e6147f93fc1368980ff4c1f318563651cfcb",
+      "exp/text_realizer/evaluation.py": "e7bb0a27e11a25b8d0d8563ce20b3661b37bd9888c25b928f44189db0b07e336",
+      "exp/text_realizer/experiment.py": "dff74c23c11dcfd69ef0625f7dd182a5850667a42d4fce257f96f070f1472d27",
+      "exp/text_realizer/facts.py": "d2f40ae0181cf500a74991f10f6b100ec71a92a4ea5cc77e4a6d5bac046f9bef",
+      "exp/text_realizer/inference.py": "446ea5d4b28c13886568fc9a9d6252cb1f920cb3f95bb5b762b0db0189c18421",
+      "exp/text_realizer/oracle.py": "60fd99e56fced2c9179de205dfab52275a6faa19ca772f1bedb93cae6234b0e5",
+      "exp/text_realizer/pilot.py": "8091892e68f253bd1023613bfdafc7521d499cd97d1c1ddcff35c05c0777394b",
+      "exp/text_realizer/pilot_protocol.py": "25581b682edb32859dad41a6c7e9e8003a59fa90fbc77b06558a6a41ac0b51f8",
+      "exp/text_realizer/preflight.py": "4a52d23e81bbe6e84f9aba8525c0e257aa5f3a976e586445083f11c240dec2ef",
+      "exp/text_realizer/protocol.py": "a602b5da44884a29ebcf03645bfbf2a2a3e6c4ebffe3f59337ec4792b9b57499",
+      "exp/text_realizer/report.py": "8db7975645a7a33cc6bd3c369f997396d073de85a3406fe27f5974db5d87cd15",
+      "exp/text_realizer/runtime.py": "93dd369171655c1850fe57c20ef131f1872ab566948ff50e52d4c1600676744a",
+      "exp/text_realizer/sanity.py": "2048c41afc89df4a26f9c2082da56a9f0b8c050bf992614cf45f4a6a69d25c32",
+      "exp/text_realizer/settings.py": "0d241541d1194d6c2dd5bdbf68a248b943b1da80fa42640d8e963c3c27d8b22f",
+      "exp/text_realizer/setup.py": "62a49065b87d314ae62f8bb5604b1d098a070d1803abab2a94bf1e6fa851ff35",
+      "scripts/run_text_realizer.sh": "f87db0e705b9e2aeb7c36605c841a9b3837802cfe3a2238a4ba9b0e2b645e7d4",
+      "scripts/run_text_realizer_pilot.sh": "1a4251e057ec0b30c97138f06eff253a50b48f47e7a3ef24b1fe1e832daac2e5",
+      "scripts/setup_text_realizer.sh": "c646ebe463ab78fe979eaad1771a17d548a8ed419a421699379bf4758e01f466",
+      "src/artifact_io.py": "1cf8efb12816b060615aff7ab55ef279acbc847bb07652a8acbf4925696e8d63",
+      "src/config.py": "09bb66109d0b24ea2456d6bf81e317df6c76c4ccf272c35f07f0ef124b28a02f",
+      "src/encoder/__init__.py": "da9da450c57c8fc87ed2366262503db20ad08e741003429a8e49caf882d884e7",
+      "src/encoder/embeddinggemma.py": "b9f6058b92b7fc26ca8282d42d68739ef4fa3b8f614347880ba144a6c3d02037",
+      "src/encoder/progress.py": "f65c12c8e75dc5db921f8e20c13e53f070872261760478d732fb64c40bb5fdfa",
+      "src/encoder/protocols.py": "44408fdee2384ef78afaca1948d179c8d5ad09cedabdc03904f478be889dda4b",
+      "src/text_realizer/__init__.py": "b1f44fcf5569fb8abfc9445bd0a56271f07aa0f4d239b0606f7cb96b4137f5cc",
+      "src/text_realizer/artifacts.py": "77304e6b710c38613a889cc6eb2578184b34f6be8703f04be9fcf5a05e1703cc",
+      "src/text_realizer/generation.py": "9726745279c129993a0749409a56cd8f1f3db7a5724e2ea9fb52c684b4bde6be",
+      "src/text_realizer/metrics.py": "598de2d5534398058ea452b481faef7f2b127f6e105edae8e90ca1498509f64c",
+      "src/text_realizer/model.py": "50a00246581196eb2c5c0dae6a0195dd42146a98641a975f2a58575468f5dad2",
+      "src/text_realizer/training.py": "4d59e797747ef1d569a5f3f2d0b88a598d7a38c36f82f7eec4b4a0c345bff811",
+      "tests/text_realizer/conftest.py": "6c7bb3c7800e60e945f09b55b091e5153d631bb0a14d07fa5039d9fb5cb70880",
+      "tests/text_realizer/test_artifacts.py": "82f1ce3f807df4b50f99d15328fb005acd0a224b16b580c4655125601eab56c8",
+      "tests/text_realizer/test_data.py": "9f8d9c6c583c688d558343c84be0846818d8bf2263e0338452c9d20fd44eb6ae",
+      "tests/text_realizer/test_evaluation.py": "43d19da825e984743da94329b021769d8b18fe0efebb4a476233dff837ac59fa",
+      "tests/text_realizer/test_integration.py": "a7abb3e216e8a10822ba553562a40e6336df7a205a2e8e17a323680233ee94e4",
+      "tests/text_realizer/test_model.py": "d53f28cce3ac5e52494974d80a9585d63fe0c8ee498c51cfe9077ed11f8fb031",
+      "tests/text_realizer/test_pilot.py": "e97161f03373a8b3c4aa92002e9926412b2dbf2e8507093c4014bacc736c0820",
+      "tests/text_realizer/test_workflow.py": "93d827c52e0c0b12b93e5b0dd5beabb54e3661e820ef2792cc548c40fbd3ea29"
+    }
+  },
+  "kind": "one-seed-1b-pilot",
+  "oracle_gate": "sealed",
+  "replication_authorized": false,
+  "seeds": [
+    42
+  ],
+  "trial_id": "cv-text-1b-pilot-20261015-1026.lora-compact.seed-42",
+  "variant": "lora-compact"
+}

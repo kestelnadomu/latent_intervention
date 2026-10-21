@@ -53,6 +53,16 @@ models/**
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.pt
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.info.json
 
+# Historical LangVAE result JSONs are portable; checkpoint contents stay local.
+!models/langvae_ft/
+!models/langvae_ft/**/
+!models/langvae_ft/**/*.json
+models/langvae_ft/**/checkpoint*/
+!models/langvae_posttrain/
+!models/langvae_posttrain/**/
+!models/langvae_posttrain/**/*.json
+models/langvae_posttrain/**/checkpoint*/
+
 # Published training reports and the small all-encoder benchmark audit bundle.
 reports/**
 !reports/talent/
@@ -113,15 +123,44 @@ reports/**
 !reports/talent/hz_benchmarks/*/source/pyproject.toml
 !reports/talent/hz_benchmarks/*/source/uv.lock
 
+# Published text-decoder results, including generated CVs (approved 2026-10-21).
+# Source snapshots, logs, locks, weights, and transfer archives remain ignored.
+!reports/talent/embeddinggemma_768/text-realizer/
+!reports/talent/embeddinggemma_768/text-realizer/**/
+!reports/talent/embeddinggemma_768/text-realizer/**/*.json
+!reports/talent/embeddinggemma_768/text-realizer/**/*.md
+reports/talent/embeddinggemma_768/text-realizer/**/source/
+!reports/talent/embeddinggemma_768/text-realizer-cf/
+!reports/talent/embeddinggemma_768/text-realizer-cf/**/
+!reports/talent/embeddinggemma_768/text-realizer-cf/**/*.json
+!reports/talent/embeddinggemma_768/text-realizer-cf/**/*.md
+reports/talent/embeddinggemma_768/text-realizer-cf/**/source/
+# The 1B comparison is running: publish immutable plans/ETA, not live progress.
+!reports/talent/embeddinggemma_768/text-realizer-cf-1b/
+!reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/
+!reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/plan.json
+!reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/eta.json
+reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/source/
+!reports/talent/embeddinggemma_768/text-decoder-results/
+!reports/talent/embeddinggemma_768/text-decoder-results/**/
+!reports/talent/embeddinggemma_768/text-decoder-results/**/*.json
+!reports/talent/embeddinggemma_768/text-decoder-results/SHA256SUMS
+
 # Overleaf repo
 overleaf*
 
 # private notes
 _notes/
 
-# Retired decoder checkpoints, optimizer states, reports, and prepared caches stay
-# local. The archive's README and source snapshots remain available for Git.
-/.archive/artifacts/
+# Retired checkpoints, optimizer states, prepared caches, and source snapshots
+# stay local. Only archived JSON/Markdown reports are published from artifacts.
+/.archive/artifacts/*
+!/.archive/artifacts/reports/
+/.archive/artifacts/reports/**
+!/.archive/artifacts/reports/**/
+!/.archive/artifacts/reports/**/*.json
+!/.archive/artifacts/reports/**/*.md
+/.archive/artifacts/reports/**/source/
 
 # Python
 .venv/

@@ -5,6 +5,10 @@ This experiment trains `D_text(z)` to reconstruct complete CVs from the existing
 `g`, which predicts structured attributes. EmbeddingGemma, canonical vectors,
 LangVAE baselines, and `h_Z` remain unchanged.
 
+Full completed JSON reports, including generated CVs, are available through the
+[published results index](decoder_results.md). Reading the saved metrics needs
+neither a GPU nor the model weights.
+
 The decoder is pretrained Gemma 3 270M plus a learned 16-token prefix, optionally
 with LoRA. It receives only `z` at inference. Exact recovery is an empirical goal,
 not a guarantee: embeddings can omit distinctions in the original CV. Fluent
@@ -32,7 +36,8 @@ record the negative reconstruction result, conditioning diagnostics, numerical
 caveats, and preserved checkpoints. The 270M decoder remains the reference.
 The 1B-specific code, configuration, launcher, and tests were restored to the
 active tree on 2026-10-21 for Git transfer. Checkpoints, prepared caches, and
-reports remain in the [local decoder archive](../../.archive/README.md). The
+reports remain in the [decoder archive](../../.archive/README.md); report JSONs
+are tracked, while checkpoints and prepared caches stay local. The
 commands in this section reproduce a historical, negative-result pilot; they
 require its pinned 270M development bundle and tune report to be restored to
 their original paths. Neither decoder's weights are included in Git.

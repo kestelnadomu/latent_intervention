@@ -1,0 +1,22 @@
+{
+  "encoder": {
+    "variant": "langvae",
+    "model_name": "neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128",
+    "model_revision": "7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6",
+    "langvae_encoder_model_name": "bert-base-cased",
+    "langvae_encoder_model_revision": "cd5ef92a9fb2f889e972770a36d4ed042daf221e",
+    "langvae_decoder_model_name": "gpt2",
+    "langvae_decoder_model_revision": "607a30d783dfa663caf39e06633721c8d4cfcd7e",
+    "local_checkpoint": "/home/boustanip/projects/latent_intervention/models/langvae_posttrain/langvae_cv32_joint_v1/20260922T133315Z-train-52d2dab3/checkpoint-epoch-003-d63f24f0",
+    "tag": "langvae_cv32_joint_v1_20260922T133315Z-train-52d2dab3",
+    "nomic_model_name": "nomic-ai/nomic-embed-text-v1.5",
+    "nomic_model_revision": "e5cf08aadaa33385f5990def41f7a23405aec398",
+    "nomic_code_revision": "7710840340a098cfb869c4f65e87cf2b1b70caca",
+    "nomic_task": "classification",
+    "max_len": 512,
+    "batch_size": 16,
+    "device": "cuda:0",
+    "deterministic": true
+  },
+  "note": "Selection fragment only. Stock config unchanged. Re-encode/retrain g and h_Z before downstream use."
+}

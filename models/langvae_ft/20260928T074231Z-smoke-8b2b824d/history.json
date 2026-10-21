@@ -1,0 +1,30 @@
+[
+  {
+    "epoch": 1,
+    "updates": 2,
+    "train_loss": 433.34283447265625,
+    "validation": {
+      "negative_elbo": 439.1607454740084,
+      "sampled_reconstruction_nll": 344.77049372746393,
+      "kl": 94.39024411714993,
+      "mean_token_nll": 10.581702363257314,
+      "active_mean_dimensions": 128,
+      "passages": 26,
+      "tokens": 816,
+      "validation_samples": 1
+    },
+    "audit": {
+      "correct_token_nll": 9.933816909790039,
+      "wrong_cv_token_nll": 12.803436279296875,
+      "zero_token_nll": 12.845796585083008,
+      "correct_word_f1": 0.08120300751879699,
+      "wrong_cv_word_f1": 0.023255813953488372,
+      "zero_word_f1": 0.05555555555555555,
+      "wrong_cv_nll_gap": 2.869619369506836,
+      "zero_nll_gap": 2.9119796752929688,
+      "audited_cvs": 2,
+      "scope": "short passage reconstruction, not full-CV generation or fairness"
+    },
+    "selected": true
+  }
+]

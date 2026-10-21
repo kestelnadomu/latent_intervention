@@ -1,0 +1,63 @@
+{
+  "state": "completed",
+  "phase": "train",
+  "result": {
+    "state": "completed",
+    "stage": "train",
+    "quality_gates": {
+      "nll_improved": true,
+      "latent_dependency": true,
+      "frozen_bases_unchanged": true,
+      "offline_reload": true,
+      "ordered_overlap_improved": true,
+      "repetition": true,
+      "generation_uses_latent": true
+    },
+    "diagnostic_passed": true,
+    "accepted_for_downstream": false,
+    "requires_manual_fact_and_fluency_review": true,
+    "selected_checkpoint": "checkpoint-003-8a911a63",
+    "baseline": {
+      "loss": 1766.622373046875,
+      "reconstruction_nll": 1634.3095440673828,
+      "raw_kl": 132.31282499313355,
+      "weighted_kl": 132.31282499313355,
+      "correct_token_nll": 3.973449412100151,
+      "shuffled_token_nll": 3.9733338606923976,
+      "zero_token_nll": 3.966695327440208,
+      "latent_nll_gap": -0.00011555140775332262,
+      "zero_nll_gap": -0.006754084659942983,
+      "active_dimensions": 127,
+      "correct_full_cv_f1": 0.07398594629230903,
+      "shuffled_full_cv_f1": 0.07745760254245904,
+      "zero_full_cv_f1": 0.050715935332742546,
+      "unique_correct_outputs": 7,
+      "correct_full_cv_lcs_f1": 0.06102155498601592,
+      "correct_repeated_trigram_fraction": 0.9146238075337084,
+      "examples": 8
+    },
+    "selected_validation": {
+      "loss": 683.456731414795,
+      "reconstruction_nll": 650.5906950378418,
+      "raw_kl": 32.86603563308716,
+      "weighted_kl": 32.86603563308716,
+      "correct_token_nll": 1.5817622947255807,
+      "shuffled_token_nll": 1.603900307156902,
+      "zero_token_nll": 3.8965380672993386,
+      "latent_nll_gap": 0.022138012431321297,
+      "zero_nll_gap": 2.314775772573758,
+      "active_dimensions": 127,
+      "correct_full_cv_f1": 0.5027655996465595,
+      "shuffled_full_cv_f1": 0.4872385107785112,
+      "zero_full_cv_f1": 0.06921066657567142,
+      "unique_correct_outputs": 8,
+      "correct_full_cv_lcs_f1": 0.2673177954421666,
+      "correct_repeated_trigram_fraction": 0.03475597692207528,
+      "examples": 8
+    },
+    "mean_update_seconds": 0.8418178639980136,
+    "effective_batch_size": 8,
+    "seconds": 1584.068612292409,
+    "peak_gpu_allocated_gib": 2.2320432662963867
+  }
+}
