@@ -10,6 +10,9 @@
     "training_total": 331792
   },
   "checkpoint": "models/talent_motivation/embeddinggemma_768/g-independent/S6/h-ot_editor/runs/hz-misspec-v1/S6--true/seed-44/selected/latent_intervention.pt",
+  "checkpoint_sha256": "1c0b060e2b79db29eec80807b1e242b528715a85cfe0328dce18bedadd9bd07c",
+  "early_stopped": false,
+  "elapsed_seconds": 66580.66396382451,
   "frozen_auxiliary_parameters": 117008,
   "history": [
     {
@@ -25307,8 +25310,249 @@
         "semantic_kl": 0.04225380389019847,
         "support": 0.8540251863002777
       }
+    },
+    {
+      "best_epoch": 494,
+      "elapsed_seconds": 157.13305941224098,
+      "epoch": 497,
+      "learning_rate": 0.0003,
+      "training": {
+        "action_objective_evaluations": 352,
+        "gradient_norm_max": 0.11707683652639389,
+        "objective": 0.10980921577323567,
+        "sinkhorn_iterations": 0,
+        "sinkhorn_marginal_error_max": 0.0,
+        "updates": 88
+      },
+      "validation": {
+        "by_action": [
+          {
+            "identity": 0.034506625516547096,
+            "movement": 0.15284189105033874,
+            "objective": 0.1368382556868924,
+            "semantic_kl": 0.04465849727392197,
+            "support": 0.8477788758277893
+          },
+          {
+            "identity": 0.04120438719789187,
+            "movement": 0.16459310352802276,
+            "objective": 0.14201521916190785,
+            "semantic_kl": 0.041334214806556704,
+            "support": 0.8603461360931397
+          },
+          {
+            "identity": 0.03717480290953706,
+            "movement": 0.16693979680538176,
+            "objective": 0.13882210222904276,
+            "semantic_kl": 0.04173769399523735,
+            "support": 0.8643125128746033
+          },
+          {
+            "identity": 0.03964578539684967,
+            "movement": 0.14616596043109895,
+            "objective": 0.13643144399479584,
+            "semantic_kl": 0.039936644732952116,
+            "support": 0.8446483564376831
+          }
+        ],
+        "identity": 0.03813290025520642,
+        "movement": 0.15763518795371056,
+        "objective": 0.13852675526815972,
+        "semantic_kl": 0.041916762702167036,
+        "support": 0.8542714703083039
+      }
+    },
+    {
+      "best_epoch": 498,
+      "elapsed_seconds": 156.722739264369,
+      "epoch": 498,
+      "learning_rate": 0.0003,
+      "training": {
+        "action_objective_evaluations": 352,
+        "gradient_norm_max": 0.0869808942079544,
+        "objective": 0.10947826485657557,
+        "sinkhorn_iterations": 0,
+        "sinkhorn_marginal_error_max": 0.0,
+        "updates": 88
+      },
+      "validation": {
+        "by_action": [
+          {
+            "identity": 0.034391345663203135,
+            "movement": 0.15263175785541536,
+            "objective": 0.13654168753160373,
+            "semantic_kl": 0.04450553983449936,
+            "support": 0.8476325249671937
+          },
+          {
+            "identity": 0.04148757979273796,
+            "movement": 0.1657579845190048,
+            "objective": 0.14153774532675745,
+            "semantic_kl": 0.0404239746928215,
+            "support": 0.8610078477859497
+          },
+          {
+            "identity": 0.03749255536169541,
+            "movement": 0.16771597027778626,
+            "objective": 0.1380644048568679,
+            "semantic_kl": 0.040564770251512526,
+            "support": 0.864709644317627
+          },
+          {
+            "identity": 0.03895642808466046,
+            "movement": 0.14421587109565734,
+            "objective": 0.13660703131942836,
+            "semantic_kl": 0.04105270892381668,
+            "support": 0.84352614402771
+          }
+        ],
+        "identity": 0.03808197722557424,
+        "movement": 0.15758039593696593,
+        "objective": 0.13818771725866436,
+        "semantic_kl": 0.04163674842566252,
+        "support": 0.8542190402746201
+      }
+    },
+    {
+      "best_epoch": 498,
+      "elapsed_seconds": 156.6755679100752,
+      "epoch": 499,
+      "learning_rate": 0.0003,
+      "training": {
+        "action_objective_evaluations": 352,
+        "gradient_norm_max": 0.09901794046163559,
+        "objective": 0.1096855466127057,
+        "sinkhorn_iterations": 0,
+        "sinkhorn_marginal_error_max": 0.0,
+        "updates": 88
+      },
+      "validation": {
+        "by_action": [
+          {
+            "identity": 0.034445200074050164,
+            "movement": 0.15237773776054384,
+            "objective": 0.13658781169686052,
+            "semantic_kl": 0.044529043436050415,
+            "support": 0.8475158882141113
+          },
+          {
+            "identity": 0.04115800801664591,
+            "movement": 0.1645713895559311,
+            "objective": 0.14171120593696834,
+            "semantic_kl": 0.04108107388019562,
+            "support": 0.8602997016906738
+          },
+          {
+            "identity": 0.037279373716290407,
+            "movement": 0.16746651411056518,
+            "objective": 0.13819224637347025,
+            "semantic_kl": 0.04093679212033749,
+            "support": 0.8645885825157166
+          },
+          {
+            "identity": 0.039033905016603296,
+            "movement": 0.14479097723960876,
+            "objective": 0.13673516826552373,
+            "semantic_kl": 0.0410309836268425,
+            "support": 0.8438236379623413
+          }
+        ],
+        "identity": 0.03797912170589744,
+        "movement": 0.1573016546666622,
+        "objective": 0.13830660806820572,
+        "semantic_kl": 0.041894473265856505,
+        "support": 0.8540569525957107
+      }
+    },
+    {
+      "best_epoch": 498,
+      "elapsed_seconds": 156.65716388821602,
+      "epoch": 500,
+      "learning_rate": 0.0003,
+      "training": {
+        "action_objective_evaluations": 352,
+        "gradient_norm_max": 0.11044786870479584,
+        "objective": 0.10962979711422866,
+        "sinkhorn_iterations": 0,
+        "sinkhorn_marginal_error_max": 0.0,
+        "updates": 88
+      },
+      "validation": {
+        "by_action": [
+          {
+            "identity": 0.034367683943774964,
+            "movement": 0.1519135642051697,
+            "objective": 0.13695507621434,
+            "semantic_kl": 0.04503683477640152,
+            "support": 0.8471840214729309
+          },
+          {
+            "identity": 0.040812218996385735,
+            "movement": 0.1637556904554367,
+            "objective": 0.1424535273636381,
+            "semantic_kl": 0.04227164626121521,
+            "support": 0.8598818612098694
+          },
+          {
+            "identity": 0.03752690867134711,
+            "movement": 0.1684063321352005,
+            "objective": 0.1385508396531024,
+            "semantic_kl": 0.04092788316309452,
+            "support": 0.8651082921028137
+          },
+          {
+            "identity": 0.03910224305258857,
+            "movement": 0.14515075981616973,
+            "objective": 0.13748502853678332,
+            "semantic_kl": 0.04166786216199398,
+            "support": 0.843996946811676
+          }
+        ],
+        "identity": 0.0379522636660241,
+        "movement": 0.15730658665299416,
+        "objective": 0.13886111794196596,
+        "semantic_kl": 0.04247605659067631,
+        "support": 0.8540427803993225
+      }
     }
   ],
+  "initial_validation": {
+    "by_action": [
+      {
+        "identity": 1.2576576763320998e-06,
+        "movement": 1.303393546550069e-06,
+        "objective": 11.579589632077575,
+        "semantic_kl": 11.540221290588379,
+        "support": 0.7873390698432923
+      },
+      {
+        "identity": 1.3241895582420208e-06,
+        "movement": 1.3071940793452087e-06,
+        "objective": 8.712587903459191,
+        "semantic_kl": 8.67321949005127,
+        "support": 0.7873391699790955
+      },
+      {
+        "identity": 1.305770164125112e-06,
+        "movement": 1.3120195990268257e-06,
+        "objective": 9.32808739044617,
+        "semantic_kl": 9.288719005584717,
+        "support": 0.78733895778656
+      },
+      {
+        "identity": 1.3447130687314644e-06,
+        "movement": 1.3213114652899095e-06,
+        "objective": 11.869128587444687,
+        "semantic_kl": 11.82976016998291,
+        "support": 0.7873388123512268
+      }
+    ],
+    "identity": 1.3080826168576743e-06,
+    "movement": 1.3109796725530032e-06,
+    "objective": 10.372348378356905,
+    "semantic_kl": 10.332979989051818,
+    "support": 0.7873390024900436
+  },
   "metadata": {
     "architecture_tier": 1,
     "config_sha256": "6cc04c4142358fe8cc10c8ff4d0e4644c10635a5e272feed99e1f85c7a6b5834",
@@ -25477,9 +25721,48 @@
     }
   },
   "method": "ot_editor",
-  "optimizer_updates": 43648,
-  "record_sha256": "edf1aa9cf58ee4c87128407feb419b27391bac9907ecbe7eaa93e0a158455f12",
+  "optimizer_updates": 44000,
+  "record_sha256": "6c2b862aacb759c839c4cebe087c7c9ac513a13750cd5e6d6a45108714ea394b",
   "seed": 44,
+  "selected_epoch": 498,
+  "selected_validation": {
+    "by_action": [
+      {
+        "identity": 0.034391345663203135,
+        "movement": 0.15263175785541536,
+        "objective": 0.13654168753160373,
+        "semantic_kl": 0.04450553983449936,
+        "support": 0.8476325249671937
+      },
+      {
+        "identity": 0.04148757979273796,
+        "movement": 0.1657579845190048,
+        "objective": 0.14153774532675745,
+        "semantic_kl": 0.0404239746928215,
+        "support": 0.8610078477859497
+      },
+      {
+        "identity": 0.03749255536169541,
+        "movement": 0.16771597027778626,
+        "objective": 0.1380644048568679,
+        "semantic_kl": 0.040564770251512526,
+        "support": 0.864709644317627
+      },
+      {
+        "identity": 0.03895642808466046,
+        "movement": 0.14421587109565734,
+        "objective": 0.13660703131942836,
+        "semantic_kl": 0.04105270892381668,
+        "support": 0.84352614402771
+      }
+    ],
+    "identity": 0.03808197722557424,
+    "movement": 0.15758039593696593,
+    "objective": 0.13818771725866436,
+    "semantic_kl": 0.04163674842566252,
+    "support": 0.8542190402746201
+  },
+  "selection": "minimum factual-development objective; unlike family objectives are not ranked",
   "signature": "d6df8ec18d97b848e2cd493c3ed63bd6575da0c484ae785a08cfa243409f3a04",
   "split_ids": {
     "fit": [
@@ -28487,7 +28770,7 @@
       3971
     ]
   },
-  "status": "running",
+  "status": "complete",
   "support": {
     "counts": [
       36,
