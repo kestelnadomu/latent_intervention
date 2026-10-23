@@ -5,7 +5,10 @@ import pandas as pd
 import pytest
 import torch
 
-from latent_lab import RENDERERS, IdentityRenderer, LinearSCM, Pipeline, Reader, Renderer, StateEffectRenderer
+from latent_lab import (
+    RENDERERS, Encoder, EditorRenderer, IdentityRenderer, OTEditorRenderer, LinearSCM, Pipeline, Reader, Renderer, StateEffectRenderer,
+    cross_fit, evaluate, mean_predict, state_metrics,
+)
 
 
 @pytest.fixture
@@ -16,16 +19,21 @@ def toy():
     return z, states
 
 
+TRAINED = ("flow", "editor", "ot_editor", "ot_flow")
+
+
 @pytest.mark.parametrize("name", RENDERERS)
 def test_renderers_keep_unchanged_states(toy, name):
     z, states = toy
-    options = {"epochs": 2} if name == "flow" else {}
+    options = {"epochs": 2} if name in TRAINED else {}
     renderer = RENDERERS[name](["X", "D"], **options).fit(z, states)
     assert isinstance(renderer, Renderer)
     z_prime = renderer(z, states, states)
     assert z_prime.shape == z.shape
     if name != "constant":
         assert torch.allclose(z_prime, z, atol=1e-5)
+    moved = renderer(z, states, states.assign(X=(states["X"] + 1) % 3))
+    assert moved.shape == z.shape and torch.isfinite(moved).all()
 
 
 def test_unfitted_renderer_raises(toy):
@@ -43,6 +51,46 @@ def test_pipeline_with_a_plain_function(toy):
     assert result.s_prime["X"].eq(2).all() and result.z_prime.shape == z.shape
     true_states = Pipeline(None, lambda s: s, renderer)(z, states)
     assert torch.allclose(true_states.z_prime, z, atol=1e-5)
+
+
+def test_cross_fit_reads_out_of_fold(toy):
+    z, states = toy
+    folds = np.arange(len(z)) % 4
+    readings, readers = cross_fit(Reader(["X", "D"]), z, states, folds, labelled=folds != 3, seed=0)
+    assert len(readers) == 4 and readings.shape == (len(z), 2)
+    assert (readings["X"].to_numpy() == states["X"].to_numpy()).mean() > 0.5
+    assert mean_predict(readers, z).shape == (len(z), 2)
+
+
+@pytest.mark.parametrize("editor_class", [EditorRenderer, OTEditorRenderer])
+def test_editor_moves_towards_target(toy, editor_class):
+    z, states = toy
+    editor = editor_class(["X", "D"], epochs=100, lr=1e-2).fit(z, states)
+    target = states.assign(X=(states["X"] + 1) % 3)
+    hit = editor.critic.accuracy(editor(z, states, target), target)["X"]
+    assert hit > editor.critic.accuracy(z, target)["X"] + 0.3
+
+
+def test_state_metrics_and_evaluate(toy):
+    z, states = toy
+    perfect = {c: torch.nn.functional.one_hot(torch.tensor(states[c].to_numpy()), 3).float() for c in states}
+    m = state_metrics(perfect, states)
+    assert m["joint_acc"] == 1 and m["joint_nll"] < 1e-6 and m["ece_X"] < 1e-6
+    uniform = {c: torch.full((len(z), 3), 1 / 3) for c in states}
+    assert abs(state_metrics(uniform, states, joint=["X"])["joint_nll"] - np.log(3)) < 1e-5
+    reader = Reader(["X", "D"]).fit(z, states, epochs=5)
+    predict = lambda latent: (latent[:, 0] > 0).long()  # noqa: E731
+    out = evaluate(z, z, z, reader, states, predict=predict, outcome=states["D"], groups=states["X"])
+    assert out["energy"] == 0 and out["shift"] == 0 and out["down_agree"] == 1
+    assert {"joint_acc", "real_joint_acc", "down_acc", "parity_gap"} <= set(out.index)
+
+
+def test_latents_project_a_wider_cache(tmp_path):
+    z = torch.nn.functional.normalize(torch.randn(5, 768), dim=1)
+    torch.save({"ids": list(range(5)), "z": z, "test_ids": [0, 1], "z_prime": z[:2]}, tmp_path / "z.pt")
+    latents = Encoder("embeddinggemma", 256).latents(path=tmp_path / "z.pt")
+    assert latents.z.shape == (5, 256) and torch.allclose(latents.z.norm(dim=1), torch.ones(5))
+    assert torch.allclose(latents.z_cf, latents.z[:2])
 
 
 LEVELS = {"X": 4, "T": 3, "D": 3, "U": 3}

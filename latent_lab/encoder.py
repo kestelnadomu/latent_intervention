@@ -64,17 +64,44 @@ class Encoder:
         return f"Encoder({self.name!r}, {self.dim})"
 
     def latents(self, experiment: str = "talent", path: str | Path | None = None) -> Latents:
-        """Load cached encodings: ``data/latents/<experiment>/<tag>/z_pairs.pt`` or ``path``."""
-        path = Path(path) if path else ROOT / "data/latents" / experiment / self.tag / "z_pairs.pt"
+        """Load cached encodings: ``data/latents/<experiment>/<tag>/z_pairs.pt`` or ``path``.
+
+        Without a cache at this width, the full-width cache is projected instead: the
+        Matryoshka prefix of ``dim`` coordinates, renormalized (as ``src.encoder.matryoshka``).
+        """
+        payload = self._load(experiment, "z_pairs.pt", path)
+        return Latents(
+            ids=[int(i) for i in payload["ids"]],
+            z=payload["z"],
+            cf_ids=[int(i) for i in payload["test_ids"]],
+            z_cf=payload["z_prime"],
+        )
+
+    def auxiliary(self, experiment: str, file: str = "z_factual_vb.pt") -> Latents:
+        """Other cached factual encodings next to ``z_pairs.pt``, e.g. the held-out
+        paraphrase ``z_factual_vb.pt`` or the noise floor ``z_floor.pt``; read them
+        with ``.factual(ids)``."""
+        payload = self._load(experiment, file)
+        return Latents([int(i) for i in payload["ids"]], payload["z"], [], payload["z"][:0])
+
+    def _load(self, experiment: str, file: str, path: str | Path | None = None) -> dict:
+        """A cached payload with its ``z``-like tensors at this width (projected if needed)."""
+        if not path:
+            folder = ROOT / "data/latents" / experiment
+            path = folder / self.tag / file
+            if not path.exists():
+                path = folder / f"{self.name}_{max(ENCODERS[self.name])}" / file
+        path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"no cached latents at {path}; encode the texts first")
         payload = torch.load(path, weights_only=False)
-        return Latents(
-            ids=[int(i) for i in payload["ids"]],
-            z=payload["z"].float(),
-            cf_ids=[int(i) for i in payload["test_ids"]],
-            z_cf=payload["z_prime"].float(),
-        )
+        for key in ("z", "z_prime"):
+            if key in payload:
+                z = payload[key].float()
+                if z.shape[1] < self.dim:
+                    raise ValueError(f"cached latents at {path} have width {z.shape[1]} < {self.dim}")
+                payload[key] = z if z.shape[1] == self.dim else torch.nn.functional.normalize(z[:, : self.dim], dim=1)
+        return payload
 
     def encode(self, texts: list[str], batch_size: int = 8) -> torch.Tensor:
         """Encode texts with the pinned model (downloads it on first use)."""

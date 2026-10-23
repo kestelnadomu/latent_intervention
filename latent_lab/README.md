@@ -5,9 +5,9 @@ A small entry point to the project: the read → operate → render pipeline, me
 | piece | symbol | in latent_lab |
 |---|---|---|
 | encoder | φ | `Encoder(name, dim)`: `nomic` 64–768, `qwen3` 32–1024, `embeddinggemma` 128–768; `.latents("talent")` loads cached encodings, `.encode(texts)` runs the model |
-| reader | ψ | `Reader(columns, hidden=0)`: linear (`hidden=0`) or MLP probe |
+| reader | ψ | `Reader(columns, hidden=0)`: linear (`hidden=0`) or MLP probe; `cross_fit` reads each fold with readers fitted on the others, `mean_predict` averages them |
 | operator | ω_S | any function `states DataFrame -> target states DataFrame`. `LinearSCM(levels, parents, noise)` gives causal ones: `.do(X=3, blocked=None)` for SCM and path-specific counterfactuals, `print(scm)` shows the equations. The example also defines a wrong SCM, an erasure and a rule |
-| renderer | ρ | subclasses of `Renderer`: `IdentityRenderer`, `ConstantRenderer`, `GroupOTRenderer` (N2), `StateEffectRenderer` (C-sym; `guard=` for projected C-sym), `FlowRenderer` (F1). New ones implement `_fit` and `_render` |
+| renderer | ρ | subclasses of `Renderer`: `IdentityRenderer`, `ConstantRenderer`, `GroupOTRenderer` (N2), `StateEffectRenderer` (C-sym; `guard=` for projected C-sym), `FlowRenderer` (F1), `EditorRenderer` (minimal edit trained on random targets s' ~ Uniform(S)), `OTEditorRenderer` (the same with an input-convex gradient map), `OTFlowRenderer` (OT flow matching within each state, shared reference). New ones implement `_fit` and `_render` |
 | pipeline | ω_Z | `Pipeline(reader, operator, renderer)` and `evaluate`: gap closed to φ(x'), judge accuracy |
 
 Data are loaded in the notebook with `pd.read_csv`: any table of discrete states (levels
@@ -18,7 +18,7 @@ and [docs/experiments/renderer_benchmark.md](../docs/experiments/renderer_benchm
 
 Notes:
 
-- Cached latents exist for `talent` only (`data/latents/talent/<encoder>_<dim>/`).
+- Cached latents exist for `talent` (`data/latents/talent/<encoder>_<dim>/`) and `talent_motivation` (`embeddinggemma_768` only). A width without its own cache is projected from the full-width one (Matryoshka prefix, renormalized), e.g. `Encoder("embeddinggemma", 256).latents("talent_motivation")`.
 - In pandas, use `df["T"]` for the talent column: `df.T` is the transpose.
 - Qwen3 and EmbeddingGemma need their isolated environments to encode live; their
   cached latents load in the main environment.

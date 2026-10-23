@@ -8,7 +8,7 @@ from dataclasses import dataclass
 import pandas as pd
 import torch
 
-from latent_lab.reader import Reader
+from latent_lab.reader import Reader, state_metrics
 from latent_lab.renderer import Renderer
 
 
@@ -57,25 +57,60 @@ def evaluate(
     z_true: torch.Tensor,
     reader: Reader | None = None,
     true_states: pd.DataFrame | None = None,
+    joint: list[str] | None = None,
+    predict: Callable[[torch.Tensor], torch.Tensor] | None = None,
+    outcome: pd.Series | None = None,
+    groups: pd.Series | None = None,
+    scale: torch.Tensor | None = None,
 ) -> pd.Series:
     """Compare edited latents with the paired counterfactual latents phi(x').
 
+    Latent space, in coordinates divided by ``scale`` (default: the std of ``z``) and
+    by sqrt(d):
+
     - ``gap_closed``: 1 - |z' - phi(x')| / |z - phi(x')|, averaged over units that
       move (1 = perfect, 0 = no better than leaving z alone, < 0 = worse).
+    - ``distance``: mean |z' - phi(x')| (the per-unit energy score of a point edit).
+    - ``energy``: energy distance between the sets {z'} and {phi(x')}.
+    - ``shift``: mean |z' - z|.
     - ``cosine``: mean cosine similarity of z' and phi(x').
-    - ``acc_<c>``: an (ideally independent) reader's accuracy on z' against the true
-      counterfactual states, next to ``real_acc_<c>``, its accuracy on phi(x') itself.
+
+    With an (ideally independent) ``reader`` and the true counterfactual states:
+    ``acc_<c>`` and ``joint_acc`` (over ``joint``, default all of the reader's columns)
+    of its reading of z', next to ``real_*``, the same on phi(x') itself.
+
+    With a downstream ``predict`` (latents -> class) and the true counterfactual
+    ``outcome``: ``down_acc`` of predict(z') against it, ``down_agree`` with predict(z),
+    and ``parity_gap``, the range over ``groups`` (e.g. the counterfactual X) of the
+    mean predicted class; ``real_*`` the same on phi(x').
     """
+    from src.latent_intervention.flow.common import multivariate_energy_distance
+
+    scale = z.std(0).clamp(min=1e-6) if scale is None else scale
+    root = z.shape[1] ** 0.5
     before = (z - z_true).norm(dim=1)
     after = (z_prime - z_true).norm(dim=1)
     moving = before > 1e-6
     out = {
         "gap_closed": float((1 - after[moving] / before[moving]).mean()),
+        "distance": float(((z_prime - z_true) / scale).norm(dim=1).mean() / root),
+        "energy": float(multivariate_energy_distance(z_prime[:, None], z_true[:, None], scale)),
+        "shift": float(((z_prime - z) / scale).norm(dim=1).mean() / root),
         "cosine": float(torch.nn.functional.cosine_similarity(z_prime, z_true).mean()),
     }
     if reader is not None and true_states is not None:
-        for column, acc in reader.accuracy(z_prime, true_states).items():
-            out[f"acc_{column}"] = acc
-        for column, acc in reader.accuracy(z_true, true_states).items():
-            out[f"real_acc_{column}"] = acc
+        joint = reader.names if joint is None else joint
+        for prefix, latent in (("", z_prime), ("real_", z_true)):
+            metrics = state_metrics(reader.proba(latent), true_states, joint)
+            out.update({f"{prefix}{k}": v for k, v in metrics.items() if k.startswith(("acc_", "joint_acc"))})
+    if predict is not None and outcome is not None:
+        y = torch.tensor(outcome.to_numpy())
+        factual = predict(z)
+        for prefix, latent in (("", z_prime), ("real_", z_true)):
+            predicted = predict(latent)
+            out[f"{prefix}down_acc"] = float((predicted == y).float().mean())
+            out[f"{prefix}down_agree"] = float((predicted == factual).float().mean())
+            if groups is not None:
+                means = pd.Series(predicted.float().numpy()).groupby(groups.to_numpy()).mean()
+                out[f"{prefix}parity_gap"] = float(means.max() - means.min())
     return pd.Series(out)

@@ -15,6 +15,13 @@ class                    z'                                                     
                          guard's probabilities stay unchanged (projected C-sym)
 ``FlowRenderer``         u = F^-1(z; s), z' = F(u; s'), F a conditional RealNVP     s, s'
                          (F1)
+``EditorRenderer``       z + Delta(z, s'), trained so that a reader fitted on       s'
+                         (z, s) reads s', with random targets s' ~ Uniform(S)
+                         (a minimal edit; no operator in training)
+``OTEditorRenderer``     grad_x phi(x; s'), phi input-convex; trained like the      s'
+                         editor (OT-structured minimal edit)
+``OTFlowRenderer``       u = F_s^-1(z), z' = F_s'(u), F_s a continuous flow fitted  s, s'
+                         by OT flow matching within each state
 =======================  =========================================================  ==========
 
 ``c`` is the ``on`` column (default ``"X"``). All return ``z`` unchanged where
@@ -195,16 +202,166 @@ class FlowRenderer(Renderer):
         return out
 
 
+class EditorRenderer(Renderer):
+    """Minimal edit: z' = z + Delta(z, s') on standardized latents.
+
+    A ``Reader`` (the critic) is fitted on the training ``(z, s)`` and frozen. Delta is
+    then trained on random targets s' drawn uniformly from S, so the critic reads s' in
+    z' (cross-entropy) with a ``proximity`` penalty on the squared edit per coordinate.
+    No operator appears in training, so any s' can be rendered.
+    """
+
+    def __init__(
+        self,
+        columns: list[str],
+        proximity: float = 0.1,
+        hidden: int = 512,
+        critic_hidden: int = 1,
+        epochs: int = 200,
+        lr: float = 1e-3,
+        batch_size: int = 256,
+        levels: dict[str, int] | None = None,
+    ) -> None:
+        super().__init__(columns, levels)
+        self.proximity, self.hidden, self.critic_hidden = proximity, hidden, critic_hidden
+        self.epochs, self.lr, self.batch_size = epochs, lr, batch_size
+
+    def _fit(self, z, states):
+        from latent_lab.reader import Reader
+
+        levels = dict(zip(self.columns, self.levels))
+        self.critic = Reader(self.columns, hidden=self.critic_hidden, levels=levels).fit(z, states)
+        critic = self.critic.model.requires_grad_(False)
+        self.mean, self.std = z.mean(0), z.std(0).clamp(min=1e-6)
+        x = (z - self.mean) / self.std
+        self.net = self._build(z.shape[1])
+        optimizer = torch.optim.Adam(self.net.parameters(), lr=self.lr)
+        # shortcut: fixed epochs, no validation selection; add one if edits overshoot.
+        for _ in range(self.epochs):
+            for batch in torch.randperm(len(x)).split(self.batch_size):
+                target = torch.stack([torch.randint(k, (len(batch),)) for k in self.levels], 1)  # s' ~ Uniform(S)
+                moved = self._move(x[batch], target, train=True)
+                logits = critic(moved * self.std + self.mean)
+                loss = sum(nn.functional.cross_entropy(logits[c], target[:, i]) for i, c in enumerate(self.columns))
+                loss = loss + self.proximity * (moved - x[batch]).pow(2).mean()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+        self.net.eval()
+
+    def _build(self, dim: int) -> nn.Module:
+        net = nn.Sequential(nn.Linear(dim + sum(self.levels), self.hidden), nn.SiLU(), nn.Linear(self.hidden, dim))
+        nn.init.zeros_(net[-1].weight)
+        nn.init.zeros_(net[-1].bias)
+        return net
+
+    def _move(self, x: torch.Tensor, target: torch.Tensor, train: bool = False) -> torch.Tensor:
+        """Standardized x' for standardized x and integer targets (n, columns)."""
+        one_hot = torch.cat([nn.functional.one_hot(target[:, i], k).float() for i, k in enumerate(self.levels)], 1)
+        return x + self.net(torch.cat([x, one_hot], 1))
+
+    def _render(self, z, s, s_prime):
+        changed = (self.one_hot(s) != self.one_hot(s_prime)).any(1)
+        out = z.clone()
+        if changed.any():
+            target = torch.tensor(s_prime[self.columns].to_numpy(), dtype=torch.long)[changed]
+            out[changed] = self._move((z[changed] - self.mean) / self.std, target) * self.std + self.mean
+        return out
+
+
+class OTEditorRenderer(EditorRenderer):
+    """OT-structured minimal edit: x' = grad_x phi(x; s'), phi convex in x for each target.
+
+    Same random-target training as ``EditorRenderer``; only the map differs. The
+    potential is ``src``'s ``TargetPotential`` (input-convex, learnable diagonal quadratic).
+    """
+
+    def _build(self, dim):
+        from src.latent_intervention.editor.models import TargetPotential
+
+        return TargetPotential(dim, _specs(self.columns, self.levels), self.hidden)
+
+    def _move(self, x, target, train=False):
+        return self.net.gradient(x, target, create_graph=train)
+
+
+class OTFlowRenderer(Renderer):
+    """Shared-reference OT flow: u = F_s^-1(z), z' = F_s'(u), F_s a state-conditioned
+    continuous flow fitted by conditional minibatch OT flow matching.
+
+    Reference noise and factual latents are coupled by Sinkhorn within one state at a
+    time, never across states. Reuses ``src``'s ``ReferenceOTFlow`` (velocity network,
+    RK4 with step doubling, which raises if its tolerance is not met) and ``flow_batch``.
+    """
+
+    def __init__(
+        self,
+        columns: list[str],
+        hidden: int = 512,
+        epochs: int = 100,
+        lr: float = 3e-4,
+        batch_size: int = 64,
+        smoothing_std: float = 0.01,
+        levels: dict[str, int] | None = None,
+    ) -> None:
+        super().__init__(columns, levels)
+        self.hidden, self.epochs, self.lr = hidden, epochs, lr
+        self.batch = dict(batch_size=batch_size, smoothing_std=smoothing_std, sinkhorn=dict(epsilon=0.05))
+
+    def _fit(self, z, states):
+        from src.latent_intervention.ot.flow import ReferenceOTFlow
+        from src.latent_intervention.ot.training import flow_batch
+
+        index = torch.tensor(states[self.columns].to_numpy(), dtype=torch.long)
+        self.model = ReferenceOTFlow(z.shape[1], _specs(self.columns, self.levels), hidden_dim=self.hidden)
+        self.model.fit_normalization(z, index)
+        x = (z - self.model.mean) / self.model.scale
+        state_ids, rows = index.unique(dim=0, return_inverse=True)
+        groups = [(rows == g).nonzero().flatten() for g in range(len(state_ids))]
+        rng = torch.Generator().manual_seed(int(torch.initial_seed()))
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        # shortcut: fixed epochs, no validation selection or lr schedule (src has both).
+        for _ in range(self.epochs):
+            for _ in range(-(-len(x) // self.batch["batch_size"])):
+                group = int(rows[torch.randint(len(x), (1,), generator=rng)])  # a state, by frequency
+                batch = flow_batch(x, groups[group], state_ids[group], self.batch, rng)
+                velocity = self.model.velocity(batch["x"], batch["time"], batch["states"])
+                loss = (velocity - batch["velocity"]).square().mean()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+        self.model.eval()
+
+    def _render(self, z, s, s_prime):
+        a = torch.tensor(s[self.columns].to_numpy(), dtype=torch.long)
+        b = torch.tensor(s_prime[self.columns].to_numpy(), dtype=torch.long)
+        changed = (a != b).any(1)
+        out = z.clone()
+        if changed.any():
+            x = (z[changed] - self.model.mean) / self.model.scale
+            out[changed] = self.model.transport_normalized(x, a[changed], b[changed]) * self.model.scale + self.model.mean
+        return out
+
+
 RENDERERS: dict[str, type[Renderer]] = {
     "identity": IdentityRenderer,
     "constant": ConstantRenderer,
     "group_ot": GroupOTRenderer,
     "state_effect": StateEffectRenderer,
     "flow": FlowRenderer,
+    "editor": EditorRenderer,
+    "ot_editor": OTEditorRenderer,
+    "ot_flow": OTFlowRenderer,
 }
 
 
 # --- helpers ---------------------------------------------------------------------------
+
+
+def _specs(columns: list[str], levels: list[int]):
+    from src.schema import ColumnSpec
+
+    return [ColumnSpec(c, k) for c, k in zip(columns, levels)]
 
 
 def _one_hot(states: pd.DataFrame, columns: list[str], levels: list[int]) -> torch.Tensor:

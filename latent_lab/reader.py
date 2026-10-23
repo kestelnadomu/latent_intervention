@@ -8,6 +8,8 @@ proxy, motivation ``M`` or the outcome ``Y``).
 
 from __future__ import annotations
 
+import copy
+
 import numpy as np
 import pandas as pd
 import torch
@@ -102,7 +104,71 @@ class Reader:
             {c: float(np.mean(predicted[c].to_numpy() == states[c].to_numpy())) for c in self.names}
         )
 
+    def metrics(self, z: torch.Tensor, states: pd.DataFrame, joint: list[str] | None = None) -> pd.Series:
+        """``state_metrics`` of this reader on (z, states)."""
+        return state_metrics(self.proba(z), states, joint)
+
     def _fitted(self) -> SemanticDecoder:
         if self.model is None:
             raise ValueError("call fit() first")
         return self.model
+
+
+def cross_fit(
+    reader: Reader,
+    z: torch.Tensor,
+    states: pd.DataFrame,
+    folds,
+    labelled=None,
+    seed: int = 0,
+) -> tuple[pd.DataFrame, list[Reader]]:
+    """Out-of-fold reading: per fold k, a copy of ``reader`` fitted on the ``labelled``
+    rows outside k reads all rows of k. Returns the readings (row order of ``z``) and
+    one fitted reader per fold."""
+    folds = np.asarray(folds)
+    labelled = np.ones(len(z), bool) if labelled is None else np.asarray(labelled, bool)
+    readings = pd.DataFrame(0, index=range(len(z)), columns=reader.names)
+    readers = []
+    for k in np.unique(folds):
+        train, held_out = labelled & (folds != k), folds == k
+        fold_reader = copy.deepcopy(reader).fit(z[torch.as_tensor(train)], states[train], seed=seed)
+        readings.loc[held_out] = fold_reader.predict(z[torch.as_tensor(held_out)]).to_numpy()
+        readers.append(fold_reader)
+    return readings, readers
+
+
+def mean_proba(readers: list[Reader], z: torch.Tensor) -> dict[str, torch.Tensor]:
+    """The readers' averaged psi(s_c | z) per column."""
+    probas = [r.proba(z) for r in readers]
+    return {c: sum(p[c] for p in probas) / len(probas) for c in readers[0].names}
+
+
+def mean_predict(readers: list[Reader], z: torch.Tensor) -> pd.DataFrame:
+    """The most likely level per column under the readers' averaged probabilities."""
+    return pd.DataFrame({c: p.argmax(-1).numpy() for c, p in mean_proba(readers, z).items()})
+
+
+def state_metrics(
+    proba: dict[str, torch.Tensor], states: pd.DataFrame, joint: list[str] | None = None, bins: int = 10
+) -> pd.Series:
+    """Per column: ``acc_c``, ``nll_c`` and ``ece_c`` (equal-width confidence bins);
+    over the ``joint`` columns (default all): ``joint_acc`` (every column right) and
+    ``joint_nll`` (sum of the column NLLs, i.e. independent heads)."""
+    out, right, nll = {}, [], []
+    for c, p in proba.items():
+        truth = torch.tensor(states[c].to_numpy(), dtype=torch.long)
+        confidence, predicted = p.max(-1)
+        correct = (predicted == truth).float()
+        column_nll = -p.gather(1, truth[:, None]).squeeze(1).clamp(min=1e-12).log()
+        which = (confidence * bins).long().clamp(max=bins - 1)
+        ece = sum(
+            float((which == b).float().mean() * (confidence[which == b].mean() - correct[which == b].mean()).abs())
+            for b in range(bins) if (which == b).any()
+        )
+        out.update({f"acc_{c}": float(correct.mean()), f"nll_{c}": float(column_nll.mean()), f"ece_{c}": ece})
+        if joint is None or c in joint:
+            right.append(correct)
+            nll.append(column_nll)
+    out["joint_acc"] = float(torch.stack(right).prod(0).mean())
+    out["joint_nll"] = float(torch.stack(nll).sum(0).mean())
+    return pd.Series(out)
