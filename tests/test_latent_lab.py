@@ -53,6 +53,14 @@ def test_pipeline_with_a_plain_function(toy):
     assert torch.allclose(true_states.z_prime, z, atol=1e-5)
 
 
+def test_reader_activation(toy):
+    z, states = toy
+    relu = Reader(["X", "D"], hidden=1, activation="relu").fit(z, states, epochs=5)
+    assert isinstance(relu.model.trunk[1], torch.nn.ReLU) and relu.accuracy(z, states).shape == (2,)
+    with pytest.raises(ValueError):
+        Reader(["X"], activation="tanh")
+
+
 def test_cross_fit_reads_out_of_fold(toy):
     z, states = toy
     folds = np.arange(len(z)) % 4
@@ -112,7 +120,7 @@ def _flat(df: pd.DataFrame) -> np.ndarray:
 @pytest.mark.parametrize("blocked", [{}, {"D": ["X"]}])
 def test_linear_scm_matches_exact_kernel(blocked):
     from exp.sim.symbolic import SymbolicIntervention
-    from src.schema import ColumnSpec
+    from exp.sim.schema import ColumnSpec
 
     kernel = SymbolicIntervention.from_scm([ColumnSpec(c, k) for c, k in LEVELS.items()], PARENTS, NOISE)
     kernel.blocked = {child: set(parents) for child, parents in blocked.items()}
@@ -139,3 +147,33 @@ def test_linear_scm_blocking_and_validation():
         LinearSCM(LEVELS, {"U": {"D": 1.0}, "D": {"X": 1.0}}, {"U": (0, 1), "D": (0, 1)})  # not topological
     with pytest.raises(ValueError):
         LinearSCM(LEVELS, PARENTS, {"D": (0, 1)})
+
+
+def test_cache_reloads_and_invalidates(tmp_path):
+    from latent_lab.cache import cached
+
+    calls = []
+
+    def tick():  # defined outside __main__, so counting does not enter the key
+        calls.append(1)
+
+    # a notebook: its functions live in __main__, where the cache follows them
+    g = {"__name__": "__main__", "cached": cached, "torch": torch, "pd": pd, "folder": tmp_path, "tick": tick}
+    exec(
+        "data = torch.arange(4.0)\n"
+        "frame = pd.DataFrame({'a': [1, 2]})\n"
+        "def helper():\n    return frame['a'].sum()\n"
+        "def run(scale=2):\n    tick()\n    return data * scale + helper()\n",
+        g,
+    )
+    step = "result = cached('x', lambda: run(), folder=folder)"
+    exec(step, g)
+    first = g["result"]
+    exec(step, g)  # unchanged: reloaded
+    assert torch.equal(g["result"], first) and len(calls) == 1
+    exec("data = torch.arange(5.0)\n" + step, g)  # an input the function reads
+    exec("frame = pd.DataFrame({'a': [1, 3]})\n" + step, g)  # an input of a notebook function it calls
+    exec("def run(scale=3):\n    tick()\n    return data * scale + helper()\n" + step, g)  # a hyperparameter
+    exec(step.replace("run()", "run() + 1"), g)  # the cached code itself
+    assert len(calls) == 5 and len(list(tmp_path.glob("x-*.pt"))) == 5
+    assert torch.equal(g["result"], torch.arange(5.0) * 3 + 4 + 1)

@@ -1,14 +1,12 @@
-"""latent_lab: the read -> operate -> render pipeline, for notebooks.
+"""latent_lab: modular latent operation (MLO), read -> operate -> render, for notebooks.
 
     latents  = Encoder("nomic", 128).latents("talent")          # phi (cached encodings)
     reader   = Reader(["X", "T", "D", "U"]).fit(z, states)        # psi
-    scm      = LinearSCM(levels, parents, noise)                   # a causal model of S
-    operator = scm.do(X=3)                                        # omega_S: or any function
+    operator = LinearSCM(levels, parents, noise).do(X=3)          # omega_S: or any function
     renderer = FlowRenderer(["X", "T", "D", "U"]).fit(z, states)   # rho
-    result   = Pipeline(reader, operator, renderer)(z_test)
+    result   = Pipeline(reader, operator, renderer)(z_test)   # omega_Z, the MLO
 
 Data loading and operators are defined in the notebook; see latent_lab/example.ipynb.
-The full library (benchmarks, all h_Z families) is ``src/``.
 """
 
 from latent_lab.encoder import ENCODERS, Encoder, Latents

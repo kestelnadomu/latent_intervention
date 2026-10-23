@@ -1,31 +1,29 @@
 """rho: write a target state s' into a latent z while keeping what s does not describe.
 
-Every renderer is fitted on factual ``(z, s)`` only and called as
-``renderer(z, s, s_prime) -> z'``. The subclasses are the options compared in
-docs/experiments/renderer_benchmark.md:
+Every renderer is fitted on observed ``(z, s)`` only, never on edited pairs, and called
+as ``renderer(z, s, s_prime) -> z'``:
 
 =======================  =========================================================  ==========
 class                    z'                                                         uses
 =======================  =========================================================  ==========
 ``IdentityRenderer``     z (lower reference)                                        --
 ``ConstantRenderer``     z + E[z | c = s'_c] - E[z]: one direction per target level  s'_c
-``GroupOTRenderer``      Gaussian OT map p(z | c = s_c) -> p(z | c = s'_c) (N2)     s_c, s'_c
-``StateEffectRenderer``  z + m(s') - m(s), m additive in the levels (C-sym); with   s, s'
+``GroupOTRenderer``      Gaussian OT map p(z | c = s_c) -> p(z | c = s'_c)          s_c, s'_c
+``StateEffectRenderer``  z + m(s') - m(s), m additive in the levels; with          s, s'
                          ``guard=<linear Reader>`` the edit is projected so the
-                         guard's probabilities stay unchanged (projected C-sym)
+                         guard's probabilities stay unchanged
 ``FlowRenderer``         u = F^-1(z; s), z' = F(u; s'), F a conditional RealNVP     s, s'
-                         (F1)
 ``EditorRenderer``       z + Delta(z, s'), trained so that a reader fitted on       s'
                          (z, s) reads s', with random targets s' ~ Uniform(S)
                          (a minimal edit; no operator in training)
-``OTEditorRenderer``     grad_x phi(x; s'), phi input-convex; trained like the      s'
+``OTEditorRenderer``     grad_x Phi(x; s'), Phi input-convex; trained like the      s'
                          editor (OT-structured minimal edit)
 ``OTFlowRenderer``       u = F_s^-1(z), z' = F_s'(u), F_s a continuous flow fitted  s, s'
                          by OT flow matching within each state
 =======================  =========================================================  ==========
 
 ``c`` is the ``on`` column (default ``"X"``). All return ``z`` unchanged where
-``s' = s``, except ``ConstantRenderer``, which ignores the factual state.
+``s' = s``, except ``ConstantRenderer``, which ignores the source state.
 
 A new renderer subclasses ``Renderer`` and implements ``_fit`` and ``_render``.
 """
@@ -33,6 +31,7 @@ A new renderer subclasses ``Renderer`` and implements ``_fit`` and ``_render``.
 from __future__ import annotations
 
 import copy
+import math
 
 import pandas as pd
 import torch
@@ -55,7 +54,7 @@ class Renderer:
         return f"{type(self).__name__}({self.columns})"
 
     def fit(self, z: torch.Tensor, states: pd.DataFrame, seed: int = 0) -> "Renderer":
-        """Fit on factual latents and their states."""
+        """Fit on observed latents and their states."""
         torch.manual_seed(seed)
         self.levels = [self._given_levels.get(c, int(states[c].max()) + 1) for c in self.columns]
         self._fit(z, states)
@@ -64,7 +63,7 @@ class Renderer:
 
     @torch.no_grad()
     def __call__(self, z: torch.Tensor, s: pd.DataFrame, s_prime: pd.DataFrame) -> torch.Tensor:
-        """z' for latents ``z`` with factual states ``s`` and target states ``s_prime``."""
+        """z' for latents ``z`` with source states ``s`` and target states ``s_prime``."""
         if not self._fitted:
             raise ValueError("call fit() first")
         return self._render(z, s, s_prime)
@@ -109,7 +108,7 @@ class ConstantRenderer(Renderer):
 
 
 class GroupOTRenderer(Renderer):
-    """Gaussian optimal-transport map from p(z | on = s_on) to p(z | on = s'_on) (N2).
+    """Gaussian optimal-transport map from p(z | on = s_on) to p(z | on = s'_on).
 
     ``shrink`` pulls each group covariance towards a scaled identity.
     """
@@ -138,10 +137,10 @@ class GroupOTRenderer(Renderer):
 
 
 class StateEffectRenderer(Renderer):
-    """z' = z + m(s') - m(s), m a ridge regression of z on the one-hot state (C-sym).
+    """z' = z + m(s') - m(s), m a ridge regression of z on the one-hot state.
 
     With ``guard=<linear Reader>``, the edit is projected onto the directions that leave
-    the guard's probabilities unchanged (projected C-sym).
+    the guard's probabilities unchanged.
     """
 
     def __init__(
@@ -168,7 +167,7 @@ class StateEffectRenderer(Renderer):
 
 
 class FlowRenderer(Renderer):
-    """State-conditioned flow (F1): abduct u = F^-1(z; s), render z' = F(u; s').
+    """State-conditioned flow: infer the residual u = F^-1(z; s), render z' = F(u; s').
 
     F is a conditional RealNVP fitted by maximum likelihood of p(z | s); the epoch
     with the best likelihood on a ``validation`` share of the rows is kept.
@@ -270,16 +269,13 @@ class EditorRenderer(Renderer):
 
 
 class OTEditorRenderer(EditorRenderer):
-    """OT-structured minimal edit: x' = grad_x phi(x; s'), phi convex in x for each target.
+    """OT-structured minimal edit: x' = grad_x Phi(x; s'), Phi convex in x for each target.
 
-    Same random-target training as ``EditorRenderer``; only the map differs. The
-    potential is ``src``'s ``TargetPotential`` (input-convex, learnable diagonal quadratic).
+    Same random-target training as ``EditorRenderer``; only the map differs.
     """
 
     def _build(self, dim):
-        from src.latent_intervention.editor.models import TargetPotential
-
-        return TargetPotential(dim, _specs(self.columns, self.levels), self.hidden)
+        return _ConvexPotential(dim, self.levels, self.hidden)
 
     def _move(self, x, target, train=False):
         return self.net.gradient(x, target, create_graph=train)
@@ -289,9 +285,10 @@ class OTFlowRenderer(Renderer):
     """Shared-reference OT flow: u = F_s^-1(z), z' = F_s'(u), F_s a state-conditioned
     continuous flow fitted by conditional minibatch OT flow matching.
 
-    Reference noise and factual latents are coupled by Sinkhorn within one state at a
-    time, never across states. Reuses ``src``'s ``ReferenceOTFlow`` (velocity network,
-    RK4 with step doubling, which raises if its tolerance is not met) and ``flow_batch``.
+    Each step draws one state (by its frequency), a batch of its standardized latents
+    (plus ``smoothing_std`` noise) and as many N(0, I) reference points, couples them by
+    an entropic OT plan, and regresses the velocity on the straight paths between the
+    coupled pairs. Reference and latents are never coupled across states.
     """
 
     def __init__(
@@ -306,31 +303,36 @@ class OTFlowRenderer(Renderer):
     ) -> None:
         super().__init__(columns, levels)
         self.hidden, self.epochs, self.lr = hidden, epochs, lr
-        self.batch = dict(batch_size=batch_size, smoothing_std=smoothing_std, sinkhorn=dict(epsilon=0.05))
+        self.batch_size, self.smoothing_std = batch_size, smoothing_std
 
     def _fit(self, z, states):
-        from src.latent_intervention.ot.flow import ReferenceOTFlow
-        from src.latent_intervention.ot.training import flow_batch
-
         index = torch.tensor(states[self.columns].to_numpy(), dtype=torch.long)
-        self.model = ReferenceOTFlow(z.shape[1], _specs(self.columns, self.levels), hidden_dim=self.hidden)
-        self.model.fit_normalization(z, index)
-        x = (z - self.model.mean) / self.model.scale
+        self.mean, self.std = z.mean(0), z.std(0, unbiased=False).clamp(min=1e-4)
+        self.velocity = _VelocityField(z.shape[1], self.levels, self.hidden)
+        x = (z - self.mean) / self.std
         state_ids, rows = index.unique(dim=0, return_inverse=True)
         groups = [(rows == g).nonzero().flatten() for g in range(len(state_ids))]
         rng = torch.Generator().manual_seed(int(torch.initial_seed()))
-        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
-        # shortcut: fixed epochs, no validation selection or lr schedule (src has both).
+        n = self.batch_size
+        optimizer = torch.optim.Adam(self.velocity.parameters(), lr=self.lr)
+        # shortcut: fixed epochs, no validation selection, lr schedule or gradient clipping.
         for _ in range(self.epochs):
-            for _ in range(-(-len(x) // self.batch["batch_size"])):
-                group = int(rows[torch.randint(len(x), (1,), generator=rng)])  # a state, by frequency
-                batch = flow_batch(x, groups[group], state_ids[group], self.batch, rng)
-                velocity = self.model.velocity(batch["x"], batch["time"], batch["states"])
-                loss = (velocity - batch["velocity"]).square().mean()
+            for _ in range(-(-len(x) // n)):
+                group = int(rows[torch.randint(len(x), (1,), generator=rng)])
+                members = groups[group]
+                target = x[members[torch.randint(len(members), (n,), generator=rng)]]
+                target = target + self.smoothing_std * torch.randn(target.shape, generator=rng)
+                reference = torch.randn(target.shape, generator=rng)
+                plan = _sinkhorn(reference, target)
+                picks = torch.multinomial(plan.flatten(), n, replacement=True, generator=rng)
+                u, end = reference[picks // n], target[picks % n]
+                t = torch.rand(n, generator=rng)
+                path = (1 - t[:, None]) * u + t[:, None] * end
+                loss = (self.velocity(path, t, state_ids[group].expand(n, -1)) - (end - u)).square().mean()
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
-        self.model.eval()
+        self.velocity.eval()
 
     def _render(self, z, s, s_prime):
         a = torch.tensor(s[self.columns].to_numpy(), dtype=torch.long)
@@ -338,8 +340,9 @@ class OTFlowRenderer(Renderer):
         changed = (a != b).any(1)
         out = z.clone()
         if changed.any():
-            x = (z[changed] - self.model.mean) / self.model.scale
-            out[changed] = self.model.transport_normalized(x, a[changed], b[changed]) * self.model.scale + self.model.mean
+            x = (z[changed] - self.mean) / self.std
+            u = _integrate(self.velocity, x, a[changed], reverse=True)
+            out[changed] = _integrate(self.velocity, u, b[changed]) * self.std + self.mean
         return out
 
 
@@ -356,12 +359,6 @@ RENDERERS: dict[str, type[Renderer]] = {
 
 
 # --- helpers ---------------------------------------------------------------------------
-
-
-def _specs(columns: list[str], levels: list[int]):
-    from src.schema import ColumnSpec
-
-    return [ColumnSpec(c, k) for c, k in zip(columns, levels)]
 
 
 def _one_hot(states: pd.DataFrame, columns: list[str], levels: list[int]) -> torch.Tensor:
@@ -440,7 +437,7 @@ class _StateFlow(nn.Module):
         masks = [m for mask in masks for m in (mask, 1 - mask)]
         self.layers = nn.ModuleList(_Coupling(m, cond_dim, hidden) for m in masks)
 
-    def abduct(self, z: torch.Tensor, c: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    def infer(self, z: torch.Tensor, c: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         x, log_det = (z - self.mean) / self.std, torch.zeros(len(z))
         for layer in reversed(self.layers):
             x, step = layer.inverse(x, c)
@@ -448,11 +445,11 @@ class _StateFlow(nn.Module):
         return x, log_det
 
     def log_prob(self, z: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
-        u, log_det = self.abduct(z, c)
+        u, log_det = self.infer(z, c)
         return -0.5 * (u**2).sum(1) - log_det
 
     def render(self, z: torch.Tensor, c: torch.Tensor, c_prime: torch.Tensor) -> torch.Tensor:
-        x, _ = self.abduct(z, c)
+        x, _ = self.infer(z, c)
         for layer in self.layers:
             x = layer(x, c_prime)
         return x * self.std + self.mean
@@ -488,3 +485,105 @@ def _fit_flow(
             best, best_state = val_loss, copy.deepcopy(flow.state_dict())
     flow.load_state_dict(best_state)
     return flow.eval()
+
+
+class _ConvexPotential(nn.Module):
+    """Phi(x; s'), convex in x for every fixed target s' (an input-convex network).
+
+    Softplus layers with non-negative hidden and output weights plus affine skips of
+    the input, a linear term and a learnable diagonal quadratic (floor ``floor``), so
+    grad_x Phi can contract. At initialization grad_x Phi is close to the identity.
+    """
+
+    def __init__(self, dim: int, levels: list[int], hidden: int, embed: int = 16, floor: float = 1e-3) -> None:
+        super().__init__()
+        self.embeddings = nn.ModuleList(nn.Embedding(k, embed) for k in levels)
+        self.input1 = nn.Linear(dim + len(levels) * embed, hidden)
+        self.input2 = nn.Linear(dim + len(levels) * embed, hidden)
+        start = math.log(math.expm1(1 / hidden))  # softplus^-1(1 / hidden)
+        self.positive_hidden = nn.Parameter(torch.full((hidden, hidden), start))
+        self.positive_output = nn.Parameter(torch.full((hidden,), start))
+        self.linear = nn.Parameter(torch.zeros(dim))
+        self.quadratic = nn.Parameter(torch.full((dim,), math.log(math.expm1(1 - floor))))
+        self.floor = floor
+
+    def forward(self, x: torch.Tensor, target: torch.Tensor) -> torch.Tensor:
+        inputs = torch.cat([x, *(e(target[:, i]) for i, e in enumerate(self.embeddings))], 1)
+        softplus = nn.functional.softplus
+        h = softplus(self.input1(inputs))
+        h = softplus(nn.functional.linear(h, softplus(self.positive_hidden)) + self.input2(inputs))
+        quadratic = 0.5 * (x.square() * (softplus(self.quadratic) + self.floor)).sum(1)
+        return (h * softplus(self.positive_output)).sum(1) + x @ self.linear + quadratic
+
+    def gradient(self, x: torch.Tensor, target: torch.Tensor, create_graph: bool = False) -> torch.Tensor:
+        with torch.enable_grad():  # renderers are called under no_grad
+            x = x.detach().requires_grad_(True)
+            (grad,) = torch.autograd.grad(self(x, target).sum(), x, create_graph=create_graph)
+        return grad if create_graph else grad.detach()
+
+
+class _VelocityField(nn.Module):
+    """v(x, t; s): an MLP on x, one embedding per state column and 16 sinusoidal time
+    features. The last layer starts at zero, so the untrained flow is the identity."""
+
+    def __init__(self, dim: int, levels: list[int], hidden: int, embed: int = 16) -> None:
+        super().__init__()
+        self.embeddings = nn.ModuleList(nn.Embedding(k, embed) for k in levels)
+        self.net = nn.Sequential(
+            nn.Linear(dim + len(levels) * embed + 16, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(),
+            nn.Linear(hidden, dim),
+        )
+        nn.init.zeros_(self.net[-1].weight)
+        nn.init.zeros_(self.net[-1].bias)
+
+    def forward(self, x: torch.Tensor, t, states: torch.Tensor) -> torch.Tensor:
+        angle = torch.as_tensor(t, dtype=x.dtype).expand(len(x)).reshape(-1, 1) * torch.arange(1, 9) * math.pi
+        embedded = [e(states[:, i]) for i, e in enumerate(self.embeddings)]
+        return self.net(torch.cat([x, *embedded, angle.sin(), angle.cos()], 1))
+
+
+def _rk4(velocity, x: torch.Tensor, states: torch.Tensor, start: float, end: float, steps: int) -> torch.Tensor:
+    h = (end - start) / steps
+    for i in range(steps):
+        t = start + i * h
+        k1 = velocity(x, t, states)
+        k2 = velocity(x + h * k1 / 2, t + h / 2, states)
+        k3 = velocity(x + h * k2 / 2, t + h / 2, states)
+        k4 = velocity(x + h * k3, t + h, states)
+        x = x + h * (k1 + 2 * k2 + 2 * k3 + k4) / 6
+    return x
+
+
+@torch.no_grad()
+def _integrate(velocity, x, states, reverse: bool = False, steps: int = 64, max_steps: int = 256, tol: float = 1e-4):
+    """Solve the flow ODE from t=0 to 1 (or back) by RK4, doubling the steps until two
+    solutions agree to ``tol`` (max per-unit RMS, standardized units)."""
+    start, end = (1.0, 0.0) if reverse else (0.0, 1.0)
+    previous = _rk4(velocity, x, states, start, end, steps)
+    error = math.inf
+    while 2 * steps <= max_steps:
+        steps *= 2
+        current = _rk4(velocity, x, states, start, end, steps)
+        error = float((current - previous).square().mean(1).sqrt().max())
+        if error <= tol and torch.isfinite(current).all():
+            return current
+        previous = current
+    raise FloatingPointError(f"OT flow ODE did not reach tolerance {tol}: error {error:.3g} at {steps} steps")
+
+
+@torch.no_grad()
+def _sinkhorn(x: torch.Tensor, y: torch.Tensor, epsilon: float = 0.05, tol: float = 1e-6, max_iterations: int = 100_000):
+    """Entropic OT plan between two uniformly weighted point sets, in log domain and
+    float64, with cost |x - y|^2 / dim. Raises if the marginals do not converge."""
+    kernel = -torch.cdist(x.double(), y.double()).square() / x.shape[1] / epsilon
+    log_a, log_b = -math.log(len(x)), -math.log(len(y))
+    u, v = torch.zeros(len(x), dtype=torch.double), torch.zeros(len(y), dtype=torch.double)
+    for i in range(1, max_iterations + 1):
+        u = log_a - torch.logsumexp(kernel + v[None], dim=1)
+        v = log_b - torch.logsumexp(kernel + u[:, None], dim=0)
+        if i % 10 == 0:
+            plan = (kernel + u[:, None] + v[None]).exp()
+            if (plan.sum(1) - 1 / len(x)).abs().max() <= tol:  # columns are exact after the v step
+                return plan
+    raise FloatingPointError(f"Sinkhorn did not converge in {max_iterations} iterations")

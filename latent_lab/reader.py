@@ -1,22 +1,20 @@
 """psi: a probe that reads a structured state from a latent.
 
-A thin wrapper around ``src.semantic_decoder.SemanticDecoder`` (one categorical head
-per column): ``hidden=0`` is a linear probe, ``hidden=k`` an MLP probe with ``k``
-hidden layers. Any simulated column can be read, also ones outside S (e.g. a
+An MLP with one categorical head per column, so the columns are read conditionally
+independently given z: ``hidden=0`` is a linear probe, ``hidden=k`` an MLP probe with
+``k`` hidden layers. Any simulated column can be read, also ones outside S (e.g. a
 proxy, motivation ``M`` or the outcome ``Y``).
 """
 
 from __future__ import annotations
 
 import copy
+import math
 
 import numpy as np
 import pandas as pd
 import torch
-
-from src.schema import ColumnSpec
-from src.semantic_decoder.model import SemanticDecoder
-from src.semantic_decoder.training import train_semantic_decoder
+from torch import nn
 
 
 class Reader:
@@ -32,14 +30,17 @@ class Reader:
         width: int = 256,
         dropout: float = 0.1,
         levels: dict[str, int] | None = None,
+        activation: str = "gelu",
     ) -> None:
+        if activation not in _ACTIVATIONS:
+            raise ValueError(f"activation must be one of {sorted(_ACTIVATIONS)}, got {activation!r}")
         self.names = list(columns)
-        self.hidden, self.width, self.dropout = hidden, width, dropout
+        self.hidden, self.width, self.dropout, self.activation = hidden, width, dropout, activation
         self.levels = dict(levels or {})
-        self.model: SemanticDecoder | None = None
+        self.model: _Probe | None = None
 
     def __repr__(self) -> str:
-        kind = "linear" if self.hidden == 0 else f"mlp{self.hidden}"
+        kind = "linear" if self.hidden == 0 else f"mlp{self.hidden}-{self.activation}"
         return f"Reader({self.names}, {kind})"
 
     def fit(
@@ -51,30 +52,60 @@ class Reader:
         weight_decay: float = 1e-4,
         validation: float = 0.2,
         seed: int = 0,
+        batch_size: int = 64,
+        patience: int = 30,
     ) -> "Reader":
-        """Fit on (z, states); ``validation`` of the rows select the best epoch."""
-        columns = [ColumnSpec(c, self.levels.get(c, int(states[c].max()) + 1)) for c in self.names]
-        self.model = SemanticDecoder(
-            z.shape[1], columns, hidden_dim=self.width, n_hidden=self.hidden, dropout=self.dropout
-        )
-        targets = {c: torch.tensor(states[c].to_numpy()) for c in self.names}
+        """Minimize the mean per-column cross-entropy with Adam.
+
+        A ``validation`` share of the rows selects the epoch with the lowest joint NLL;
+        the learning rate halves after 10 epochs without improvement and training stops
+        after ``patience``. The global RNG is left untouched.
+        """
+        levels = {c: self.levels.get(c, int(states[c].max()) + 1) for c in self.names}
+        targets = torch.tensor(states[self.names].to_numpy(), dtype=torch.long)
         order = torch.randperm(len(z), generator=torch.Generator().manual_seed(seed))
         n_val = int(validation * len(z))
         val, train = order[:n_val], order[n_val:]
-        train_semantic_decoder(
-            self.model,
-            z[train],
-            {c: t[train] for c, t in targets.items()},
-            epochs=epochs,
-            lr=lr,
-            weight_decay=weight_decay,
-            seed=seed,
-            verbose=False,
-            validation_latents=z[val] if n_val else None,
-            validation_targets={c: t[val] for c, t in targets.items()} if n_val else None,
-        )
+        z_train, y_train = z[train], targets[train]
+        best, best_state, reference, stale = math.inf, None, math.inf, 0
+        with torch.random.fork_rng():
+            torch.manual_seed(seed)
+            self.model = _Probe(z.shape[1], levels, self.width, self.hidden, self.dropout, self.activation)
+            optimizer = torch.optim.Adam(self.model.parameters(), lr=lr, weight_decay=weight_decay)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, factor=0.5, patience=10, threshold=1e-4, threshold_mode="abs", min_lr=1e-6
+            )
+            self.model.train()
+            for _ in range(epochs):
+                for batch in torch.randperm(len(z_train)).split(batch_size):
+                    loss = self._nll(z_train[batch], y_train[batch]) / len(self.names)
+                    optimizer.zero_grad()
+                    loss.backward()
+                    optimizer.step()
+                if not n_val:
+                    continue
+                self.model.eval()
+                with torch.no_grad():
+                    val_loss = float(self._nll(z[val], targets[val]))
+                self.model.train()
+                if val_loss < best:
+                    best, best_state = val_loss, copy.deepcopy(self.model.state_dict())
+                if val_loss < reference - 1e-4:  # patience counts improvements of at least 1e-4
+                    reference, stale = val_loss, 0
+                else:
+                    stale += 1
+                scheduler.step(val_loss)
+                if stale >= patience:
+                    break
+        if best_state is not None:
+            self.model.load_state_dict(best_state)
         self.model.eval()
         return self
+
+    def _nll(self, z: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """Mean joint NLL: the sum of the per-column cross-entropies."""
+        logits = self.model(z)
+        return sum(nn.functional.cross_entropy(logits[c], targets[:, i]) for i, c in enumerate(self.names))
 
     @torch.no_grad()
     def proba(self, z: torch.Tensor) -> dict[str, torch.Tensor]:
@@ -84,7 +115,11 @@ class Reader:
     @torch.no_grad()
     def joint(self, z: torch.Tensor) -> torch.Tensor:
         """psi(s | z) over the flat joint state space, shape (n, |S|)."""
-        return self._fitted().log_joint(z).exp()
+        log_p = [logits.log_softmax(-1) for logits in self._fitted()(z).values()]
+        joint = log_p[0]
+        for column in log_p[1:]:  # the last column varies fastest
+            joint = (joint[:, :, None] + column[:, None, :]).reshape(len(z), -1)
+        return joint.exp()
 
     def predict(self, z: torch.Tensor) -> pd.DataFrame:
         """The most likely level per column."""
@@ -108,10 +143,32 @@ class Reader:
         """``state_metrics`` of this reader on (z, states)."""
         return state_metrics(self.proba(z), states, joint)
 
-    def _fitted(self) -> SemanticDecoder:
+    def _fitted(self) -> _Probe:
         if self.model is None:
             raise ValueError("call fit() first")
         return self.model
+
+
+_ACTIVATIONS = {"gelu": nn.GELU, "relu": nn.ReLU}
+
+
+class _Probe(nn.Module):
+    """``hidden`` x (Linear, activation, Dropout), then one linear head per column."""
+
+    def __init__(
+        self, dim: int, levels: dict[str, int], width: int, hidden: int, dropout: float, activation: str = "gelu"
+    ) -> None:
+        super().__init__()
+        layers: list[nn.Module] = []
+        for _ in range(hidden):
+            layers += [nn.Linear(dim, width), _ACTIVATIONS[activation](), nn.Dropout(dropout)]
+            dim = width
+        self.trunk = nn.Sequential(*layers)
+        self.heads = nn.ModuleDict({c: nn.Linear(dim, k) for c, k in levels.items()})
+
+    def forward(self, z: torch.Tensor) -> dict[str, torch.Tensor]:
+        hidden = self.trunk(z)
+        return {c: head(hidden) for c, head in self.heads.items()}
 
 
 def cross_fit(

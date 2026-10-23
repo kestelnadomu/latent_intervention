@@ -1,4 +1,4 @@
-"""Read -> operate -> render, and the few metrics needed to judge the result."""
+"""The modular latent operation (MLO) read -> operate -> render, and its metrics."""
 
 from __future__ import annotations
 
@@ -21,12 +21,11 @@ class Result:
 
 @dataclass
 class Pipeline:
-    """omega_Z(z) = rho(z; s, s') with s ~ psi(. | z) and s' = operator(s).
+    """The MLO omega_Z(z) = rho(z; s, s') with s ~ psi(. | z) and s' = operator(s).
 
     ``operator`` is any function from a frame of states to a frame of target states
     (one row each, same columns), deterministic or random. ``reader=None`` uses the
-    true factual states passed to ``__call__`` instead (the privileged setting of the
-    renderer benchmark).
+    true source states passed to ``__call__`` instead, so only the renderer can err.
     """
 
     reader: Reader | None
@@ -43,7 +42,7 @@ class Pipeline:
         """s is psi's mode, or a draw from psi if ``sample=True``."""
         if self.reader is None:
             if states is None:
-                raise ValueError("without a reader, pass the true factual states")
+                raise ValueError("without a reader, pass the true source states")
             s = states[self.renderer.columns].reset_index(drop=True)
         else:
             s = self.reader.sample(z, seed) if sample else self.reader.predict(z)
@@ -63,7 +62,8 @@ def evaluate(
     groups: pd.Series | None = None,
     scale: torch.Tensor | None = None,
 ) -> pd.Series:
-    """Compare edited latents with the paired counterfactual latents phi(x').
+    """Compare edited latents z' with target latents phi(x'), the encodings of real
+    texts that have the target states.
 
     Latent space, in coordinates divided by ``scale`` (default: the std of ``z``) and
     by sqrt(d):
@@ -75,17 +75,15 @@ def evaluate(
     - ``shift``: mean |z' - z|.
     - ``cosine``: mean cosine similarity of z' and phi(x').
 
-    With an (ideally independent) ``reader`` and the true counterfactual states:
+    With an (ideally independent) ``reader`` and the true target states:
     ``acc_<c>`` and ``joint_acc`` (over ``joint``, default all of the reader's columns)
     of its reading of z', next to ``real_*``, the same on phi(x') itself.
 
-    With a downstream ``predict`` (latents -> class) and the true counterfactual
+    With a downstream ``predict`` (latents -> class) and the true target
     ``outcome``: ``down_acc`` of predict(z') against it, ``down_agree`` with predict(z),
-    and ``parity_gap``, the range over ``groups`` (e.g. the counterfactual X) of the
+    and ``parity_gap``, the range over ``groups`` (e.g. the target X) of the
     mean predicted class; ``real_*`` the same on phi(x').
     """
-    from src.latent_intervention.flow.common import multivariate_energy_distance
-
     scale = z.std(0).clamp(min=1e-6) if scale is None else scale
     root = z.shape[1] ** 0.5
     before = (z - z_true).norm(dim=1)
@@ -94,7 +92,7 @@ def evaluate(
     out = {
         "gap_closed": float((1 - after[moving] / before[moving]).mean()),
         "distance": float(((z_prime - z_true) / scale).norm(dim=1).mean() / root),
-        "energy": float(multivariate_energy_distance(z_prime[:, None], z_true[:, None], scale)),
+        "energy": _energy_distance(z_prime / scale, z_true / scale) / root,
         "shift": float(((z_prime - z) / scale).norm(dim=1).mean() / root),
         "cosine": float(torch.nn.functional.cosine_similarity(z_prime, z_true).mean()),
     }
@@ -105,12 +103,18 @@ def evaluate(
             out.update({f"{prefix}{k}": v for k, v in metrics.items() if k.startswith(("acc_", "joint_acc"))})
     if predict is not None and outcome is not None:
         y = torch.tensor(outcome.to_numpy())
-        factual = predict(z)
+        source = predict(z)
         for prefix, latent in (("", z_prime), ("real_", z_true)):
             predicted = predict(latent)
             out[f"{prefix}down_acc"] = float((predicted == y).float().mean())
-            out[f"{prefix}down_agree"] = float((predicted == factual).float().mean())
+            out[f"{prefix}down_agree"] = float((predicted == source).float().mean())
             if groups is not None:
                 means = pd.Series(predicted.float().numpy()).groupby(groups.to_numpy()).mean()
                 out[f"{prefix}parity_gap"] = float(means.max() - means.min())
     return pd.Series(out)
+
+
+def _energy_distance(a: torch.Tensor, b: torch.Tensor) -> float:
+    """Biased empirical energy distance 2 E|a - b| - E|a - a'| - E|b - b'| (>= 0)."""
+    mean = lambda x, y: torch.cdist(x, y).mean()  # noqa: E731
+    return float((2 * mean(a, b) - mean(a, a) - mean(b, b)).clamp(min=0))

@@ -1,9 +1,8 @@
-"""A discrete linear SCM and its unit-level counterfactuals.
+"""A discrete linear SCM, one source of operators omega_S.
 
 Each non-root node is ``clip(round(sum_j w_j * parent_j + eps), 0, k - 1)`` with
-``eps ~ Normal(mu, sd)``; roots are taken as given. This is the model the talent
-data were simulated from (``exp/sim_talent/talent_sfm.py``); the sampler agrees with
-the exact kernel in ``exp/sim/symbolic.py`` up to Monte Carlo error.
+``eps ~ Normal(mu, sd)``; roots are taken as given. ``do()`` turns an intervention into
+an operator: the unit-level SCM counterfactual (abduction, action, prediction).
 """
 
 from __future__ import annotations
@@ -74,13 +73,13 @@ class LinearSCM:
     ) -> pd.DataFrame:
         """One draw of each unit's counterfactual under ``do``.
 
-        1. Abduction: draw each node's noise from the range consistent with its factual value.
+        1. Abduction: draw each node's noise from the range consistent with its observed value.
         2. Action: set the ``do`` values.
         3. Prediction: recompute the non-root nodes in order.
 
         A ``do`` value is a level, or a function of ``states`` that returns one level
         per unit, e.g. ``lambda s: rng.choice(4, len(s), p=p_X)`` for do(X ~ P(X)).
-        ``blocked={"D": ["X"]}`` lets D read the *factual* X: a path-specific counterfactual.
+        ``blocked={"D": ["X"]}`` lets D read the *observed* X (a path-specific effect).
         Columns not in the SCM are passed through unchanged.
         """
         unknown = set(do) - set(self.levels)
@@ -113,7 +112,7 @@ class LinearSCM:
     def do(
         self, blocked: dict[str, list[str]] | None = None, **values: DoValue
     ) -> Callable[[pd.DataFrame], pd.DataFrame]:
-        """The counterfactual operator of do(values), a function for ``Pipeline``.
+        """The operator of do(values), a function for ``Pipeline``.
 
         ``scm.do(X=3)``; ``scm.do(X=3, blocked={"D": ["X"]})`` for the path-specific one;
         ``scm.do(X=lambda s: rng.choice(4, len(s), p=p_X))`` for a random intervention,

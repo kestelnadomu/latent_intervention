@@ -1,15 +1,12 @@
-"""phi: a frozen text encoder, preselected to the three embedding models we use.
+"""phi: the cached encodings of a frozen text encoder, one of the three embedding models we use.
 
 ``Encoder("nomic", 128).latents("talent")`` loads the published encodings of an
-experiment's texts (``data/latents/<experiment>/<name>_<dim>/z_pairs.pt``), which is
-what a notebook normally needs. ``Encoder.encode(texts)`` runs the model itself;
-Qwen3 and EmbeddingGemma only run in their isolated environments
-(``scripts/setup_qwen3.sh``, ``scripts/setup_embeddinggemma.sh``).
+experiment's texts (``data/latents/<experiment>/<name>_<dim>/z_pairs.pt``). latent_lab
+does not run the models; the texts are encoded by ``exp/encoding/``.
 """
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -26,8 +23,8 @@ ENCODERS: dict[str, tuple[int, ...]] = {
 
 @dataclass
 class Latents:
-    """Factual latents ``z`` of the units ``ids``, and the paired counterfactual
-    latents ``z_cf`` = phi(x') of the units ``cf_ids`` (where a counterfactual text exists)."""
+    """Source latents ``z`` of the units ``ids``, and the paired target latents
+    ``z_cf`` = phi(x') of the units ``cf_ids`` (where a text with the target state exists)."""
 
     ids: list[int]
     z: torch.Tensor
@@ -48,13 +45,12 @@ class Latents:
 class Encoder:
     """One embedding model at one Matryoshka width, e.g. ``Encoder("qwen3", 256)``."""
 
-    def __init__(self, name: str = "nomic", dim: int = 128, device: str = "cpu") -> None:
+    def __init__(self, name: str = "nomic", dim: int = 128) -> None:
         if name not in ENCODERS:
             raise ValueError(f"unknown encoder {name!r}; choose from {sorted(ENCODERS)}")
         if dim not in ENCODERS[name]:
             raise ValueError(f"{name} supports dims {ENCODERS[name]}, got {dim}")
-        self.name, self.dim, self.device = name, dim, device
-        self._model = None
+        self.name, self.dim = name, dim
 
     @property
     def tag(self) -> str:
@@ -67,7 +63,7 @@ class Encoder:
         """Load cached encodings: ``data/latents/<experiment>/<tag>/z_pairs.pt`` or ``path``.
 
         Without a cache at this width, the full-width cache is projected instead: the
-        Matryoshka prefix of ``dim`` coordinates, renormalized (as ``src.encoder.matryoshka``).
+        Matryoshka prefix of ``dim`` coordinates, renormalized (how the narrower caches were made).
         """
         payload = self._load(experiment, "z_pairs.pt", path)
         return Latents(
@@ -78,7 +74,7 @@ class Encoder:
         )
 
     def auxiliary(self, experiment: str, file: str = "z_factual_vb.pt") -> Latents:
-        """Other cached factual encodings next to ``z_pairs.pt``, e.g. the held-out
+        """Other cached source encodings next to ``z_pairs.pt``, e.g. the held-out
         paraphrase ``z_factual_vb.pt`` or the noise floor ``z_floor.pt``; read them
         with ``.factual(ids)``."""
         payload = self._load(experiment, file)
@@ -102,15 +98,3 @@ class Encoder:
                     raise ValueError(f"cached latents at {path} have width {z.shape[1]} < {self.dim}")
                 payload[key] = z if z.shape[1] == self.dim else torch.nn.functional.normalize(z[:, : self.dim], dim=1)
         return payload
-
-    def encode(self, texts: list[str], batch_size: int = 8) -> torch.Tensor:
-        """Encode texts with the pinned model (downloads it on first use)."""
-        if self._model is None:
-            from src.config import load_config
-            from src.encoder import configure_encoder, make_encoder
-
-            config = {"encoder": copy.deepcopy(load_config("encoder"))}
-            config["encoder"].update(variant=self.name, device=self.device)
-            configure_encoder(config, **{f"{self.name}_dim": self.dim})
-            self._model = make_encoder(config["encoder"])
-        return self._model.encode(list(texts), batch_size=batch_size)
