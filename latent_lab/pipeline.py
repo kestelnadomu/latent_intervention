@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+import numpy as np
 import pandas as pd
 import torch
 
@@ -24,8 +25,10 @@ class Pipeline:
     """The MLO omega_Z(z) = rho(z; s, s') with s ~ psi(. | z) and s' = operator(s).
 
     ``operator`` is any function from a frame of states to a frame of target states
-    (one row each, same columns), deterministic or random. ``reader=None`` uses the
-    true source states passed to ``__call__`` instead, so only the renderer can err.
+    (one row each, same columns), deterministic or random. It sees every column read
+    (or passed); the renderer then conditions on its own ``columns`` of s and s' only,
+    so a column outside them is left to the renderer's residual. ``reader=None`` uses
+    the true source states passed to ``__call__`` instead, so only the renderer can err.
     """
 
     reader: Reader | None
@@ -43,7 +46,7 @@ class Pipeline:
         if self.reader is None:
             if states is None:
                 raise ValueError("without a reader, pass the true source states")
-            s = states[self.renderer.columns].reset_index(drop=True)
+            s = states.reset_index(drop=True)
         else:
             s = self.reader.sample(z, seed) if sample else self.reader.predict(z)
         s_prime = self.operator(s.copy()).reset_index(drop=True)
@@ -112,6 +115,43 @@ def evaluate(
                 means = pd.Series(predicted.float().numpy()).groupby(groups.to_numpy()).mean()
                 out[f"{prefix}parity_gap"] = float(means.max() - means.min())
     return pd.Series(out)
+
+
+def factual_score(
+    renderer: Renderer, z: torch.Tensor, states: pd.DataFrame, reader: Reader, seed: int = 0, min_units: int = 10
+) -> pd.Series:
+    """Score a renderer on held-out observed units, without target latents.
+
+    Every unit is edited to the observed state of another, randomly drawn unit, so the
+    targets follow the observed joint distribution.
+
+    - ``fidelity``: share of units for which ``reader`` (not a renderer's own critic)
+      reads every target column in z'.
+    - ``realism``: for every column and level, the energy distance between the edited
+      latents with that target level and the observed latents with that level (both
+      with at least ``min_units`` units), averaged; standardized and divided by sqrt(d).
+      The identity edit scores > 0 here. An edit that keeps the target's statistics but
+      discards the unit's residual is not caught: that needs target latents.
+    - ``shift``: mean |z' - z| in the same units.
+    """
+    s = states[renderer.columns].reset_index(drop=True)
+    s_prime = s.iloc[np.random.default_rng(seed).permutation(len(s))].reset_index(drop=True)
+    z_prime = renderer(z, s, s_prime)
+    scale, root = z.std(0).clamp(min=1e-6), z.shape[1] ** 0.5
+    read = reader.predict(z_prime)
+    fidelity = np.mean(np.all([read[c].to_numpy() == s_prime[c].to_numpy() for c in renderer.columns], axis=0))
+    distances = []
+    for c in renderer.columns:
+        for level in np.unique(s_prime[c]):
+            edited = torch.tensor((s_prime[c] == level).to_numpy())
+            observed = torch.tensor((s[c] == level).to_numpy())
+            if edited.sum() >= min_units and observed.sum() >= min_units:
+                distances.append(_energy_distance(z_prime[edited] / scale, z[observed] / scale) / root)
+    return pd.Series({
+        "fidelity": float(fidelity),
+        "realism": float(np.mean(distances)),
+        "shift": float(((z_prime - z) / scale).norm(dim=1).mean() / root),
+    })
 
 
 def _energy_distance(a: torch.Tensor, b: torch.Tensor) -> float:

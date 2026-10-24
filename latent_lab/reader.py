@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import math
+from time import perf_counter
 
 import numpy as np
 import pandas as pd
@@ -61,13 +62,14 @@ class Reader:
         the learning rate halves after 10 epochs without improvement and training stops
         after ``patience``. The global RNG is left untouched.
         """
+        started = perf_counter()
         levels = {c: self.levels.get(c, int(states[c].max()) + 1) for c in self.names}
         targets = torch.tensor(states[self.names].to_numpy(), dtype=torch.long)
         order = torch.randperm(len(z), generator=torch.Generator().manual_seed(seed))
         n_val = int(validation * len(z))
         val, train = order[:n_val], order[n_val:]
         z_train, y_train = z[train], targets[train]
-        best, best_state, reference, stale = math.inf, None, math.inf, 0
+        best, best_state, reference, stale, best_epoch, history = math.inf, None, math.inf, 0, 0, []
         with torch.random.fork_rng():
             torch.manual_seed(seed)
             self.model = _Probe(z.shape[1], levels, self.width, self.hidden, self.dropout, self.activation)
@@ -76,20 +78,24 @@ class Reader:
                 optimizer, factor=0.5, patience=10, threshold=1e-4, threshold_mode="abs", min_lr=1e-6
             )
             self.model.train()
-            for _ in range(epochs):
+            for epoch in range(1, epochs + 1):
+                lr_now, total = optimizer.param_groups[0]["lr"], 0.0
                 for batch in torch.randperm(len(z_train)).split(batch_size):
                     loss = self._nll(z_train[batch], y_train[batch]) / len(self.names)
                     optimizer.zero_grad()
                     loss.backward()
                     optimizer.step()
+                    total += loss.item() * len(self.names) * len(batch)
+                history.append({"epoch": epoch, "train": total / len(z_train), "lr": lr_now})
                 if not n_val:
                     continue
                 self.model.eval()
                 with torch.no_grad():
                     val_loss = float(self._nll(z[val], targets[val]))
                 self.model.train()
+                history[-1]["validation"] = val_loss
                 if val_loss < best:
-                    best, best_state = val_loss, copy.deepcopy(self.model.state_dict())
+                    best, best_state, best_epoch = val_loss, copy.deepcopy(self.model.state_dict()), epoch
                 if val_loss < reference - 1e-4:  # patience counts improvements of at least 1e-4
                     reference, stale = val_loss, 0
                 else:
@@ -100,7 +106,13 @@ class Reader:
         if best_state is not None:
             self.model.load_state_dict(best_state)
         self.model.eval()
+        self._fit_log = fit_log(history, epochs, best_epoch or len(history), perf_counter() - started)
         return self
+
+    @property
+    def fit_log(self) -> dict:
+        """Training time and convergence of the last ``fit`` (see :func:`fit_log`)."""
+        return getattr(self, "_fit_log", {})
 
     def _nll(self, z: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
         """Mean joint NLL: the sum of the per-column cross-entropies."""
@@ -150,6 +162,16 @@ class Reader:
 
 
 _ACTIVATIONS = {"gelu": nn.GELU, "relu": nn.ReLU}
+
+
+def fit_log(history: list[dict], max_epochs: int, best_epoch: int, seconds: float) -> dict:
+    """``seconds``, ``max_epochs``, ``epochs_run``, ``best_epoch`` (the epoch whose weights
+    were kept), ``stopped_early`` and ``history``: one dict per epoch with the training
+    loss, the validation loss where there is one, and the learning rate."""
+    return {
+        "seconds": seconds, "max_epochs": max_epochs, "epochs_run": len(history), "best_epoch": best_epoch,
+        "stopped_early": len(history) < max_epochs, "history": history,
+    }
 
 
 class _Probe(nn.Module):

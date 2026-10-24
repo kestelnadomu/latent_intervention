@@ -6,11 +6,11 @@
     renderer = FlowRenderer(["X", "T", "D", "U"]).fit(z, states)   # rho
     result   = Pipeline(reader, operator, renderer)(z_test)   # omega_Z, the MLO
 
-Data loading and operators are defined in the notebook; see latent_lab/example.ipynb.
+Data loading and operators are defined in the notebook; see experiment.ipynb in the repo root.
 """
 
 from latent_lab.encoder import ENCODERS, Encoder, Latents
-from latent_lab.pipeline import Pipeline, Result, evaluate
+from latent_lab.pipeline import Pipeline, Result, evaluate, factual_score
 from latent_lab.reader import Reader, cross_fit, mean_predict, mean_proba, state_metrics
 from latent_lab.renderer import (
     RENDERERS,
@@ -46,6 +46,7 @@ __all__ = [
     "StateEffectRenderer",
     "cross_fit",
     "evaluate",
+    "factual_score",
     "mean_predict",
     "mean_proba",
     "state_metrics",

@@ -32,10 +32,13 @@ from __future__ import annotations
 
 import copy
 import math
+from time import perf_counter
 
 import pandas as pd
 import torch
 from torch import nn
+
+from latent_lab.reader import fit_log
 
 
 class Renderer:
@@ -55,11 +58,18 @@ class Renderer:
 
     def fit(self, z: torch.Tensor, states: pd.DataFrame, seed: int = 0) -> "Renderer":
         """Fit on observed latents and their states."""
+        started = perf_counter()
         torch.manual_seed(seed)
         self.levels = [self._given_levels.get(c, int(states[c].max()) + 1) for c in self.columns]
-        self._fit(z, states)
+        log = self._fit(z, states)  # trained renderers return a fit_log; closed-form ones None
+        self._fit_log = {**(log or {}), "seconds": perf_counter() - started}
         self._fitted = True
         return self
+
+    @property
+    def fit_log(self) -> dict:
+        """Training time and convergence of ``fit`` (see :func:`latent_lab.reader.fit_log`)."""
+        return getattr(self, "_fit_log", {})
 
     @torch.no_grad()
     def __call__(self, z: torch.Tensor, s: pd.DataFrame, s_prime: pd.DataFrame) -> torch.Tensor:
@@ -68,7 +78,7 @@ class Renderer:
             raise ValueError("call fit() first")
         return self._render(z, s, s_prime)
 
-    def _fit(self, z: torch.Tensor, states: pd.DataFrame) -> None:
+    def _fit(self, z: torch.Tensor, states: pd.DataFrame) -> dict | None:
         pass
 
     def _render(self, z: torch.Tensor, s: pd.DataFrame, s_prime: pd.DataFrame) -> torch.Tensor:
@@ -205,7 +215,8 @@ class FlowRenderer(Renderer):
         order = torch.randperm(len(z), generator=torch.Generator().manual_seed(seed))
         n_val = int(self.validation * len(z))
         val, fit = order[:n_val], order[n_val:]
-        self.flow = _fit_state_flow(z[fit], index[fit], z[val], index[val], self.levels, seed, **self.settings)
+        self.flow, log = _fit_state_flow(z[fit], index[fit], z[val], index[val], self.levels, seed, **self.settings)
+        return log
 
     def _render(self, z, s, s_prime):
         a = torch.tensor(s[self.columns].to_numpy(), dtype=torch.long)
@@ -223,7 +234,9 @@ class EditorRenderer(Renderer):
     A ``Reader`` (the critic) is fitted on the training ``(z, s)`` and frozen. Delta is
     then trained on random targets s' drawn uniformly from S, so the critic reads s' in
     z' (cross-entropy) with a ``proximity`` penalty on the squared edit per coordinate.
-    No operator appears in training, so any s' can be rendered.
+    No operator appears in training, so any s' can be rendered. A ``validation`` share of
+    the rows, with fixed random targets, selects the best epoch and stops training after
+    ``patience`` epochs without improvement.
     """
 
     def __init__(
@@ -235,34 +248,55 @@ class EditorRenderer(Renderer):
         epochs: int = 200,
         lr: float = 1e-3,
         batch_size: int = 256,
+        validation: float = 0.2,
+        patience: int = 30,
         levels: dict[str, int] | None = None,
     ) -> None:
         super().__init__(columns, levels)
         self.proximity, self.hidden, self.critic_hidden = proximity, hidden, critic_hidden
         self.epochs, self.lr, self.batch_size = epochs, lr, batch_size
+        self.validation, self.patience = validation, patience
 
     def _fit(self, z, states):
         from latent_lab.reader import Reader
 
+        seed = int(torch.initial_seed())
+        val, fit = _split(len(z), self.validation, seed)
         levels = dict(zip(self.columns, self.levels))
-        self.critic = Reader(self.columns, hidden=self.critic_hidden, levels=levels).fit(z, states)
+        self.critic = Reader(self.columns, hidden=self.critic_hidden, levels=levels).fit(z[fit], states.iloc[fit.numpy()])
         critic = self.critic.model.requires_grad_(False)
-        self.mean, self.std = z.mean(0), z.std(0).clamp(min=1e-6)
+        self.mean, self.std = z[fit].mean(0), z[fit].std(0).clamp(min=1e-6)
         x = (z - self.mean) / self.std
+        x_fit, x_val = x[fit], x[val]
+        draw = lambda n, g=None: torch.stack([torch.randint(k, (n,), generator=g) for k in self.levels], 1)  # noqa: E731
+        val_target = draw(len(x_val), torch.Generator().manual_seed(seed + 1))  # fixed, so epochs are comparable
+
+        def objective(xb, target, train):
+            moved = self._move(xb, target, train=train)
+            logits = critic(moved * self.std + self.mean)
+            loss = sum(nn.functional.cross_entropy(logits[c], target[:, i]) for i, c in enumerate(self.columns))
+            return loss + self.proximity * (moved - xb).pow(2).mean()
+
         self.net = self._build(z.shape[1])
         optimizer = torch.optim.Adam(self.net.parameters(), lr=self.lr)
-        # shortcut: fixed epochs, no validation selection; add one if edits overshoot.
-        for _ in range(self.epochs):
-            for batch in torch.randperm(len(x)).split(self.batch_size):
-                target = torch.stack([torch.randint(k, (len(batch),)) for k in self.levels], 1)  # s' ~ Uniform(S)
-                moved = self._move(x[batch], target, train=True)
-                logits = critic(moved * self.std + self.mean)
-                loss = sum(nn.functional.cross_entropy(logits[c], target[:, i]) for i, c in enumerate(self.columns))
-                loss = loss + self.proximity * (moved - x[batch]).pow(2).mean()
+        stop, history = _EarlyStop(self.patience), []
+        for epoch in range(1, self.epochs + 1):
+            total = 0.0
+            for batch in torch.randperm(len(x_fit)).split(self.batch_size):
+                loss = objective(x_fit[batch], draw(len(batch)), train=True)  # s' ~ Uniform(S)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                total += loss.item() * len(batch)
+            history.append({"epoch": epoch, "train": total / len(x_fit), "lr": self.lr})
+            if len(x_val):
+                with torch.no_grad():
+                    history[-1]["validation"] = value = objective(x_val, val_target, train=False).item()
+                if stop.step(self.net, value, epoch):
+                    break
+        stop.restore(self.net)
         self.net.eval()
+        return fit_log(history, self.epochs, stop.best_epoch or len(history), 0.0)
 
     def _build(self, dim: int) -> nn.Module:
         net = nn.Sequential(nn.Linear(dim + sum(self.levels), self.hidden), nn.SiLU(), nn.Linear(self.hidden, dim))
@@ -304,7 +338,10 @@ class OTFlowRenderer(Renderer):
     Each step draws one state (by its frequency), a batch of its standardized latents
     (plus ``smoothing_std`` noise) and as many N(0, I) reference points, couples them by
     an entropic OT plan, and regresses the velocity on the straight paths between the
-    coupled pairs. Reference and latents are never coupled across states.
+    coupled pairs. Reference and latents are never coupled across states. A
+    ``validation`` share of the rows, with one fixed coupled batch per state (weighted by
+    its frequency), selects the best epoch and stops training after ``patience`` epochs
+    without improvement.
     """
 
     def __init__(
@@ -315,40 +352,55 @@ class OTFlowRenderer(Renderer):
         lr: float = 3e-4,
         batch_size: int = 64,
         smoothing_std: float = 0.01,
+        validation: float = 0.2,
+        patience: int = 30,
         levels: dict[str, int] | None = None,
     ) -> None:
         super().__init__(columns, levels)
         self.hidden, self.epochs, self.lr = hidden, epochs, lr
         self.batch_size, self.smoothing_std = batch_size, smoothing_std
+        self.validation, self.patience = validation, patience
 
     def _fit(self, z, states):
+        seed = int(torch.initial_seed())
+        val, fit = _split(len(z), self.validation, seed)
         index = torch.tensor(states[self.columns].to_numpy(), dtype=torch.long)
-        self.mean, self.std = z.mean(0), z.std(0, unbiased=False).clamp(min=1e-4)
+        self.mean, self.std = z[fit].mean(0), z[fit].std(0, unbiased=False).clamp(min=1e-4)
         self.velocity = _VelocityField(z.shape[1], self.levels, self.hidden)
         x = (z - self.mean) / self.std
-        state_ids, rows = index.unique(dim=0, return_inverse=True)
+        x_fit = x[fit]
+        state_ids, rows = index[fit].unique(dim=0, return_inverse=True)
         groups = [(rows == g).nonzero().flatten() for g in range(len(state_ids))]
-        rng = torch.Generator().manual_seed(int(torch.initial_seed()))
-        n = self.batch_size
+        rng, n = torch.Generator().manual_seed(seed), self.batch_size
+        batch = lambda points, state, g: _coupled_batch(points, state, n, self.smoothing_std, g)  # noqa: E731
+        val_rng, bank = torch.Generator().manual_seed(seed + 1), []
+        val_ids, val_rows = index[val].unique(dim=0, return_inverse=True)
+        for g, state in enumerate(val_ids):  # one fixed coupled batch per state, weighted by its frequency
+            members = val[val_rows == g]
+            bank.append((len(members) / len(val), batch(x[members], state, val_rng)))
         optimizer = torch.optim.Adam(self.velocity.parameters(), lr=self.lr)
-        # shortcut: fixed epochs, no validation selection, lr schedule or gradient clipping.
-        for _ in range(self.epochs):
-            for _ in range(-(-len(x) // n)):
-                group = int(rows[torch.randint(len(x), (1,), generator=rng)])
-                members = groups[group]
-                target = x[members[torch.randint(len(members), (n,), generator=rng)]]
-                target = target + self.smoothing_std * torch.randn(target.shape, generator=rng)
-                reference = torch.randn(target.shape, generator=rng)
-                plan = _sinkhorn(reference, target)
-                picks = torch.multinomial(plan.flatten(), n, replacement=True, generator=rng)
-                u, end = reference[picks // n], target[picks % n]
-                t = torch.rand(n, generator=rng)
-                path = (1 - t[:, None]) * u + t[:, None] * end
-                loss = (self.velocity(path, t, state_ids[group].expand(n, -1)) - (end - u)).square().mean()
+        # shortcut: no learning-rate schedule or gradient clipping (src's benchmark had both).
+        stop, history, steps = _EarlyStop(self.patience), [], -(-len(x_fit) // n)
+        for epoch in range(1, self.epochs + 1):
+            total = 0.0
+            for _ in range(steps):
+                group = int(rows[torch.randint(len(x_fit), (1,), generator=rng)])
+                path, t, cond, velocity = batch(x_fit[groups[group]], state_ids[group], rng)
+                loss = (self.velocity(path, t, cond) - velocity).square().mean()
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
+                total += loss.item()
+            history.append({"epoch": epoch, "train": total / steps, "lr": self.lr})
+            if bank:
+                with torch.no_grad():
+                    value = sum(w * (self.velocity(p, t, c) - v).square().mean().item() for w, (p, t, c, v) in bank)
+                history[-1]["validation"] = value
+                if stop.step(self.velocity, value, epoch):
+                    break
+        stop.restore(self.velocity)
         self.velocity.eval()
+        return fit_log(history, self.epochs, stop.best_epoch or len(history), 0.0)
 
     def _render(self, z, s, s_prime):
         a = torch.tensor(s[self.columns].to_numpy(), dtype=torch.long)
@@ -375,6 +427,47 @@ RENDERERS: dict[str, type[Renderer]] = {
 
 
 # --- helpers ---------------------------------------------------------------------------
+
+
+def _split(n: int, validation: float, seed: int) -> tuple[torch.Tensor, torch.Tensor]:
+    """Seeded (validation rows, fitting rows)."""
+    order = torch.randperm(n, generator=torch.Generator().manual_seed(seed))
+    return order[: int(validation * n)], order[int(validation * n) :]
+
+
+class _EarlyStop:
+    """Keeps the weights of the epoch with the lowest validation loss; ``step`` returns
+    True after ``patience`` epochs without an improvement of at least ``min_delta``."""
+
+    def __init__(self, patience: int, min_delta: float = 1e-7) -> None:
+        self.patience, self.min_delta = patience, min_delta
+        self.best, self.reference, self.stale, self.best_epoch, self.state = math.inf, math.inf, 0, 0, None
+
+    def step(self, module: nn.Module, value: float, epoch: int) -> bool:
+        if value < self.best:
+            self.best, self.best_epoch, self.state = value, epoch, copy.deepcopy(module.state_dict())
+        if value < self.reference - self.min_delta:
+            self.reference, self.stale = value, 0
+        else:
+            self.stale += 1
+        return self.stale >= self.patience
+
+    def restore(self, module: nn.Module) -> None:
+        if self.state is not None:
+            module.load_state_dict(self.state)
+
+
+def _coupled_batch(points: torch.Tensor, state: torch.Tensor, n: int, smoothing: float, rng: torch.Generator):
+    """One flow-matching batch within one state: ``n`` of its latents (with replacement,
+    plus smoothing noise) coupled to ``n`` N(0, I) points by an entropic OT plan; returns
+    the points on the straight paths, their times, the state and the target velocities."""
+    target = points[torch.randint(len(points), (n,), generator=rng)]
+    target = target + smoothing * torch.randn(target.shape, generator=rng)
+    reference = torch.randn(target.shape, generator=rng)
+    picks = torch.multinomial(_sinkhorn(reference, target).flatten(), n, replacement=True, generator=rng)
+    u, end = reference[picks // n], target[picks % n]
+    t = torch.rand(n, generator=rng)
+    return (1 - t[:, None]) * u + t[:, None] * end, t, state.expand(n, -1), end - u
 
 
 def _one_hot(states: pd.DataFrame, columns: list[str], levels: list[int]) -> torch.Tensor:
@@ -523,15 +616,18 @@ def _fit_state_flow(
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, patience=10, factor=0.5, threshold=1e-7, threshold_mode="abs", min_lr=1e-6
     )
-    best, best_state, reference, stale = math.inf, None, math.inf, 0
+    best, best_state, reference, stale, best_epoch, history = math.inf, None, math.inf, 0, 0, []
     flow.train()
-    for _ in range(epochs):
+    for epoch in range(1, epochs + 1):
+        lr_now, total = optimizer.param_groups[0]["lr"], 0.0
         for batch in torch.randperm(len(z_fit), generator=shuffle).split(batch_size):
             loss = -flow.log_prob(z_fit[batch], s_fit[batch]).mean()
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(flow.parameters(), grad_clip, error_if_nonfinite=True)
             optimizer.step()
+            total += loss.item() * len(batch)
+        history.append({"epoch": epoch, "train": total / len(z_fit) / z_fit.shape[1], "lr": lr_now})
         if not len(z_val):
             continue
         with torch.no_grad():  # mean NLL per coordinate, in batches of 32 like the benchmark
@@ -539,8 +635,9 @@ def _fit_state_flow(
                 float(-flow.log_prob(zb, sb).mean() / zb.shape[1]) * len(zb)
                 for zb, sb in zip(z_val.split(32), s_val.split(32))
             ) / len(z_val)
+        history[-1]["validation"] = value
         if value < best:
-            best, best_state = value, copy.deepcopy(flow.state_dict())
+            best, best_state, best_epoch = value, copy.deepcopy(flow.state_dict()), epoch
         if value < reference - 1e-7:
             reference, stale = value, 0
         else:
@@ -550,7 +647,7 @@ def _fit_state_flow(
             break
     if best_state is not None:
         flow.load_state_dict(best_state)
-    return flow.eval()
+    return flow.eval(), fit_log(history, epochs, best_epoch or len(history), 0.0)
 
 
 class _ConvexPotential(nn.Module):

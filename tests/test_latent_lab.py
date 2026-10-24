@@ -7,7 +7,7 @@ import torch
 
 from latent_lab import (
     RENDERERS, Encoder, EditorRenderer, IdentityRenderer, OTEditorRenderer, LinearSCM, Pipeline, Reader, Renderer, StateEffectRenderer,
-    cross_fit, evaluate, mean_predict, state_metrics,
+    cross_fit, evaluate, factual_score, mean_predict, state_metrics,
 )
 
 
@@ -51,6 +51,10 @@ def test_pipeline_with_a_plain_function(toy):
     assert result.s_prime["X"].eq(2).all() and result.z_prime.shape == z.shape
     true_states = Pipeline(None, lambda s: s, renderer)(z, states)
     assert torch.allclose(true_states.z_prime, z, atol=1e-5)
+    # the operator sees every column; a renderer on a subset ignores the others
+    narrow = StateEffectRenderer(["X"]).fit(z, states)
+    result = Pipeline(None, lambda s: s.assign(D=1 - s["D"]), narrow)(z, states)
+    assert result.s_prime["D"].ne(states["D"].to_numpy()).all() and torch.allclose(result.z_prime, z, atol=1e-5)
 
 
 def test_reader_activation(toy):
@@ -99,6 +103,14 @@ def test_latents_project_a_wider_cache(tmp_path):
     latents = Encoder("embeddinggemma", 256).latents(path=tmp_path / "z.pt")
     assert latents.z.shape == (5, 256) and torch.allclose(latents.z.norm(dim=1), torch.ones(5))
     assert torch.allclose(latents.z_cf, latents.z[:2])
+
+
+def test_factual_score_prefers_a_real_edit(toy):
+    z, states = toy
+    reader = Reader(["X", "D"]).fit(z, states, epochs=50)
+    identity = factual_score(IdentityRenderer(["X", "D"]), z, states, reader)
+    effect = factual_score(StateEffectRenderer(["X", "D"]).fit(z, states), z, states, reader)
+    assert identity["shift"] == 0 and effect["realism"] < identity["realism"] and effect["fidelity"] > identity["fidelity"]
 
 
 LEVELS = {"X": 4, "T": 3, "D": 3, "U": 3}
@@ -195,3 +207,25 @@ def test_cache_key_follows_only_used_modules(tmp_path, monkeypatch):
     assert cache.digest(g["read"]) == before[0] and cache.digest(g["render"]) != before[1]
     (package / "reader.py").write_text((package / "reader.py").read_text() + "\n# edited\n")
     assert cache.digest(g["read"]) != before[0]  # and renderer keys too: renderer imports reader
+
+
+def test_fit_logs_record_time_and_convergence(toy):
+    z, states = toy
+    reader = Reader(["X", "D"], hidden=1).fit(z, states, epochs=40, patience=3)
+    log = reader.fit_log
+    assert log["seconds"] > 0 and log["epochs_run"] == len(log["history"]) <= 40
+    assert 1 <= log["best_epoch"] <= log["epochs_run"] and "validation" in log["history"][0]
+    flow = RENDERERS["flow"](["X", "D"], epochs=3).fit(z, states)
+    assert flow.fit_log["epochs_run"] == 3 and "validation" in flow.fit_log["history"][-1]
+    closed = StateEffectRenderer(["X", "D"]).fit(z, states)
+    assert set(closed.fit_log) == {"seconds"}
+
+
+@pytest.mark.parametrize("name", ["editor", "ot_editor", "ot_flow"])
+def test_early_stopping(toy, name):
+    z, states = toy
+    options = {"lr": 1e-2} if name == "ot_editor" else {}  # it learns slowly from its near-identity start
+    renderer = RENDERERS[name](["X", "D"], epochs=200, patience=2, **options).fit(z, states)
+    log = renderer.fit_log
+    assert log["stopped_early"] and log["epochs_run"] < 200 and "validation" in log["history"][0]
+    assert log["best_epoch"] == min(range(len(log["history"])), key=lambda i: log["history"][i]["validation"]) + 1

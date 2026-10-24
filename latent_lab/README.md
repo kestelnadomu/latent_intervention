@@ -1,6 +1,6 @@
 # latent_lab
 
-**Modular latent operation (MLO)**: change what a latent `z = φ(x)` of a frozen text encoder says about a structured state, in three exchangeable steps: read the state `s = ψ(z)`, map it to a target `s' = ω_S(s)` with any operator, and render the target into the latent, `z' = ρ(z; s, s')`. latent_lab is meant to be driven from one notebook; start with [example.ipynb](example.ipynb).
+**Modular latent operation (MLO)**: change what a latent `z = φ(x)` of a frozen text encoder says about a structured state, in three exchangeable steps: read the state `s = ψ(z)`, map it to a target `s' = ω_S(s)` with any operator, and render the target into the latent, `z' = ρ(z; s, s')`. latent_lab is meant to be driven from one notebook; start with [experiment.ipynb](../experiment.ipynb) in the repo root.
 
 | piece | symbol | in latent_lab |
 |---|---|---|
@@ -103,8 +103,11 @@ flowchart LR
   would need many more steps for the same tolerance.
 - Embeddings instead of one-hot: a learned 16-dim vector per level.
 - Zero-initialized last layer: the untrained flow is the identity.
-- Defaults: `hidden=512`, `epochs=100`, `lr=3e-4`, `batch_size=64`, `smoothing_std=0.01`.
-  No validation selection, learning-rate schedule or gradient clipping.
+- Early stopping: a `validation` share of the rows gets one fixed coupled batch per state
+  (weighted by its frequency); the epoch with the lowest flow-matching loss on it is kept,
+  and training stops after `patience` epochs without improvement.
+- Defaults: `hidden=512`, `epochs=100`, `lr=3e-4`, `batch_size=64`, `smoothing_std=0.01`,
+  `validation=0.2`, `patience=30`. No learning-rate schedule or gradient clipping.
 
 ### Minimal-edit renderers
 
@@ -125,8 +128,11 @@ flowchart LR
   to make the critic read `s'`. With ψ(z) training states, the critic learns ψ's readings.
 - Proximity penalty on the squared standardized edit keeps the edit minimal.
 - Zero-initialized last layer: training starts from the identity.
+- Early stopping: the critic is fitted on the training rows only; a `validation` share
+  of the rows with fixed random targets scores each epoch by the same loss, the best
+  epoch is kept, and training stops after `patience` epochs without improvement.
 - Defaults: `proximity=0.1`, `hidden=512`, `critic_hidden=1`, `epochs=200`, `lr=1e-3`,
-  `batch_size=256`. Fixed epochs, no validation selection.
+  `batch_size=256`, `validation=0.2`, `patience=30`.
 - Known limit: the critic is beaten off-manifold (z' read better than real latents).
 
 #### `OTEditorRenderer`: x' = ∇ₓΦ(x; s')
