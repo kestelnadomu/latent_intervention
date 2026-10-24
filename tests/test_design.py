@@ -16,7 +16,7 @@ from exp.sim.render import load_render_spec
 from exp.sim.scm import SCM, linear_mechanism
 from exp.sim.stage_simulate import stage_simulate
 from exp.sim_talent_motivation.talent_motivation import CONFIG_PATH
-from src.schema import ColumnSpec
+from exp.sim.schema import ColumnSpec
 
 
 def _chain_scm() -> SCM:
