@@ -169,35 +169,51 @@ class StateEffectRenderer(Renderer):
 class FlowRenderer(Renderer):
     """State-conditioned flow: infer the residual u = F^-1(z; s), render z' = F(u; s').
 
-    F is a conditional RealNVP fitted by maximum likelihood of p(z | s); the epoch
-    with the best likelihood on a ``validation`` share of the rows is kept.
+    F is a conditional RealNVP fitted by maximum likelihood of p(z | s). The state enters
+    every coupling through one learned code (an embedding per column, then a small MLP).
+    A ``validation`` share of the rows selects the epoch with the lowest per-coordinate
+    NLL; the learning rate halves after 10 stale epochs and training stops after
+    ``patience`` of them. Defaults: the settings selected for EmbeddingGemma at d = 256.
     """
 
     def __init__(
         self,
         columns: list[str],
         blocks: int = 8,
-        hidden: int = 256,
-        epochs: int = 100,
+        hidden: int = 136,
+        condition: int = 64,
+        embed: int = 16,
+        epochs: int = 500,
         lr: float = 1e-3,
-        batch_size: int = 256,
-        validation: float = 0.1,
+        batch_size: int = 64,
+        weight_decay: float = 1e-5,
+        grad_clip: float = 5.0,
+        validation: float = 0.2,
+        patience: int = 30,
         levels: dict[str, int] | None = None,
     ) -> None:
         super().__init__(columns, levels)
+        self.validation = validation
         self.settings = dict(
-            blocks=blocks, hidden=hidden, epochs=epochs, lr=lr, batch_size=batch_size, validation=validation
+            blocks=blocks, hidden=hidden, condition=condition, embed=embed, epochs=epochs, lr=lr,
+            batch_size=batch_size, weight_decay=weight_decay, grad_clip=grad_clip, patience=patience,
         )
 
     def _fit(self, z, states):
-        self.flow = _fit_flow(z, self.one_hot(states), **self.settings)
+        index = torch.tensor(states[self.columns].to_numpy(), dtype=torch.long)
+        seed = int(torch.initial_seed())
+        order = torch.randperm(len(z), generator=torch.Generator().manual_seed(seed))
+        n_val = int(self.validation * len(z))
+        val, fit = order[:n_val], order[n_val:]
+        self.flow = _fit_state_flow(z[fit], index[fit], z[val], index[val], self.levels, seed, **self.settings)
 
     def _render(self, z, s, s_prime):
-        a, b = self.one_hot(s), self.one_hot(s_prime)
+        a = torch.tensor(s[self.columns].to_numpy(), dtype=torch.long)
+        b = torch.tensor(s_prime[self.columns].to_numpy(), dtype=torch.long)
         changed = (a != b).any(1)
         out = z.clone()
         if changed.any():
-            out[changed] = self.flow.render(z[changed], a[changed], b[changed])
+            out[changed] = self.flow.transport(z[changed], a[changed], b[changed])
         return out
 
 
@@ -399,91 +415,141 @@ def _probe_basis(reader) -> torch.Tensor:
     return vh[keep].T.float()
 
 
-class _Coupling(nn.Module):
-    def __init__(self, mask: torch.Tensor, cond_dim: int, hidden: int) -> None:
+def _permutations(dim: int, blocks: int, seed: int) -> list[torch.Tensor]:
+    """One coordinate permutation per coupling, applied before its even/odd split.
+
+    The second is built so that it transforms every coordinate the first leaves
+    untouched; the rest are random.
+    """
+    if dim < 2 or blocks < 2:
+        raise ValueError("the state flow needs at least 2 latent dimensions and 2 blocks")
+    g = torch.Generator().manual_seed(seed)
+    coords = torch.arange(dim)
+    first = torch.randperm(dim, generator=g)
+    covered = torch.zeros(dim, dtype=torch.bool)
+    covered[first[coords % 2 != 0]] = True  # block 0 transforms the odd positions
+    untouched, done = coords[~covered[first]], coords[covered[first]]
+    untouched = untouched[torch.randperm(len(untouched), generator=g)]
+    done = done[torch.randperm(len(done), generator=g)]
+    second = torch.empty(dim, dtype=torch.long)
+    second[coords % 2 == 0], second[coords % 2 == 1] = untouched, done  # block 1 transforms the even ones
+    return [first, second] + [torch.randperm(dim, generator=g) for _ in range(blocks - 2)]
+
+
+class _AffineCoupling(nn.Module):
+    """Permute, then transform one half of the coordinates (by parity) affinely given
+    the other half and the state code; log-scales are bounded to [-2, 2]."""
+
+    def __init__(self, dim: int, condition: int, hidden: int, parity: int, permutation: torch.Tensor) -> None:
         super().__init__()
-        self.register_buffer("mask", mask)
-        dim = len(mask)
+        coords = torch.arange(dim)
+        self.register_buffer("keep", coords[coords % 2 == parity])
+        self.register_buffer("change", coords[coords % 2 != parity])
+        self.register_buffer("permutation", permutation)
+        self.register_buffer("inverse_permutation", torch.argsort(permutation))
         self.net = nn.Sequential(
-            nn.Linear(dim + cond_dim, hidden), nn.SiLU(), nn.Linear(hidden, hidden), nn.SiLU(),
-            nn.Linear(hidden, 2 * dim),
+            nn.Linear(len(self.keep) + condition, hidden), nn.SiLU(),
+            nn.Linear(hidden, hidden), nn.SiLU(),
+            nn.Linear(hidden, 2 * len(self.change)),
         )
         nn.init.zeros_(self.net[-1].weight)
         nn.init.zeros_(self.net[-1].bias)
 
-    def _params(self, x: torch.Tensor, c: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        scale, shift = self.net(torch.cat([x * self.mask, c], 1)).chunk(2, 1)
-        free = 1 - self.mask
-        return torch.tanh(scale) * free, shift * free
+    def _params(self, permuted: torch.Tensor, code: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        raw_scale, shift = self.net(torch.cat([permuted[:, self.keep], code], 1)).chunk(2, 1)
+        return 2 * torch.tanh(raw_scale / 2), shift
 
-    def forward(self, u: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
-        scale, shift = self._params(u, c)
-        return u * scale.exp() + shift
+    def forward(self, x: torch.Tensor, code: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        permuted = x[:, self.permutation]
+        log_scale, shift = self._params(permuted, code)
+        out = permuted.clone()
+        out[:, self.change] = permuted[:, self.change] * log_scale.exp() + shift
+        return out, log_scale.sum(1)
 
-    def inverse(self, z: torch.Tensor, c: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        scale, shift = self._params(z, c)
-        return (z - shift) * (-scale).exp(), scale.sum(1)
+    def inverse(self, y: torch.Tensor, code: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        log_scale, shift = self._params(y, code)
+        out = y.clone()
+        out[:, self.change] = (y[:, self.change] - shift) * (-log_scale).exp()
+        return out[:, self.inverse_permutation], -log_scale.sum(1)
 
 
 class _StateFlow(nn.Module):
     """Conditional RealNVP z = F(u; s) on standardized latents, u ~ N(0, I)."""
 
-    def __init__(self, z: torch.Tensor, cond_dim: int, blocks: int, hidden: int) -> None:
+    def __init__(self, dim: int, levels: list[int], blocks: int, hidden: int, condition: int, embed: int, seed: int) -> None:
         super().__init__()
-        self.register_buffer("mean", z.mean(0))
-        self.register_buffer("std", z.std(0).clamp(min=1e-6))
-        g = torch.Generator().manual_seed(0)
-        masks = [(torch.randperm(z.shape[1], generator=g) < z.shape[1] // 2).float() for _ in range(blocks // 2)]
-        masks = [m for mask in masks for m in (mask, 1 - mask)]
-        self.layers = nn.ModuleList(_Coupling(m, cond_dim, hidden) for m in masks)
+        self.register_buffer("mean", torch.zeros(dim))
+        self.register_buffer("scale", torch.ones(dim))
+        self.embeddings = nn.ModuleList(nn.Embedding(k, embed) for k in levels)
+        self.project = nn.Sequential(nn.Linear(len(levels) * embed, condition), nn.SiLU(), nn.Linear(condition, condition))
+        self.blocks = nn.ModuleList(
+            _AffineCoupling(dim, condition, hidden, i % 2, p) for i, p in enumerate(_permutations(dim, blocks, seed))
+        )
 
-    def infer(self, z: torch.Tensor, c: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        x, log_det = (z - self.mean) / self.std, torch.zeros(len(z))
-        for layer in reversed(self.layers):
-            x, step = layer.inverse(x, c)
+    def code(self, states: torch.Tensor) -> torch.Tensor:
+        return self.project(torch.cat([e(states[:, i]) for i, e in enumerate(self.embeddings)], 1))
+
+    def infer(self, z: torch.Tensor, states: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """u = F^-1(z; s) and log |det dF^-1/dz| in standardized units."""
+        x, code, log_det = (z - self.mean) / self.scale, self.code(states), torch.zeros(len(z))
+        for block in reversed(self.blocks):
+            x, step = block.inverse(x, code)
             log_det = log_det + step
         return x, log_det
 
-    def log_prob(self, z: torch.Tensor, c: torch.Tensor) -> torch.Tensor:
-        u, log_det = self.infer(z, c)
-        return -0.5 * (u**2).sum(1) - log_det
+    def log_prob(self, z: torch.Tensor, states: torch.Tensor) -> torch.Tensor:
+        u, log_det = self.infer(z, states)
+        return -0.5 * (u.square() + math.log(2 * math.pi)).sum(1) + log_det - self.scale.log().sum()
 
-    def render(self, z: torch.Tensor, c: torch.Tensor, c_prime: torch.Tensor) -> torch.Tensor:
-        x, _ = self.infer(z, c)
-        for layer in self.layers:
-            x = layer(x, c_prime)
-        return x * self.std + self.mean
+    def transport(self, z: torch.Tensor, s: torch.Tensor, s_prime: torch.Tensor) -> torch.Tensor:
+        x, code = self.infer(z, s)[0], self.code(s_prime)
+        for block in self.blocks:
+            x = block(x, code)[0]
+        return x * self.scale + self.mean
 
 
-def _fit_flow(
-    z: torch.Tensor,
-    c: torch.Tensor,
-    blocks: int = 8,
-    hidden: int = 256,
-    epochs: int = 100,
-    lr: float = 1e-3,
-    batch_size: int = 256,
-    validation: float = 0.1,
+def _fit_state_flow(
+    z_fit, s_fit, z_val, s_val, levels, seed, blocks, hidden, condition, embed,
+    epochs, lr, batch_size, weight_decay, grad_clip, patience,
 ) -> _StateFlow:
-    """Maximum likelihood of p(z | s); keeps the epoch with the best held-out likelihood."""
-    flow = _StateFlow(z, c.shape[1], blocks, hidden)
-    order = torch.randperm(len(z))
-    val, train = order[: int(validation * len(z))], order[int(validation * len(z)) :]
-    optimizer = torch.optim.Adam(flow.parameters(), lr=lr, weight_decay=1e-5)
-    best, best_state = float("inf"), None
+    """Conditional maximum likelihood with validation selection, as in the h_Z benchmark."""
+    with torch.random.fork_rng(devices=[]):  # the seed alone fixes the initial weights
+        torch.manual_seed(seed)
+        flow = _StateFlow(z_fit.shape[1], levels, blocks, hidden, condition, embed, seed)
+    flow.mean.copy_(z_fit.mean(0))
+    flow.scale.copy_(z_fit.std(0, unbiased=False).clamp(min=1e-6))
+    shuffle = torch.Generator().manual_seed(seed + 1)
+    optimizer = torch.optim.AdamW(flow.parameters(), lr=lr, weight_decay=weight_decay)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer, patience=10, factor=0.5, threshold=1e-7, threshold_mode="abs", min_lr=1e-6
+    )
+    best, best_state, reference, stale = math.inf, None, math.inf, 0
+    flow.train()
     for _ in range(epochs):
-        flow.train()
-        for batch in train[torch.randperm(len(train))].split(batch_size):
-            loss = -flow.log_prob(z[batch], c[batch]).mean()
-            optimizer.zero_grad()
+        for batch in torch.randperm(len(z_fit), generator=shuffle).split(batch_size):
+            loss = -flow.log_prob(z_fit[batch], s_fit[batch]).mean()
+            optimizer.zero_grad(set_to_none=True)
             loss.backward()
+            torch.nn.utils.clip_grad_norm_(flow.parameters(), grad_clip, error_if_nonfinite=True)
             optimizer.step()
-        flow.eval()
-        with torch.no_grad():
-            val_loss = -flow.log_prob(z[val], c[val]).mean().item() if len(val) else loss.item()
-        if val_loss < best:
-            best, best_state = val_loss, copy.deepcopy(flow.state_dict())
-    flow.load_state_dict(best_state)
+        if not len(z_val):
+            continue
+        with torch.no_grad():  # mean NLL per coordinate, in batches of 32 like the benchmark
+            value = sum(
+                float(-flow.log_prob(zb, sb).mean() / zb.shape[1]) * len(zb)
+                for zb, sb in zip(z_val.split(32), s_val.split(32))
+            ) / len(z_val)
+        if value < best:
+            best, best_state = value, copy.deepcopy(flow.state_dict())
+        if value < reference - 1e-7:
+            reference, stale = value, 0
+        else:
+            stale += 1
+        scheduler.step(value)
+        if stale >= patience:
+            break
+    if best_state is not None:
+        flow.load_state_dict(best_state)
     return flow.eval()
 
 

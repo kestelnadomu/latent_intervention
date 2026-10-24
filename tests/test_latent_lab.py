@@ -177,3 +177,21 @@ def test_cache_reloads_and_invalidates(tmp_path):
     exec(step.replace("run()", "run() + 1"), g)  # the cached code itself
     assert len(calls) == 5 and len(list(tmp_path.glob("x-*.pt"))) == 5
     assert torch.equal(g["result"], torch.arange(5.0) * 3 + 4 + 1)
+
+
+def test_cache_key_follows_only_used_modules(tmp_path, monkeypatch):
+    import shutil
+
+    import latent_lab.cache as cache
+    from latent_lab import FlowRenderer
+
+    package = tmp_path / "latent_lab"
+    shutil.copytree(cache._PACKAGE, package, ignore=shutil.ignore_patterns("__pycache__"))
+    monkeypatch.setattr(cache, "_PACKAGE", package)
+    g = {"__name__": "__main__", "Reader": Reader, "FlowRenderer": FlowRenderer}
+    exec("read = lambda: Reader(['X'])\nrender = lambda: FlowRenderer(['X'])", g)
+    before = cache.digest(g["read"]), cache.digest(g["render"])
+    (package / "renderer.py").write_text((package / "renderer.py").read_text() + "\n# edited\n")
+    assert cache.digest(g["read"]) == before[0] and cache.digest(g["render"]) != before[1]
+    (package / "reader.py").write_text((package / "reader.py").read_text() + "\n# edited\n")
+    assert cache.digest(g["read"]) != before[0]  # and renderer keys too: renderer imports reader

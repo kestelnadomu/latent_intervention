@@ -52,27 +52,33 @@ These infer a residual `u` from `z` under `s` and render the same `u` under `s'`
 
 ```mermaid
 flowchart LR
-    z["z"] --> std["standardize"] --> inv["F⁻¹(·; s): blocks in reverse"] --> u["u ~ N(0, I)"]
-    u --> fwd["F(·; s'): blocks"] --> unstd["unstandardize"] --> zp["z'"]
+    s["s"] --> code["Embedding16 per column → Linear(64) → SiLU → Linear(64): state code c"]
+    z["z"] --> std["standardize"] --> inv["F⁻¹(·; c(s)): blocks in reverse"] --> u["u ~ N(0, I)"]
+    u --> fwd["F(·; c(s')): blocks"] --> unstd["unstandardize"] --> zp["z'"]
     subgraph block["coupling block"]
         direction LR
-        keep["x · mask"] --> net["[x·mask, onehot(s)] → Linear(256) → SiLU → Linear(256) → SiLU → Linear(2d)"]
-        net --> ss["log-scale = tanh(·), shift"] --> aff["free coords: x · exp(scale) + shift"]
+        perm["fixed permutation, split by parity"] --> net["[kept half, c] → Linear(136) → SiLU → Linear(136) → SiLU → Linear(2 · d/2)"]
+        net --> ss["log-scale = 2·tanh(·/2), shift"] --> aff["changed half: x · exp(scale) + shift"]
     end
 ```
 
-- Fitted by maximum likelihood of p(z | s); the epoch with the best likelihood on a
-  `validation` share is kept.
-- Masks: random halves of the coordinates, each followed by its complement, so every
-  coordinate is transformed once per pair.
-- tanh bounds each block's log-scale to [−1, 1], which keeps the inverse stable.
-- Zero-initialized last layer: the untrained flow is the identity.
+- Fitted by maximum likelihood of p(z | s) with AdamW (`lr=1e-3`, weight decay 1e-5),
+  batch 64 and gradient clipping at 5. A `validation` share selects the epoch with the
+  lowest per-coordinate NLL; the learning rate halves after 10 stale epochs, training
+  stops after `patience`.
+- One learned state code, shared by all blocks: it gives the state far more weight in
+  each block than a one-hot appended to d inputs would.
+- Permutations: a fixed random one per block; the second is built so that every
+  coordinate is transformed at least once.
+- The log-scale bound [−2, 2] keeps the likelihood and the inverse stable.
+- Zero-initialized last layers: the untrained flow is the identity.
 - SiLU: smooth, so the scale, shift and log-determinant are smooth in the input; not
   ablated against ReLU.
-- Defaults: `blocks=8`, `hidden=256`, `epochs=100`, `lr=1e-3`, `weight_decay=1e-5`,
-  `batch_size=256`, `validation=0.1`.
-- Known limit: at d = 768 the likelihood barely depends on s, so the selected flow
-  hardly moves z; at d = 256 it does (see the notebook, Section 2).
+- Defaults: `blocks=8`, `hidden=136`, `condition=64`, `embed=16`, `epochs=500`,
+  `batch_size=64`, `validation=0.2`, `patience=30` (selected for EmbeddingGemma at
+  d = 256 by a search over learning rate and width; 648k parameters there).
+- Known limit: the epoch with the best validation likelihood comes early (about epoch
+  12), and with fewer training units the flow uses s less.
 
 #### `OTFlowRenderer`: shared-reference OT flow
 
