@@ -16,10 +16,10 @@
 .Rhistory
 
 # Generated pipeline artifacts (regenerable; data/text/ stays tracked: texts cost API credits)
-data/sim/
-# data/sim_talent/
-data/text/
-data/latents/**
+# data/sim/
+# # data/sim_talent/
+# data/text/
+# data/latents/**
 # Canonical embedding artifacts are intentionally portable/tracked.
 # Temporary queue/staging files stay ignored.
 !data/latents/talent/
@@ -50,7 +50,7 @@ data/latents/**
 !data/latents/talent_motivation/embeddinggemma_768/manifest.json
 # Keep published semantic decoders and the oracle regression reference portable.
 # Trials, archives, legacy unselected h_Z models, encoder checkpoints and temporary files stay local.
-models/**
+# models/**
 !models/talent/
 !models/talent/*/
 !models/talent/*/g-independent/
@@ -67,7 +67,7 @@ models/**
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.pt
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.info.json
 # Published training reports and the small all-encoder benchmark audit bundle.
-reports/**
+# reports/**
 !reports/talent_motivation/
 !reports/talent_motivation/encoding/
 !reports/talent_motivation/encoding/*/
