@@ -1,13 +1,22 @@
 # Published CV-decoder results
 
-Publication prepared on 2026-10-21 at the user's request, including full generated
+Initial publication prepared on 2026-10-21 at the user's request, including full generated
 CV text. This is an artifact-only publication: it does not retrain any model,
 restore retired experiment code, or alter the encoder, `g`, or `h_Z`.
 
-The publication contains **306 report/metadata files** (338.26 MiB
+The initial publication contains **306 report/metadata files** (338.26 MiB
 uncompressed). The largest file is 32.40 MiB. Every individual
 file fits regular GitHub Git storage; no LFS or compression is required.
 Existing tracked semantic-decoder and h_Z benchmark results are unchanged.
+
+**2026-10-22 completion supplement:** the 1B factual/oracle comparison is now
+finished. Its [completed result and interpretation](text_realizer_counterfactual_exposure_gemma1b.md#completed-result-and-decision-2026-10-22)
+and [17-file manifest](../../reports/talent/embeddinggemma_768/text-decoder-results/publication-20261022-cf1b.json)
+cover the final report, examples, training/selection histories, reload checks,
+and completed statuses. Five plan/ETA files overlap the initial publication;
+12 reports are new. The original dated manifest/checksums are preserved.
+The supplement is prepared locally for the next commit, not automatically
+committed or pushed by the documentation update.
 
 ## What is available after pulling
 
@@ -19,7 +28,7 @@ Existing tracked semantic-decoder and h_Z benchmark results are unchanged.
 | 270M oracle-exposed A/B/C comparison | `reports/talent/embeddinggemma_768/text-realizer-cf/cv-cf-pilot-v1/` | Full per-ID comparison in `result.json`; oracle arm C did not meet the predeclared replication gate. |
 | Factual continuation control B's training reports | `.archive/artifacts/reports/talent/embeddinggemma_768/text-realizer-cf/cv-cf-pilot-v1/factual/` | Retained equal-compute control, not a deployment decoder. |
 | Factual draft-corrector, all epoch reports and final evaluation | `.archive/artifacts/reports/talent/embeddinggemma_768/text-corrector/cv-correction-pilot-20261016-1711/` | Negative pilot; publishing its results does not reactivate its code. |
-| Current 1B factual/oracle continuation plans and measured ETA | `reports/talent/embeddinggemma_768/text-realizer-cf-1b/cv-cf-1b-pilot-20261021-0938/` | **Still running at publication.** No final comparison is included yet. Live status/history files are excluded. |
+| Completed 1B factual/oracle continuation comparison | `reports/talent/embeddinggemma_768/text-realizer-cf-1b/cv-cf-1b-pilot-20261021-0938/` | Completed 2026-10-22; `result.json` contains the full A/B/C evaluation. Predeclared advancement criteria failed. Reports are ready for the completion-supplement commit. |
 | LangVAE FT smoke and selected training run | `models/langvae_ft/20260928T074231Z-smoke-8b2b824d/` and `models/langvae_ft/20260928T075426Z-train-c8d72b43/` | JSON audits, histories, selection, and generations only; no checkpoints. |
 | Earlier LangVAE prototypes v1/v2/v3 | `models/langvae_posttrain/langvae_cv32_joint_v1/`, `langvae_cv_full_v2/`, and `langvae_cv_full_v3/` | Historical diagnostic/results JSONs, not changes to the retained `langvae_ft` baseline. |
 | Finished preflight, reload, and timing diagnostics formerly stored with prepared data | `reports/talent/embeddinggemma_768/text-decoder-results/diagnostics/` | Byte-identical report copies; original data/cache locations are recorded in the manifest. |
@@ -102,6 +111,19 @@ All report JSONs were parsed, scanned for recognizable access-token/private-key
 patterns, and checked against the 100 MiB per-file limit before staging.
 Generated CV text has intentionally **not** been stripped.
 
-The live 1B oracle-exposure experiment has no final result at this publication
-point. Its completed preflight and immutable launch metadata are included for
-provenance only; a later, separate results commit is needed after evaluation.
+The initial 2026-10-21 publication contained only the still-running 1B
+experiment's preflight and immutable launch metadata. Its final comparison
+completed on 2026-10-22 at 02:41 CEST. The supplement includes all 17 report
+JSONs outside `source/`, while weights, optimizer states, and logs stay excluded.
+No evaluation or training was rerun to prepare this documentation.
+
+Verify the completed 1B report set separately:
+
+```bash
+sha256sum -c reports/talent/embeddinggemma_768/text-decoder-results/SHA256SUMS-cf1b-20261022
+```
+
+The 1B JSON uses the same `worlds.<arm>.<world>` schema and 320/238/82 population
+boundaries described above. Its decision remains `worth_replication: false`;
+this supplement does not open the audit, official test, or predicted-`h_Z`
+evaluation, or promote a new decoder.

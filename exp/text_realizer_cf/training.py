@@ -52,7 +52,8 @@ def train_arm(
     select = load_partition(prepared, "selection")["factual"]
     models_root, reports_root = run_paths(config, run_id)
     models, reports = run_paths(config, run_id, arm)
-    with lock(reports_root / ".plan.lock"):
+    # Parallel arms briefly serialize the shared immutable plan publication.
+    with lock(reports_root / ".plan.lock", blocking=True):
         snapshot(
             reports_root,
             {

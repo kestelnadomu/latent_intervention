@@ -1,0 +1,64 @@
+# Separate 1B continuation experiment. Same pairs and gates as the 270M pilot.
+format_version: 1
+inputs:
+  factual_prepared: data/latents/talent/embeddinggemma_768/text-realizer-prepared/815a05b566bc35114b8c2a4fa03f1e5f372b26ce5e224a9fffb5b661f7590223
+  oracle_vectors: data/latents/talent/embeddinggemma_768/oracle_train/z_prime.pt
+  oracle_info: data/latents/talent/embeddinggemma_768/oracle_train/z_prime.info.json
+  counterfactual_text: data/text_talent/cv_counterfactual.csv
+  pair_index: data/sim_talent/pair_index.csv
+  baseline_checkpoint: .archive/artifacts/models/talent/embeddinggemma_768/text-realizer/cv-text-1b-pilot-20261015-1026.lora-compact.seed-42/best.pt
+  sha256:
+    factual_manifest: 218e854905653303fd6c4abc2f6a028c2a31c81b9fc5eef9d94ee7f9d9e278b2
+    oracle_vectors: 7a3e94f15d7343dcba38772553ce0d3aef9234a0aa091d5acdd5df64b8da02d4
+    oracle_info: 90945421e6b0f2601c92ddc663f4b713e2c53db2cde4a6bc3e4aac7fd58b3963
+    counterfactual_text: 34b3a3ac0747bdd65ab8d7175c8582a9e9d38fcf06ec31f436b5c499ec9f993c
+    pair_index: 67616f395548dfffb7f063b554338b6b63731f5a77136134ffc3b2936b5d51ee
+    baseline_checkpoint: 59af957c6fdf29a86154efb40d66bbde4038ad82f5818a7a3afa0fcd133d84af
+paths:
+  prepared: data/latents/talent/embeddinggemma_768/text-realizer-cf-1b-prepared
+  models: models/talent/embeddinggemma_768/text-realizer-cf-1b
+  reports: reports/talent/embeddinggemma_768/text-realizer-cf-1b
+  cache: .cache/huggingface/hub
+model:
+  name: google/gemma-3-1b-pt
+  revision: fcf18a2a879aab110ca39f8bffbccd5d49d8eb29
+  variant: lora-compact
+  attention_implementation: eager
+  latent_dim: 768
+  prefix_tokens: 16
+  projector_hidden: 768
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+training:
+  seed: 42
+  updates: 600
+  effective_batch: 32
+  oracle_per_batch: 16
+  projector_lr: 0.0003
+  lora_lr: 0.00005
+  weight_decay: 0.01
+  warmup_fraction: 0.05
+  clip: 1.0
+  checkpoint_every: 25
+  evaluate_every: 100
+  precision: float32
+  gradient_checkpointing: true
+selection:
+  factual_tune_ids: 80
+  bootstrap_samples: 2000
+  bootstrap_seed: 20261017
+  minimum_character_gain: 0.02
+  minimum_macro_factual_gain: 0.02
+  maximum_factual_regression: 0.02
+  maximum_field_regression: 0.02
+  factual_fields: [country, degree, university_tier, project_count]
+generation:
+  max_new_tokens: 1024
+  batch_size: 1
+preflight:
+  smoke_updates: 20
+  benchmark_updates: 10
+  memory_headroom: 0.15
+  microbatches: [1]

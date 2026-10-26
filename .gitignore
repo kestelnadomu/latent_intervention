@@ -135,16 +135,19 @@ reports/talent/embeddinggemma_768/text-realizer/**/source/
 !reports/talent/embeddinggemma_768/text-realizer-cf/**/*.json
 !reports/talent/embeddinggemma_768/text-realizer-cf/**/*.md
 reports/talent/embeddinggemma_768/text-realizer-cf/**/source/
-# The 1B comparison is running: publish immutable plans/ETA, not live progress.
+# 1B pilots expose immutable plans/ETA by default. Only the finished run below
+# also exposes evaluation/history/status JSONs; future live runs stay excluded.
 !reports/talent/embeddinggemma_768/text-realizer-cf-1b/
 !reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/
 !reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/plan.json
 !reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/eta.json
+!reports/talent/embeddinggemma_768/text-realizer-cf-1b/cv-cf-1b-pilot-20261021-0938/**/*.json
 reports/talent/embeddinggemma_768/text-realizer-cf-1b/**/source/
 !reports/talent/embeddinggemma_768/text-decoder-results/
 !reports/talent/embeddinggemma_768/text-decoder-results/**/
 !reports/talent/embeddinggemma_768/text-decoder-results/**/*.json
 !reports/talent/embeddinggemma_768/text-decoder-results/SHA256SUMS
+!reports/talent/embeddinggemma_768/text-decoder-results/SHA256SUMS-cf1b-20261022
 
 # Overleaf repo
 overleaf*

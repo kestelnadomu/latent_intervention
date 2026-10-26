@@ -18,11 +18,11 @@ def read_json(path: Path) -> dict:
 
 
 @contextmanager
-def lock(path: Path):
+def lock(path: Path, *, blocking: bool = False):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("a") as stream:
         try:
-            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fcntl.flock(stream, fcntl.LOCK_EX | (0 if blocking else fcntl.LOCK_NB))
         except BlockingIOError as exc:
             raise RuntimeError(f"another process owns {path}") from exc
         try:

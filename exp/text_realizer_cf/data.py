@@ -74,7 +74,7 @@ def verified_sources(config: dict) -> tuple[dict, dict, dict]:
         or baseline["provenance"].get("used_counterfactual_text") is not False
         or baseline["provenance"].get("used_counterfactual_latent") is not False
     ):
-        raise ValueError("baseline is not the unchanged factual-only 270M decoder")
+        raise ValueError("baseline is not the pinned factual-only reference decoder")
     return observed, factual, oracle
 
 

@@ -13,6 +13,12 @@ from src.artifact_io import sha256_file
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CONFIG = ROOT / "configs/text_realizer_counterfactual_exposure.yaml"
+GEMMA1B_CONFIG = ROOT / "configs/text_realizer_counterfactual_exposure_gemma1b.yaml"
+GEMMA1B_MODEL = "google/gemma-3-1b-pt"
+BACKBONES = {
+    "google/gemma-3-270m": "9b0cfec892e2bc2afd938c98eabe4e4a7b1e0ca1",
+    GEMMA1B_MODEL: "fcf18a2a879aab110ca39f8bffbccd5d49d8eb29",
+}
 ARMS = ("factual", "oracle")
 
 
@@ -36,9 +42,12 @@ def read_config(path: str | Path = DEFAULT_CONFIG) -> dict:
         config["training"],
         config["selection"],
     )
+    if model["name"] not in BACKBONES:
+        raise ValueError("the oracle pilot requires an approved pinned Gemma backbone")
+    is_1b = model["name"] == GEMMA1B_MODEL
     if config["format_version"] != 1 or model != {
-        "name": "google/gemma-3-270m",
-        "revision": "9b0cfec892e2bc2afd938c98eabe4e4a7b1e0ca1",
+        "name": model["name"],
+        "revision": BACKBONES[model["name"]],
         "variant": "lora-compact",
         "attention_implementation": "eager",
         "latent_dim": 768,
@@ -58,7 +67,7 @@ def read_config(path: str | Path = DEFAULT_CONFIG) -> dict:
         ],
     }:
         raise ValueError(
-            "the oracle pilot requires the predeclared 270M/eager architecture"
+            "the oracle pilot requires the predeclared Gemma/eager architecture"
         )
     if (
         training
@@ -95,9 +104,23 @@ def read_config(path: str | Path = DEFAULT_CONFIG) -> dict:
         "smoke_updates": 20,
         "benchmark_updates": 10,
         "memory_headroom": 0.15,
-        "microbatches": [1, 2],
+        "microbatches": [1] if is_1b else [1, 2],
     }:
         raise ValueError("preflight differs from the predeclared pilot checks")
+    if is_1b:
+        for name, parent in (
+            ("prepared", "data/latents"),
+            ("models", "models"),
+            ("reports", "reports"),
+        ):
+            suffix = (
+                "text-realizer-cf-1b-prepared"
+                if name == "prepared"
+                else "text-realizer-cf-1b"
+            )
+            expected = f"{parent}/talent/embeddinggemma_768/{suffix}"
+            if resolve(config["paths"][name]).resolve() != resolve(expected).resolve():
+                raise ValueError("1B pilot outputs must use their isolated namespace")
     return config
 
 
@@ -129,6 +152,8 @@ def source_hashes() -> dict[str, str]:
         "exp/text_realizer/campaign.py",
         "exp/text_realizer/sanity.py",
         "exp/text_realizer/runtime.py",
+        "exp/text_realizer/settings.py",
+        "exp/text_realizer/protocol.py",
         "src/artifact_io.py",
         "src/encoder/embeddinggemma.py",
         "src/encoder/protocols.py",
@@ -136,7 +161,9 @@ def source_hashes() -> dict[str, str]:
         "exp/text_realizer/environment/pyproject.toml",
         "exp/text_realizer/environment/uv.lock",
         "configs/text_realizer_counterfactual_exposure.yaml",
+        "configs/text_realizer_counterfactual_exposure_gemma1b.yaml",
         "scripts/run_text_realizer_cf.sh",
+        "scripts/run_text_realizer_cf_1b.sh",
     ):
         files.append(ROOT / name)
     return {

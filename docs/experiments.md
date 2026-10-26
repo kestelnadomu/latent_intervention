@@ -22,11 +22,15 @@ labelled, privileged-supervision experiment, not a silent change to that method.
 Both 600-update comparison arms completed and reload-verified on 2026-10-17;
 their tune-only comparison finished on 2026-10-19. Oracle exposure improved
 some factual checks but missed the predeclared character-similarity gain, so
-replication and audit were not opened. Only the original factual decoder and
-the oracle-exposed comparator remain in the active model tree; the other decoder
-experiments and optimizer states are mapped in the [local archive](../.archive/README.md).
-Archived weight/report/data files are Git-ignored and are not transferred by a
-documentation commit.
+replication and audit were not opened. The retained 270M baselines are the
+original factual decoder and the oracle-exposed comparator. Other completed
+decoder experiments and optimizer states are mapped in the [local archive](../.archive/README.md).
+The separate 1B oracle-exposure comparison completed on 2026-10-22: its extra
+character-similarity gain over factual continuation was small and uncertain,
+and it also failed the predeclared replication criteria. Neither comparison
+evaluated predicted `h_Z` vectors. Full report JSONs, including generated CVs,
+are listed in the [results index](experiments/decoder_results.md); weights,
+optimizer states, prepared data, and retired source snapshots remain local.
 
 - [EmbeddingGemma CV reconstruction workflow](experiments/text_realizer.md):
   isolated implementation and runbook.
@@ -42,6 +46,14 @@ documentation commit.
   three-arm comparison, predeclared advancement gates, passing GPU preflight,
   completed tune-only evaluation, and the negative replication decision
   (2026-10-19).
+- [Counterfactual-exposed 1B decoder pilot](experiments/text_realizer_counterfactual_exposure_gemma1b.md):
+  separate factual/oracle continuations from the preserved 1B checkpoint,
+  matching tune units and decision criteria, completed per-field results,
+  confidence intervals, negative advancement decision, and artifact hashes
+  (completed 2026-10-22).
+- [Published decoder results and integrity checks](experiments/decoder_results.md):
+  report locations, score definitions, population boundaries, and dated
+  publication manifests for reproducing tables without a GPU.
 
 ---
 

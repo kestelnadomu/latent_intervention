@@ -33,7 +33,7 @@ from src.text_realizer.training import (
 from .data import load_partition, prepare
 from .model import clear_gpu, load_reference, numerical_backend
 from .protocol import identity, lock, read_json, status
-from .settings import ROOT, resolve
+from .settings import GEMMA1B_MODEL, ROOT, resolve
 
 
 def token_audit(config: dict, fit: dict, selection: dict) -> dict:
@@ -116,6 +116,11 @@ def preflight(config: dict, *, device: str) -> dict:
                 )
             with gpu_lease(device):
                 result.update(_gpu_checks(config, prepared, fit, device))
+                if config["model"]["name"] == GEMMA1B_MODEL:
+                    from .preflight_1b import inference_check
+
+                    status(root, "inference_benchmark")
+                    result["inference"] = inference_check(config, prepared, fit, device)
             if identity(config, prepared) != before:
                 raise ValueError("code/config/environment changed during preflight")
             result["ready"] = True
@@ -264,10 +269,10 @@ def _gpu_checks(config: dict, prepared, fit: dict, device: str) -> dict:
         )
     # Match a real optimizer update: 32 target sequences accumulated through
     # the selected microbatch, rather than timing only the two-example smoke.
-    benchmark_z = smoke_z.repeat(16, 1)
-    benchmark_targets = smoke_targets * 16
+    benchmark_z = torch.cat((factual["z"][:16], changed["z"][:16]))
+    benchmark_targets = factual_targets[:16] + changed_targets[:16]
     bench_start = perf_counter()
-    for _ in range(config["preflight"]["benchmark_updates"]):
+    for step in range(config["preflight"]["benchmark_updates"]):
         update(
             model,
             optimizer,
@@ -278,6 +283,7 @@ def _gpu_checks(config: dict, prepared, fit: dict, device: str) -> dict:
             clip=settings["clip"],
         )
         scheduler.step()
+        status(prepared / "diagnostics", "benchmark", step=step + 1)
     benchmark_seconds = perf_counter() - bench_start
     checkpoint = prepared / "diagnostics" / "diagnostic-only.pt"
     save_checkpoint(
