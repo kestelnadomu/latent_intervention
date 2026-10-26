@@ -72,7 +72,7 @@ $$\mathcal L_g = \mathbb E_{(z,\mathbf s)}\big[-\log g(\mathbf s\mid z)\big]$$
   The optimization objective itself retains its existing scale for each variant.
 * **$T$ has a ceiling.** $T$ is never verbalised and reaches the text only through the proxies
   $P, L, H, A$. The $T$ head cannot beat the Bayes-optimal recovery
-  `exp.sim.talent_sfm.talent_posterior_accuracy()`. Compare against it, not against 100 %.
+  `exp.sim_talent.talent_sfm.talent_posterior_accuracy()`. Compare against it, not against 100 %.
 
 The latent artifact records the frozen encoder identity and a content hash. Decoder checkpoints
 record that identity, latent hash, schema signature, and hashes of their structured training
@@ -217,7 +217,7 @@ $$g(\mathbf s\mid z) = \mathrm{softmax}\big(W\, h(z)\big)_{\mathbf s}$$
 
 **Caveats**
 * No sharing of statistical strength across columns. Each joint state is its own class, so rare
-  combinations get few examples. The test batch has $n = 10$ (`exp/sim/config.yaml`).
+  combinations get few examples. The test batch has $n = 10$ (`exp/sim_talent/config.yaml`).
 * $h_S\circ g$ moves mass onto states that were rare or absent factually. Exactly those states are
   poorly learned by a flat head.
 * It does not scale: the archived CV-screening schema had $\lvert\mathcal S\rvert = 3456$.

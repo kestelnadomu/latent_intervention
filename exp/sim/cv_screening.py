@@ -5,8 +5,8 @@ This is the single place the CV-screening numbers live. The structural equations
 are Table 9 of the LIBERTy paper (arXiv 2601.10700); text generation (elsewhere)
 follows its Appendix D.3. The structured-state schema (column names and
 cardinalities) is data in ``exp/sim/config_cv_screening.yaml`` (archived; the
-active experiment is ``exp/sim/talent_sfm.py``) and read via
-``src.schema.load_schema``; that config points the framework here through its
+active experiment is ``exp/sim_talent/talent_sfm.py``) and read via
+``exp.sim.schema.load_schema``; that config points the framework here through its
 ``objects:`` block. The builders default to the archived config.
 
 Nodes: roots R (race), G (gender), A (age); then E (education), S (socio-economic
@@ -23,7 +23,7 @@ import numpy as np
 
 from exp.sim.scm import SCM, LinearMechanism, NoiseSampler, linear_mechanism
 from exp.sim.symbolic import SymbolicIntervention
-from src.schema import ColumnSpec, load_schema
+from exp.sim.schema import ColumnSpec, load_schema
 
 ROOT_NODES = ("R", "G", "A")
 ARCHIVED_CONFIG_PATH = Path(__file__).parent / "config_cv_screening.yaml"

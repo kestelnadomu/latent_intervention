@@ -5,7 +5,7 @@ rounded-and-clipped SCM.
 Generic over the SCM: the graph, mechanism weights and noise parameters are all
 passed in (use :meth:`SymbolicIntervention.from_scm` with a known SCM, or
 :meth:`SymbolicIntervention.fit` to estimate the noise from a factual sample).
-The concrete kernels are assembled in ``exp/sim/talent_sfm.py`` (active) and
+The concrete kernels are assembled in ``exp/sim_talent/talent_sfm.py`` (active) and
 ``exp/sim/cv_screening.py`` (archived).
 
 For each non-root node ``s_i = clip_round(m_i(pa_i) + eps_i)`` with
@@ -27,14 +27,14 @@ from __future__ import annotations
 
 import math
 import warnings
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import product
 
 import numpy as np
 import pandas as pd
 import torch
 
-from src.schema import ColumnSpec
+from exp.sim.schema import ColumnSpec
 
 _SQRT2 = math.sqrt(2.0)
 
@@ -89,11 +89,16 @@ class SymbolicIntervention:
             the keys are the non-root nodes and each value's keys are that node's
             parents, so this doubles as the graph structure.
         noise_params: ``(mu_i, sigma_i)`` of ``eps_i ~ Normal`` per non-root node.
+        blocked: optional cut edges ``{child: {parent, ...}}``. Abduction uses every edge;
+            in the prediction step a blocked child reads that parent's *factual* value,
+            which yields the path-specific counterfactual (e.g. ``X -> D`` blocked:
+            ``D`` keeps its factual value while other paths from ``X`` stay active).
     """
 
     columns: list[ColumnSpec]
     mechanism_coeffs: dict[str, dict[str, float]]
     noise_params: dict[str, tuple[float, float]]
+    blocked: dict[str, set[str]] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self._names = [c.name for c in self.columns]
@@ -204,10 +209,12 @@ class SymbolicIntervention:
                 continue
             mu, sigma = self.noise_params[name]
             k = self._card[name]
+            cut = self.blocked.get(name, set())
             nxt: list[tuple[dict[str, int], float]] = []
             for assign, p in beam:
+                inputs = {**assign, **{parent: state[parent] for parent in cut}} if cut else assign
                 probs = _category_probs(
-                    self._mechanism(name, assign), *intervals[name], mu, sigma, k
+                    self._mechanism(name, inputs), *intervals[name], mu, sigma, k
                 )
                 for c, pc in enumerate(probs):
                     if pc > 1e-9:
@@ -264,8 +271,8 @@ class SymbolicIntervention:
 
 if __name__ == "__main__":
     # Smoke test: closed-form h_S vs. empirical transition counts from the SCM and
-    # kernel of the active experiment, resolved through exp/sim/config.yaml.
-    from src.schema import load_config_object, load_intervention
+    # kernel of the active experiment, resolved through exp/sim_talent/config.yaml.
+    from exp.sim.schema import load_config_object, load_intervention
 
     h_s = load_config_object("symbolic_kernel")()
     scm = load_config_object("scm")()

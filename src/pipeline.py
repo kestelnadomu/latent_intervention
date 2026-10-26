@@ -42,6 +42,8 @@ from src.latent_intervention.base.workflow import (
 )
 from src.pair_encoding import LatentArtifact, load_latent_artifact, sha256_file
 from src.latent_intervention.oracle.regression import ORACLE_VARIANT
+from src.latent_intervention.ot import OT_VARIANTS
+from src.latent_intervention.editor import EDITOR_VARIANTS
 from src.schema import ColumnSpec, load_schema
 from src.semantic_decoder.model import (
     calibration_metrics,
@@ -217,7 +219,15 @@ def stage_train_decoder(config: dict[str, Any]) -> dict[str, Any]:
 def stage_train_manipulator(config: dict[str, Any]) -> None:
     """Train the configured manipulator on official training units."""
     variant = config["latent_intervention"]["variant"]
-    if variant == ORACLE_VARIANT:
+    if variant in OT_VARIANTS:
+        from src.latent_intervention.ot.workflow import train_manipulator
+
+        train_manipulator(config)
+    elif variant in EDITOR_VARIANTS:
+        from src.latent_intervention.editor.workflow import train_manipulator
+
+        train_manipulator(config)
+    elif variant == ORACLE_VARIANT:
         from src.latent_intervention.oracle.workflow import train_oracle_manipulator
 
         train_oracle_manipulator(config)
@@ -230,7 +240,15 @@ def stage_train_manipulator(config: dict[str, Any]) -> None:
 def stage_evaluate(config: dict[str, Any]) -> None:
     """Evaluate decoder and manipulator behavior on official test units only."""
     variant = config["latent_intervention"]["variant"]
-    if variant == ORACLE_VARIANT:
+    if variant in OT_VARIANTS:
+        from src.latent_intervention.ot.workflow import evaluate_manipulator
+
+        evaluate_manipulator(config)
+    elif variant in EDITOR_VARIANTS:
+        from src.latent_intervention.editor.workflow import evaluate_manipulator
+
+        evaluate_manipulator(config)
+    elif variant == ORACLE_VARIANT:
         from src.latent_intervention.oracle.workflow import evaluate_oracle_manipulator
 
         evaluate_oracle_manipulator(config)
@@ -266,7 +284,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--manipulator-variant",
-        choices=(*BASE_VARIANTS, *FLOW_VARIANTS, ORACLE_VARIANT),
+        choices=(*BASE_VARIANTS, *FLOW_VARIANTS, ORACLE_VARIANT, *EDITOR_VARIANTS, *OT_VARIANTS),
         default=None,
         help="override latent_intervention.variant before artifact paths are resolved",
     )

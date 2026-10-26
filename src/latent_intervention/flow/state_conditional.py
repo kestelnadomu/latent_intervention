@@ -3,6 +3,11 @@
 Counterfactual transport abducts ``U`` under the factual state and renders the same noise
 under a target state. It exposes explicit state-aware operations so oracle-state and
 inferred-state evaluations cannot be confused.
+
+No consistency loss is trained: ``h_S o g = g o h_Z`` holds by construction, up to ``g``'s
+confusion on rendered latents. Without observed states, inference abducts under the argmax of
+``g``. Training never sees the intervention, so any ``h_S`` whose target states were seen in
+training can be used at inference.
 """
 
 from __future__ import annotations

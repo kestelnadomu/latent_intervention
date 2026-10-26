@@ -1,5 +1,9 @@
 # Published CV-decoder results
 
+For the four preserved inference checkpoints and compatibility with the package
+branch's predicted latent vectors, see the
+[decoder/package handoff](decoder_package_handoff.md).
+
 Initial publication prepared on 2026-10-21 at the user's request, including full generated
 CV text. This is an artifact-only publication: it does not retrain any model,
 restore retired experiment code, or alter the encoder, `g`, or `h_Z`.

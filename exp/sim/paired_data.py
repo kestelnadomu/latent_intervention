@@ -13,9 +13,17 @@ from typing import Any
 
 import pandas as pd
 
+from exp.sim.design import (
+    PARTITION_COLUMNS,
+    build_partition,
+    design_paths,
+    draw_interventions,
+    load_design,
+    validate_per_unit_query,
+)
 from exp.sim.helpers import coerce_bool, read_csv, sha256_file
 from exp.sim.pairing import PairingError, build_pair_index
-from src.schema import ColumnSpec
+from exp.sim.schema import ColumnSpec
 
 
 def state_columns(config: Mapping[str, Any]) -> list[str]:
@@ -48,6 +56,7 @@ def simulation_paths(config: Mapping[str, Any]) -> dict[str, Path]:
         "counterfactual": sim_dir / "sim_data_counterfactual.csv",
         "epsilon": sim_dir / "sim_data_epsilon.csv",
         "pair_index": Path(config["paths"]["pair_index"]),
+        **design_paths(config),
     }
 
 
@@ -55,7 +64,7 @@ def simulation_record(config: Mapping[str, Any]) -> dict[str, Any]:
     """The provenance record persisted as ``simulation_info.json``."""
     paths = simulation_paths(config)
     split_seed, test_fraction = split_settings(config)
-    return {
+    record = {
         "n": int(config["n"]),
         "simulation_seed": config.get("seed"),
         "split_seed": split_seed,
@@ -65,6 +74,25 @@ def simulation_record(config: Mapping[str, Any]) -> dict[str, Any]:
         "objects": config["objects"],
         "files": {name: sha256_file(path) for name, path in paths.items()},
     }
+    if "design" in config:  # absent for fixed-query configs, so their records are unchanged
+        record["design"] = config["design"]
+    return record
+
+
+def validate_query(
+    factual: pd.DataFrame,
+    counterfactual: pd.DataFrame,
+    config: Mapping[str, Any],
+    interventions: pd.DataFrame | None = None,
+) -> None:
+    """Check S' against the configured query: the fixed do(), or each unit's drawn one."""
+    spec = load_design(config)
+    if spec is None:
+        validate_fixed_query(factual, counterfactual, config)
+        return
+    if interventions is None:
+        interventions = read_csv(design_paths(config)["interventions"], "interventions", ("do_value",))
+    validate_per_unit_query(factual, counterfactual, interventions, spec)
 
 
 def validate_fixed_query(
@@ -111,7 +139,7 @@ def load_pair_inputs(
         raise PairingError("S, S', and pair_index.csv must contain exactly the same IDs")
     if len(ids) != int(config["n"]):
         raise PairingError(f"simulation has {len(ids)} units, expected n={config['n']}")
-    validate_fixed_query(factual, counterfactual, config)
+    validate_query(factual, counterfactual, config)
     pairs["split"] = pairs["split"].astype(str).str.lower()
     if set(pairs["split"]) != {"train", "test"}:
         raise PairingError("pair index must contain non-empty train and test splits")
@@ -131,4 +159,25 @@ def load_pair_inputs(
         pd.testing.assert_frame_equal(pairs, expected_pairs, check_dtype=False)
     except AssertionError as exc:
         raise PairingError("pair_index.csv does not match the configured seeded split") from exc
+    _validate_design_files(config, factual, pairs)
     return factual, counterfactual, pairs
+
+
+def _validate_design_files(
+    config: Mapping[str, Any], factual: pd.DataFrame, pairs: pd.DataFrame
+) -> None:
+    """Re-derive the drawn interventions and the partition of a per-unit design."""
+    spec = load_design(config)
+    if spec is None:
+        return
+    paths = design_paths(config)
+    cardinality = int(config["schema"]["columns"][spec.node])
+    expected = draw_interventions(factual, spec.node, cardinality, int(config["seed"]))
+    interventions = read_csv(paths["interventions"], "interventions", ("do_value",))
+    partition = read_csv(paths["partition"], "partition", PARTITION_COLUMNS)
+    expected_partition = build_partition(pairs, spec, split_settings(config)[0])
+    try:
+        pd.testing.assert_frame_equal(interventions, expected, check_dtype=False)
+        pd.testing.assert_frame_equal(partition[PARTITION_COLUMNS], expected_partition, check_dtype=False)
+    except AssertionError as exc:
+        raise PairingError("interventions.csv or partition.csv does not match the configured design") from exc

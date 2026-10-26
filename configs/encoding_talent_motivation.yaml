@@ -1,0 +1,38 @@
+# Encoding only: no reader/editor fitting and no archived pilot inputs.
+seed: 42
+sim_config: exp/sim_talent_motivation/config.yaml
+encoder:
+  variant: embeddinggemma
+  tag: null
+  embeddinggemma_model_name: google/embeddinggemma-300m
+  embeddinggemma_model_revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
+  embeddinggemma_latent_dim: 768
+  embeddinggemma_prompt: "task: classification | query: "
+  embeddinggemma_max_len: 2048
+  embeddinggemma_batch_size: 8
+  embeddinggemma_cache_dir: .cache/huggingface/hub
+  device: cpu
+  deterministic: true
+  progress: true
+expected_counts:
+  factual: 4000
+  counterfactual: 1000
+  floor: 200
+  factual_vb: 500
+  pool: 2800
+  dev: 200
+  eval: 1000
+paths:
+  texts: data/text_talent_motivation/cv_factual.csv
+  texts_counterfactual: data/text_talent_motivation/cv_counterfactual.csv
+  texts_floor: data/text_talent_motivation/cv_floor.csv
+  texts_held_out: data/text_talent_motivation/cv_factual_vb.csv
+  pair_index: data/sim_talent_motivation/pair_index.csv
+  sim_factual: data/sim_talent_motivation/sim_data_factual.csv
+  sim_counterfactual: data/sim_talent_motivation/sim_data_counterfactual.csv
+  partition: data/sim_talent_motivation/partition.csv
+  interventions: data/sim_talent_motivation/interventions.csv
+  latents: data/latents/talent_motivation/{encoder}/z_pairs.pt
+  floor_latents: data/latents/talent_motivation/{encoder}/z_floor.pt
+  held_out_latents: data/latents/talent_motivation/{encoder}/z_factual_vb.pt
+  encoding_reports: reports/talent_motivation/encoding

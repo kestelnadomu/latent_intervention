@@ -4,12 +4,14 @@ Generic structural causal model engine for the data-generation half.
 Holds no knowledge of any specific experiment: an :class:`SCM` is built from an
 ordered list of nodes, a set of root nodes, a per-node exogenous-noise sampler
 and a per-node structural function. The concrete CV-screening SCM is assembled
-in ``exp/sim/cv_screening.py`` and pointed to from ``exp/sim/config.yaml``.
+in ``exp/sim/cv_screening.py`` and pointed to from ``exp/sim_talent/config.yaml``.
 
 ``SCM.simulate`` generates factual data and, under a ``do()`` intervention,
 counterfactual data by reusing the stored exogenous noise (Pearl's abduction
 step is exact because the noise is known), so the two frames are exact
-counterfactual pairs row by row. The original R implementation
+counterfactual pairs row by row. ``SCM.generate`` evaluates the model for given
+noise, optionally with blocked edges: a blocked child reads its parent's value
+from a reference (factual) world, which yields path-specific counterfactuals. The original R implementation
 (``exp/sim/R/utils/{sim_scm.R, sim_data.R}``) remains the reference.
 """
 
@@ -22,7 +24,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from src.schema import ColumnSpec
+from exp.sim.schema import ColumnSpec
 
 NoiseSampler = Callable[[np.random.Generator, int], np.ndarray]
 StructuralFn = Callable[[dict[str, np.ndarray], dict[str, np.ndarray]], np.ndarray]
@@ -92,17 +94,75 @@ class SCM:
             return clip_round(acc + noise[name], fn.lower, fn.upper)
         return fn(data, noise)
 
-    def _generate(self, noise: dict[str, np.ndarray], intervention: dict[str, int], n: int) -> dict[str, np.ndarray]:
-        """One topological pass; intervened nodes are held fixed."""
+    def _generate(
+        self,
+        noise: dict[str, np.ndarray],
+        intervention: dict[str, int],
+        n: int,
+        blocked: dict[str, set[str]] | None = None,
+        reference: dict[str, np.ndarray] | None = None,
+    ) -> dict[str, np.ndarray]:
+        """One topological pass; intervened nodes are held fixed.
+
+        A child in ``blocked`` reads each listed parent from ``reference`` instead of
+        from the current pass.
+        """
         data: dict[str, np.ndarray] = {}
         for node in self._order:
             if node in intervention:
                 data[node] = np.full(n, intervention[node], dtype=np.int64)
             elif node in set(self.roots):
                 data[node] = noise[node].astype(np.int64)
+            elif blocked and node in blocked:
+                inputs = {**data, **{parent: reference[parent] for parent in blocked[node]}}
+                data[node] = self._apply(node, inputs, noise)
             else:
                 data[node] = self._apply(node, data, noise)
         return data
+
+    def generate(
+        self,
+        noise: dict[str, np.ndarray],
+        intervention: dict[str, int] | None = None,
+        blocked: dict[str, Sequence[str]] | None = None,
+        reference: pd.DataFrame | None = None,
+    ) -> pd.DataFrame:
+        """
+        Evaluate the model for given exogenous noise (one array per node).
+
+        With ``intervention``, the listed nodes are set (``do()``). With ``blocked``
+        (``{child: [parent, ...]}``), each listed edge is cut: the child reads that
+        parent's value from ``reference`` (normally the factual frame) while every
+        other mechanism sees the current pass. Under ``do(X)`` with ``X -> D``
+        blocked, ``D`` keeps its factual value and only the remaining paths from
+        ``X`` are active: a path-specific counterfactual. Returns a frame without
+        an ``id`` column, rows in the order of ``noise``.
+        """
+        intervention = self.validate_intervention(intervention or {})
+        lengths = {len(values) for values in noise.values()}
+        if len(lengths) != 1:
+            raise ValueError("all noise arrays must have the same length")
+        if not set(self._order) <= set(noise):
+            raise ValueError(f"missing noise for {sorted(set(self._order) - set(noise))}")
+        n = lengths.pop()
+        cut: dict[str, set[str]] = {}
+        for child, parents in (blocked or {}).items():
+            fn = self.mechanisms.get(child)
+            if fn is None:
+                raise ValueError(f"cannot block edges into root or unknown node {child!r}")
+            parents = set(parents)
+            if isinstance(fn, LinearMechanism) and not parents <= set(fn.coeffs):
+                raise ValueError(f"{sorted(parents - set(fn.coeffs))} are not parents of {child!r}")
+            cut[child] = parents
+        ref: dict[str, np.ndarray] | None = None
+        if cut:
+            if reference is None:
+                raise ValueError("blocked edges need a reference frame")
+            needed = set().union(*cut.values())
+            if len(reference) != n or not needed <= set(reference):
+                raise ValueError(f"reference must have {n} rows and columns {sorted(needed)}")
+            ref = {parent: reference[parent].to_numpy() for parent in needed}
+        return pd.DataFrame(self._generate(noise, intervention, n, cut, ref))
 
     def validate_intervention(self, intervention: dict[str, int]) -> dict[str, int]:
         """Check intervention node names and value ranges against the schema."""
