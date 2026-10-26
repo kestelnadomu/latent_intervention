@@ -6,6 +6,7 @@ Start with [the manuscript-shaped draft](manuscript-draft.md) and its [closest-w
 
 ## What is here
 
+- [reading-guide.md](reading-guide.md): all 56 papers in the current related-work section, in reading order, with PDF citation numbers and clickable article links (snapshot: 2026-10-23).
 - [manuscript-draft.md](manuscript-draft.md): the approved eight topic paragraphs with run-in headings, 33 references and selective grouped citations; integrated into the main paper, with editorial follow-ups retained here.
 - [Closest-work checks](reviews/2026-10-19-closest-work.md): ten focused comparisons, inspected source locations, project distinctions and one explicit theorem-level caveat.
 - [distilled-review.md](distilled-review.md): provisional 48-paper core across all 11 clusters, organized into 13 field-focused paragraphs, with selection rationales and three conditional reading leads; not manuscript text yet.
