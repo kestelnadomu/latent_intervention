@@ -1,0 +1,1218 @@
+{
+  "action": 3,
+  "elapsed_seconds": 4.101774841547012,
+  "embedding_unavailable_reason": "only matching (id, do_value, total) embeddings are available",
+  "empty_action_exact": true,
+  "identity": {
+    "action": 3,
+    "checkpoint": "2507423dc596ee715c5ebdd319933e6070d13ae5935c38bee46e0198fd08a08a",
+    "context": "c0485f9483edaca11193316358e749e225273e83bd6894355c7262b0191ada6b",
+    "method": "semantic_editor",
+    "protocol": "142a08922146ede419ac0a9d25b1a61bc68d54f0cda39b6d528f44c7ee8e2a1d",
+    "reader_seed": 44,
+    "selection": "8875666e4d7470fbbf109e5df5b38c22e47c9f9d9f527151dbc7d8a5a6d164bf",
+    "target": "total"
+  },
+  "inference_cost": {
+    "nfe": 0,
+    "sampled_pairs": 64000,
+    "unique_pairs": 4069,
+    "velocity_point_evaluations": 0
+  },
+  "method": "semantic_editor",
+  "model_seed": 44,
+  "per_unit": "reports/talent_motivation/hz_misspecification/hz-misspec-v1/evaluation/O3--drop_X_U/semantic_editor/seed-44/action-3/total/per_unit.pt",
+  "per_unit_sha256": "e0ecbf8d0f8399b39050c78fecafe55dcc0c868e2d9cfd24fa138642bfd8078c",
+  "primary_distribution": "complete; no support-mass filtering",
+  "reader_seed": 44,
+  "record_sha256": "fc4e201f2f414f0e737cdc5ee18992c49eb353fc17f2b217b52fc8ea19f401d1",
+  "scenario": "O3/drop_X_U",
+  "state_space": "S1",
+  "summary": {
+    "all": {
+      "metrics": {
+        "change_probability_A": {
+          "mean": 0.46299293637275696,
+          "units": 1000
+        },
+        "change_probability_D": {
+          "mean": 0.36996978521347046,
+          "units": 1000
+        },
+        "change_probability_H": {
+          "mean": 0.3992322087287903,
+          "units": 1000
+        },
+        "change_probability_L": {
+          "mean": 0.44495683908462524,
+          "units": 1000
+        },
+        "change_probability_M": {
+          "mean": 0.5157395005226135,
+          "units": 1000
+        },
+        "change_probability_P": {
+          "mean": 0.16979651153087616,
+          "units": 1000
+        },
+        "change_probability_T": {
+          "mean": 0.24377143383026123,
+          "units": 1000
+        },
+        "change_probability_U": {
+          "mean": 0.16308937966823578,
+          "units": 1000
+        },
+        "change_probability_X": {
+          "mean": 0.6197159290313721,
+          "units": 1000
+        },
+        "changed_accuracy_A": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_D": {
+          "mean": 0.7054455280303955,
+          "units": 404
+        },
+        "changed_accuracy_H": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_L": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_M": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_P": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_T": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_U": {
+          "mean": 0.021834060549736023,
+          "units": 458
+        },
+        "changed_accuracy_X": {
+          "mean": 0.8765100836753845,
+          "units": 745
+        },
+        "command_accuracy_D": {
+          "mean": 0.9656875133514404,
+          "units": 1000
+        },
+        "command_accuracy_T": {
+          "mean": 0.7583125233650208,
+          "units": 1000
+        },
+        "command_accuracy_U": {
+          "mean": 0.8542343974113464,
+          "units": 1000
+        },
+        "command_accuracy_X": {
+          "mean": 0.9009218811988831,
+          "units": 1000
+        },
+        "command_marginal_kl_D": {
+          "mean": 0.06595749408006668,
+          "units": 1000
+        },
+        "command_marginal_kl_T": {
+          "mean": 0.34561511874198914,
+          "units": 1000
+        },
+        "command_marginal_kl_U": {
+          "mean": 0.25994908809661865,
+          "units": 1000
+        },
+        "command_marginal_kl_X": {
+          "mean": 0.24725854396820068,
+          "units": 1000
+        },
+        "command_nll_D": {
+          "mean": 0.11365053057670593,
+          "units": 1000
+        },
+        "command_nll_T": {
+          "mean": 0.6922075748443604,
+          "units": 1000
+        },
+        "command_nll_U": {
+          "mean": 0.37483519315719604,
+          "units": 1000
+        },
+        "command_nll_X": {
+          "mean": 0.2558615505695343,
+          "units": 1000
+        },
+        "confusion_reference_tv_A": {
+          "mean": 0.2372000813484192,
+          "units": 1000
+        },
+        "confusion_reference_tv_D": {
+          "mean": 0.2695619761943817,
+          "units": 1000
+        },
+        "confusion_reference_tv_H": {
+          "mean": 0.2836299538612366,
+          "units": 1000
+        },
+        "confusion_reference_tv_L": {
+          "mean": 0.24807697534561157,
+          "units": 1000
+        },
+        "confusion_reference_tv_M": {
+          "mean": 0.18785203993320465,
+          "units": 1000
+        },
+        "confusion_reference_tv_P": {
+          "mean": 0.19103918969631195,
+          "units": 1000
+        },
+        "confusion_reference_tv_T": {
+          "mean": 0.25749027729034424,
+          "units": 1000
+        },
+        "confusion_reference_tv_U": {
+          "mean": 0.4587942957878113,
+          "units": 1000
+        },
+        "confusion_reference_tv_X": {
+          "mean": 0.15621648728847504,
+          "units": 1000
+        },
+        "energy_score": {
+          "mean": 0.7087438702583313,
+          "units": 243
+        },
+        "mean_cosine": {
+          "mean": 0.9028644561767578,
+          "units": 243
+        },
+        "mean_l2": {
+          "mean": 0.4399351179599762,
+          "units": 243
+        },
+        "mean_mse": {
+          "mean": 0.00025578984059393406,
+          "units": 243
+        },
+        "movement_l2": {
+          "mean": 0.17291536927223206,
+          "units": 1000
+        },
+        "own_g_semantic_kl": {
+          "mean": 0.02120714820921421,
+          "units": 1000
+        },
+        "preservation_accuracy_A": {
+          "mean": 0.6209999918937683,
+          "units": 1000
+        },
+        "preservation_accuracy_D": {
+          "mean": 0.850671112537384,
+          "units": 596
+        },
+        "preservation_accuracy_H": {
+          "mean": 0.6439999938011169,
+          "units": 1000
+        },
+        "preservation_accuracy_L": {
+          "mean": 0.6470000147819519,
+          "units": 1000
+        },
+        "preservation_accuracy_M": {
+          "mean": 0.6150000095367432,
+          "units": 1000
+        },
+        "preservation_accuracy_P": {
+          "mean": 0.8429999947547913,
+          "units": 1000
+        },
+        "preservation_accuracy_T": {
+          "mean": 0.7879999876022339,
+          "units": 1000
+        },
+        "preservation_accuracy_U": {
+          "mean": 0.9538745284080505,
+          "units": 542
+        },
+        "preservation_accuracy_X": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "preservation_accuracy_drop_A": {
+          "mean": 0.012000000104308128,
+          "units": 1000
+        },
+        "preservation_accuracy_drop_D": {
+          "mean": 0.14597316086292267,
+          "units": 596
+        },
+        "preservation_accuracy_drop_H": {
+          "mean": 0.06800000369548798,
+          "units": 1000
+        },
+        "preservation_accuracy_drop_L": {
+          "mean": 0.004999999888241291,
+          "units": 1000
+        },
+        "preservation_accuracy_drop_M": {
+          "mean": 0.014999999664723873,
+          "units": 1000
+        },
+        "preservation_accuracy_drop_P": {
+          "mean": 0.10599999874830246,
+          "units": 1000
+        },
+        "preservation_accuracy_drop_T": {
+          "mean": 0.04100000113248825,
+          "units": 1000
+        },
+        "preservation_accuracy_drop_U": {
+          "mean": 0.012915128841996193,
+          "units": 542
+        },
+        "preservation_accuracy_drop_X": {
+          "mean": -0.0117647061124444,
+          "units": 255
+        },
+        "sample_spread": {
+          "mean": 0.0015369789907708764,
+          "units": 1000
+        },
+        "support_rare_either_excluding_unseen": {
+          "mean": 0.05865269899368286,
+          "units": 1000
+        },
+        "support_unseen_either": {
+          "mean": 0.005379753652960062,
+          "units": 1000
+        },
+        "support_unseen_source": {
+          "mean": 0.0010946554830297828,
+          "units": 1000
+        },
+        "support_unseen_target": {
+          "mean": 0.004783165641129017,
+          "units": 1000
+        },
+        "support_well_supported": {
+          "mean": 0.9359675049781799,
+          "units": 1000
+        },
+        "true_accuracy_A": {
+          "mean": 0.6209999918937683,
+          "units": 1000
+        },
+        "true_accuracy_D": {
+          "mean": 0.7919999957084656,
+          "units": 1000
+        },
+        "true_accuracy_H": {
+          "mean": 0.6439999938011169,
+          "units": 1000
+        },
+        "true_accuracy_L": {
+          "mean": 0.6470000147819519,
+          "units": 1000
+        },
+        "true_accuracy_M": {
+          "mean": 0.6150000095367432,
+          "units": 1000
+        },
+        "true_accuracy_P": {
+          "mean": 0.8429999947547913,
+          "units": 1000
+        },
+        "true_accuracy_T": {
+          "mean": 0.7879999876022339,
+          "units": 1000
+        },
+        "true_accuracy_U": {
+          "mean": 0.5270000100135803,
+          "units": 1000
+        },
+        "true_accuracy_X": {
+          "mean": 0.9079999923706055,
+          "units": 1000
+        },
+        "true_nll_A": {
+          "mean": 0.7967671155929565,
+          "units": 1000
+        },
+        "true_nll_D": {
+          "mean": 0.4109176695346832,
+          "units": 1000
+        },
+        "true_nll_H": {
+          "mean": 0.8519237041473389,
+          "units": 1000
+        },
+        "true_nll_L": {
+          "mean": 0.7778341770172119,
+          "units": 1000
+        },
+        "true_nll_M": {
+          "mean": 0.8874469995498657,
+          "units": 1000
+        },
+        "true_nll_P": {
+          "mean": 0.47283676266670227,
+          "units": 1000
+        },
+        "true_nll_T": {
+          "mean": 0.5449717044830322,
+          "units": 1000
+        },
+        "true_nll_U": {
+          "mean": 2.0719048976898193,
+          "units": 1000
+        },
+        "true_nll_X": {
+          "mean": 0.24725857377052307,
+          "units": 1000
+        },
+        "unchanged_A": {
+          "mean": 1.0,
+          "units": 1000
+        },
+        "unchanged_D": {
+          "mean": 0.5960000157356262,
+          "units": 1000
+        },
+        "unchanged_H": {
+          "mean": 1.0,
+          "units": 1000
+        },
+        "unchanged_L": {
+          "mean": 1.0,
+          "units": 1000
+        },
+        "unchanged_M": {
+          "mean": 1.0,
+          "units": 1000
+        },
+        "unchanged_P": {
+          "mean": 1.0,
+          "units": 1000
+        },
+        "unchanged_T": {
+          "mean": 1.0,
+          "units": 1000
+        },
+        "unchanged_U": {
+          "mean": 0.5419999957084656,
+          "units": 1000
+        },
+        "unchanged_X": {
+          "mean": 0.2549999952316284,
+          "units": 1000
+        }
+      },
+      "units": 1000
+    },
+    "identity": {
+      "metrics": {
+        "change_probability_A": {
+          "mean": 0.46122312545776367,
+          "units": 255
+        },
+        "change_probability_D": {
+          "mean": 0.02227436564862728,
+          "units": 255
+        },
+        "change_probability_H": {
+          "mean": 0.35794979333877563,
+          "units": 255
+        },
+        "change_probability_L": {
+          "mean": 0.4221610128879547,
+          "units": 255
+        },
+        "change_probability_M": {
+          "mean": 0.5277839303016663,
+          "units": 255
+        },
+        "change_probability_P": {
+          "mean": 0.07997926324605942,
+          "units": 255
+        },
+        "change_probability_T": {
+          "mean": 0.2181652933359146,
+          "units": 255
+        },
+        "change_probability_U": {
+          "mean": 0.0798325464129448,
+          "units": 255
+        },
+        "change_probability_X": {
+          "mean": 0.020258350297808647,
+          "units": 255
+        },
+        "changed_accuracy_A": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_D": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_H": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_L": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_M": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_P": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_T": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_U": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_X": {
+          "mean": null,
+          "units": 0
+        },
+        "command_accuracy_D": {
+          "mean": 0.9878676533699036,
+          "units": 255
+        },
+        "command_accuracy_T": {
+          "mean": 0.7463847994804382,
+          "units": 255
+        },
+        "command_accuracy_U": {
+          "mean": 0.9276347756385803,
+          "units": 255
+        },
+        "command_accuracy_X": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "command_marginal_kl_D": {
+          "mean": 0.024654127657413483,
+          "units": 255
+        },
+        "command_marginal_kl_T": {
+          "mean": 0.33692029118537903,
+          "units": 255
+        },
+        "command_marginal_kl_U": {
+          "mean": 0.09777422249317169,
+          "units": 255
+        },
+        "command_marginal_kl_X": {
+          "mean": 0.022239752113819122,
+          "units": 255
+        },
+        "command_nll_D": {
+          "mean": 0.04906151816248894,
+          "units": 255
+        },
+        "command_nll_T": {
+          "mean": 0.6932988166809082,
+          "units": 255
+        },
+        "command_nll_U": {
+          "mean": 0.23426872491836548,
+          "units": 255
+        },
+        "command_nll_X": {
+          "mean": 0.022259002551436424,
+          "units": 255
+        },
+        "confusion_reference_tv_A": {
+          "mean": 0.25620824098587036,
+          "units": 255
+        },
+        "confusion_reference_tv_D": {
+          "mean": 0.029605647549033165,
+          "units": 255
+        },
+        "confusion_reference_tv_H": {
+          "mean": 0.2622397840023041,
+          "units": 255
+        },
+        "confusion_reference_tv_L": {
+          "mean": 0.2472020983695984,
+          "units": 255
+        },
+        "confusion_reference_tv_M": {
+          "mean": 0.1855027824640274,
+          "units": 255
+        },
+        "confusion_reference_tv_P": {
+          "mean": 0.11021389067173004,
+          "units": 255
+        },
+        "confusion_reference_tv_T": {
+          "mean": 0.23892077803611755,
+          "units": 255
+        },
+        "confusion_reference_tv_U": {
+          "mean": 0.10067638754844666,
+          "units": 255
+        },
+        "confusion_reference_tv_X": {
+          "mean": 0.033859316259622574,
+          "units": 255
+        },
+        "energy_score": {
+          "mean": null,
+          "units": 0
+        },
+        "mean_cosine": {
+          "mean": null,
+          "units": 0
+        },
+        "mean_l2": {
+          "mean": null,
+          "units": 0
+        },
+        "mean_mse": {
+          "mean": null,
+          "units": 0
+        },
+        "movement_l2": {
+          "mean": 0.011895088478922844,
+          "units": 255
+        },
+        "own_g_semantic_kl": {
+          "mean": 0.004773080814629793,
+          "units": 255
+        },
+        "preservation_accuracy_A": {
+          "mean": 0.5960784554481506,
+          "units": 255
+        },
+        "preservation_accuracy_D": {
+          "mean": 0.9960784316062927,
+          "units": 255
+        },
+        "preservation_accuracy_H": {
+          "mean": 0.6901960968971252,
+          "units": 255
+        },
+        "preservation_accuracy_L": {
+          "mean": 0.6901960968971252,
+          "units": 255
+        },
+        "preservation_accuracy_M": {
+          "mean": 0.615686297416687,
+          "units": 255
+        },
+        "preservation_accuracy_P": {
+          "mean": 0.9490196108818054,
+          "units": 255
+        },
+        "preservation_accuracy_T": {
+          "mean": 0.8235294222831726,
+          "units": 255
+        },
+        "preservation_accuracy_U": {
+          "mean": 0.9647058844566345,
+          "units": 255
+        },
+        "preservation_accuracy_X": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "preservation_accuracy_drop_A": {
+          "mean": 0.003921568859368563,
+          "units": 255
+        },
+        "preservation_accuracy_drop_D": {
+          "mean": 0.0,
+          "units": 255
+        },
+        "preservation_accuracy_drop_H": {
+          "mean": 0.0,
+          "units": 255
+        },
+        "preservation_accuracy_drop_L": {
+          "mean": 0.0,
+          "units": 255
+        },
+        "preservation_accuracy_drop_M": {
+          "mean": 0.003921568859368563,
+          "units": 255
+        },
+        "preservation_accuracy_drop_P": {
+          "mean": 0.003921568859368563,
+          "units": 255
+        },
+        "preservation_accuracy_drop_T": {
+          "mean": 0.003921568859368563,
+          "units": 255
+        },
+        "preservation_accuracy_drop_U": {
+          "mean": 0.003921568859368563,
+          "units": 255
+        },
+        "preservation_accuracy_drop_X": {
+          "mean": -0.0117647061124444,
+          "units": 255
+        },
+        "sample_spread": {
+          "mean": 0.00015047065971884876,
+          "units": 255
+        },
+        "support_rare_either_excluding_unseen": {
+          "mean": 0.009079040959477425,
+          "units": 255
+        },
+        "support_unseen_either": {
+          "mean": 0.00039767869748175144,
+          "units": 255
+        },
+        "support_unseen_source": {
+          "mean": 0.00039005381404422224,
+          "units": 255
+        },
+        "support_unseen_target": {
+          "mean": 0.00015107245417311788,
+          "units": 255
+        },
+        "support_well_supported": {
+          "mean": 0.9905232787132263,
+          "units": 255
+        },
+        "true_accuracy_A": {
+          "mean": 0.5960784554481506,
+          "units": 255
+        },
+        "true_accuracy_D": {
+          "mean": 0.9960784316062927,
+          "units": 255
+        },
+        "true_accuracy_H": {
+          "mean": 0.6901960968971252,
+          "units": 255
+        },
+        "true_accuracy_L": {
+          "mean": 0.6901960968971252,
+          "units": 255
+        },
+        "true_accuracy_M": {
+          "mean": 0.615686297416687,
+          "units": 255
+        },
+        "true_accuracy_P": {
+          "mean": 0.9490196108818054,
+          "units": 255
+        },
+        "true_accuracy_T": {
+          "mean": 0.8235294222831726,
+          "units": 255
+        },
+        "true_accuracy_U": {
+          "mean": 0.9647058844566345,
+          "units": 255
+        },
+        "true_accuracy_X": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "true_nll_A": {
+          "mean": 0.7904235124588013,
+          "units": 255
+        },
+        "true_nll_D": {
+          "mean": 0.030005523934960365,
+          "units": 255
+        },
+        "true_nll_H": {
+          "mean": 0.6686718463897705,
+          "units": 255
+        },
+        "true_nll_L": {
+          "mean": 0.7487807869911194,
+          "units": 255
+        },
+        "true_nll_M": {
+          "mean": 0.896941065788269,
+          "units": 255
+        },
+        "true_nll_P": {
+          "mean": 0.11540643125772476,
+          "units": 255
+        },
+        "true_nll_T": {
+          "mean": 0.46660885214805603,
+          "units": 255
+        },
+        "true_nll_U": {
+          "mean": 0.1109607145190239,
+          "units": 255
+        },
+        "true_nll_X": {
+          "mean": 0.02223975770175457,
+          "units": 255
+        },
+        "unchanged_A": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_D": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_H": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_L": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_M": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_P": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_T": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_U": {
+          "mean": 1.0,
+          "units": 255
+        },
+        "unchanged_X": {
+          "mean": 1.0,
+          "units": 255
+        }
+      },
+      "units": 255
+    },
+    "nonidentity": {
+      "metrics": {
+        "change_probability_A": {
+          "mean": 0.46359866857528687,
+          "units": 745
+        },
+        "change_probability_D": {
+          "mean": 0.48897963762283325,
+          "units": 745
+        },
+        "change_probability_H": {
+          "mean": 0.41336244344711304,
+          "units": 745
+        },
+        "change_probability_L": {
+          "mean": 0.45275941491127014,
+          "units": 745
+        },
+        "change_probability_M": {
+          "mean": 0.5116168856620789,
+          "units": 745
+        },
+        "change_probability_P": {
+          "mean": 0.20053932070732117,
+          "units": 745
+        },
+        "change_probability_T": {
+          "mean": 0.25253593921661377,
+          "units": 745
+        },
+        "change_probability_U": {
+          "mean": 0.1915866881608963,
+          "units": 745
+        },
+        "change_probability_X": {
+          "mean": 0.8248993158340454,
+          "units": 745
+        },
+        "changed_accuracy_A": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_D": {
+          "mean": 0.7054455280303955,
+          "units": 404
+        },
+        "changed_accuracy_H": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_L": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_M": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_P": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_T": {
+          "mean": null,
+          "units": 0
+        },
+        "changed_accuracy_U": {
+          "mean": 0.021834060549736023,
+          "units": 458
+        },
+        "changed_accuracy_X": {
+          "mean": 0.8765100836753845,
+          "units": 745
+        },
+        "command_accuracy_D": {
+          "mean": 0.9580956101417542,
+          "units": 745
+        },
+        "command_accuracy_T": {
+          "mean": 0.7623951435089111,
+          "units": 745
+        },
+        "command_accuracy_U": {
+          "mean": 0.8291107416152954,
+          "units": 745
+        },
+        "command_accuracy_X": {
+          "mean": 0.8670092225074768,
+          "units": 745
+        },
+        "command_marginal_kl_D": {
+          "mean": 0.08009489625692368,
+          "units": 745
+        },
+        "command_marginal_kl_T": {
+          "mean": 0.3485912084579468,
+          "units": 745
+        },
+        "command_marginal_kl_U": {
+          "mean": 0.31545865535736084,
+          "units": 745
+        },
+        "command_marginal_kl_X": {
+          "mean": 0.32427841424942017,
+          "units": 745
+        },
+        "command_nll_D": {
+          "mean": 0.135758176445961,
+          "units": 745
+        },
+        "command_nll_T": {
+          "mean": 0.6918341517448425,
+          "units": 745
+        },
+        "command_nll_U": {
+          "mean": 0.42294856905937195,
+          "units": 745
+        },
+        "command_nll_X": {
+          "mean": 0.33581945300102234,
+          "units": 745
+        },
+        "confusion_reference_tv_A": {
+          "mean": 0.23069395124912262,
+          "units": 745
+        },
+        "confusion_reference_tv_D": {
+          "mean": 0.35169464349746704,
+          "units": 745
+        },
+        "confusion_reference_tv_H": {
+          "mean": 0.2909514009952545,
+          "units": 745
+        },
+        "confusion_reference_tv_L": {
+          "mean": 0.24837644398212433,
+          "units": 745
+        },
+        "confusion_reference_tv_M": {
+          "mean": 0.18865615129470825,
+          "units": 745
+        },
+        "confusion_reference_tv_P": {
+          "mean": 0.2187042087316513,
+          "units": 745
+        },
+        "confusion_reference_tv_T": {
+          "mean": 0.2638463079929352,
+          "units": 745
+        },
+        "confusion_reference_tv_U": {
+          "mean": 0.5813716053962708,
+          "units": 745
+        },
+        "confusion_reference_tv_X": {
+          "mean": 0.19809715449810028,
+          "units": 745
+        },
+        "energy_score": {
+          "mean": 0.7087438702583313,
+          "units": 243
+        },
+        "mean_cosine": {
+          "mean": 0.9028644561767578,
+          "units": 243
+        },
+        "mean_l2": {
+          "mean": 0.4399351179599762,
+          "units": 243
+        },
+        "mean_mse": {
+          "mean": 0.00025578984059393406,
+          "units": 243
+        },
+        "movement_l2": {
+          "mean": 0.22802968323230743,
+          "units": 745
+        },
+        "own_g_semantic_kl": {
+          "mean": 0.026832230389118195,
+          "units": 745
+        },
+        "preservation_accuracy_A": {
+          "mean": 0.6295301914215088,
+          "units": 745
+        },
+        "preservation_accuracy_D": {
+          "mean": 0.7419354915618896,
+          "units": 341
+        },
+        "preservation_accuracy_H": {
+          "mean": 0.628187894821167,
+          "units": 745
+        },
+        "preservation_accuracy_L": {
+          "mean": 0.6322147846221924,
+          "units": 745
+        },
+        "preservation_accuracy_M": {
+          "mean": 0.6147651076316833,
+          "units": 745
+        },
+        "preservation_accuracy_P": {
+          "mean": 0.8067114353179932,
+          "units": 745
+        },
+        "preservation_accuracy_T": {
+          "mean": 0.7758389115333557,
+          "units": 745
+        },
+        "preservation_accuracy_U": {
+          "mean": 0.9442508816719055,
+          "units": 287
+        },
+        "preservation_accuracy_X": {
+          "mean": null,
+          "units": 0
+        },
+        "preservation_accuracy_drop_A": {
+          "mean": 0.014765100553631783,
+          "units": 745
+        },
+        "preservation_accuracy_drop_D": {
+          "mean": 0.25513195991516113,
+          "units": 341
+        },
+        "preservation_accuracy_drop_H": {
+          "mean": 0.0912751704454422,
+          "units": 745
+        },
+        "preservation_accuracy_drop_L": {
+          "mean": 0.00671140942722559,
+          "units": 745
+        },
+        "preservation_accuracy_drop_M": {
+          "mean": 0.01879194565117359,
+          "units": 745
+        },
+        "preservation_accuracy_drop_P": {
+          "mean": 0.1409395933151245,
+          "units": 745
+        },
+        "preservation_accuracy_drop_T": {
+          "mean": 0.05369127541780472,
+          "units": 745
+        },
+        "preservation_accuracy_drop_U": {
+          "mean": 0.02090592309832573,
+          "units": 287
+        },
+        "preservation_accuracy_drop_X": {
+          "mean": null,
+          "units": 0
+        },
+        "sample_spread": {
+          "mean": 0.002011555712670088,
+          "units": 745
+        },
+        "support_rare_either_excluding_unseen": {
+          "mean": 0.0756208673119545,
+          "units": 745
+        },
+        "support_unseen_either": {
+          "mean": 0.007085027638822794,
+          "units": 745
+        },
+        "support_unseen_source": {
+          "mean": 0.0013358278665691614,
+          "units": 745
+        },
+        "support_unseen_target": {
+          "mean": 0.006368645932525396,
+          "units": 745
+        },
+        "support_well_supported": {
+          "mean": 0.9172941446304321,
+          "units": 745
+        },
+        "true_accuracy_A": {
+          "mean": 0.6295301914215088,
+          "units": 745
+        },
+        "true_accuracy_D": {
+          "mean": 0.7221476435661316,
+          "units": 745
+        },
+        "true_accuracy_H": {
+          "mean": 0.628187894821167,
+          "units": 745
+        },
+        "true_accuracy_L": {
+          "mean": 0.6322147846221924,
+          "units": 745
+        },
+        "true_accuracy_M": {
+          "mean": 0.6147651076316833,
+          "units": 745
+        },
+        "true_accuracy_P": {
+          "mean": 0.8067114353179932,
+          "units": 745
+        },
+        "true_accuracy_T": {
+          "mean": 0.7758389115333557,
+          "units": 745
+        },
+        "true_accuracy_U": {
+          "mean": 0.37718120217323303,
+          "units": 745
+        },
+        "true_accuracy_X": {
+          "mean": 0.8765100836753845,
+          "units": 745
+        },
+        "true_nll_A": {
+          "mean": 0.7989383935928345,
+          "units": 745
+        },
+        "true_nll_D": {
+          "mean": 0.5412969589233398,
+          "units": 745
+        },
+        "true_nll_H": {
+          "mean": 0.9146474599838257,
+          "units": 745
+        },
+        "true_nll_L": {
+          "mean": 0.7877785563468933,
+          "units": 745
+        },
+        "true_nll_M": {
+          "mean": 0.884197473526001,
+          "units": 745
+        },
+        "true_nll_P": {
+          "mean": 0.5951787233352661,
+          "units": 745
+        },
+        "true_nll_T": {
+          "mean": 0.5717939138412476,
+          "units": 745
+        },
+        "true_nll_U": {
+          "mean": 2.74310040473938,
+          "units": 745
+        },
+        "true_nll_X": {
+          "mean": 0.32427841424942017,
+          "units": 745
+        },
+        "unchanged_A": {
+          "mean": 1.0,
+          "units": 745
+        },
+        "unchanged_D": {
+          "mean": 0.4577181339263916,
+          "units": 745
+        },
+        "unchanged_H": {
+          "mean": 1.0,
+          "units": 745
+        },
+        "unchanged_L": {
+          "mean": 1.0,
+          "units": 745
+        },
+        "unchanged_M": {
+          "mean": 1.0,
+          "units": 745
+        },
+        "unchanged_P": {
+          "mean": 1.0,
+          "units": 745
+        },
+        "unchanged_T": {
+          "mean": 1.0,
+          "units": 745
+        },
+        "unchanged_U": {
+          "mean": 0.38523489236831665,
+          "units": 745
+        },
+        "unchanged_X": {
+          "mean": 0.0,
+          "units": 745
+        }
+      },
+      "units": 745
+    }
+  },
+  "target": "total",
+  "transition_strata": {
+    "frequent": {
+      "command_checks": 239288,
+      "command_correct_sum": 210259.0,
+      "draws": 59822
+    },
+    "rare": {
+      "command_checks": 15336,
+      "command_correct_sum": 11638.0,
+      "draws": 3834
+    },
+    "unseen": {
+      "command_checks": 1376,
+      "command_correct_sum": 769.0,
+      "draws": 344
+    }
+  }
+}
