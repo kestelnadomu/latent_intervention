@@ -7,7 +7,7 @@ import torch
 
 from latent_lab import (
     RENDERERS, Encoder, EditorRenderer, IdentityRenderer, OTEditorRenderer, LinearSCM, Pipeline, Reader, Renderer, StateEffectRenderer,
-    cross_fit, evaluate, factual_score, mean_predict, state_metrics,
+    OutOfFold, cross_fit, evaluate, factual_score, mean_predict, state_metrics,
 )
 
 
@@ -72,6 +72,18 @@ def test_cross_fit_reads_out_of_fold(toy):
     assert len(readers) == 4 and readings.shape == (len(z), 2)
     assert (readings["X"].to_numpy() == states["X"].to_numpy()).mean() > 0.5
     assert mean_predict(readers, z).shape == (len(z), 2)
+
+
+def test_out_of_fold_reads_each_row_with_its_fold_reader(toy):
+    z, states = toy
+    folds = np.arange(len(z)) % 4
+    readings, readers = cross_fit(Reader(["X", "D"]), z, states, folds, seed=0)
+    oof = OutOfFold(readers, folds)
+    assert (oof.predict(z).to_numpy() == readings.to_numpy()).all()
+    assert (oof.rows(folds == 2).predict(z[folds == 2]).to_numpy() == readings[folds == 2].to_numpy()).all()
+    assert evaluate(z, z, z, oof, states)["joint_acc"] == oof.metrics(z, states)["joint_acc"]
+    with pytest.raises(ValueError):
+        oof.proba(z[:10])
 
 
 @pytest.mark.parametrize("editor_class", [EditorRenderer, OTEditorRenderer])
