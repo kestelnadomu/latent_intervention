@@ -5,10 +5,10 @@
 | piece | symbol | in latent_lab |
 |---|---|---|
 | encoder | φ | `Encoder(name, dim)`: `nomic` 64–768, `qwen3` 32–1024, `embeddinggemma` 128–768; `.latents("talent")` loads cached encodings (the models themselves run in `exp/encoding/`) |
-| reader | ψ | `Reader(columns, hidden=0)`: linear (`hidden=0`) or MLP probe; `cross_fit` reads each fold with readers fitted on the others, `mean_predict` averages them |
+| reader | ψ | `Reader(columns, hidden=0)`: linear (`hidden=0`) or MLP probe; `cross_fit` reads each fold with readers fitted on the others, `mean_predict` averages them, `mean_sample` draws from their average |
 | operator | ω_S | any function `states DataFrame -> target states DataFrame`. `LinearSCM(levels, parents, noise)` gives causal ones: `.do(X=3, blocked=None)`, also path-specific; `print(scm)` shows the equations |
 | renderer | ρ | subclasses of `Renderer`: `IdentityRenderer`, `ConstantRenderer`, `GroupOTRenderer`, `StateEffectRenderer` (`guard=` keeps a linear probe's reading fixed), `FlowRenderer`, `EditorRenderer` (minimal edit trained on random targets s' ~ Uniform(S)), `OTEditorRenderer` (the same with an input-convex gradient map), `OTFlowRenderer` (OT flow matching within each state, shared reference). New ones implement `_fit` and `_render` |
-| MLO | ω_Z | `Pipeline(reader, operator, renderer)`; `evaluate` (an independent reader's fidelity, latent distances to target latents φ(x'), downstream) and `state_metrics` (accuracy, NLL, ECE) |
+| MLO | ω_Z | `Pipeline(reader, operator, renderer)`; `evaluate` (an independent reader's fidelity, latent distances to target latents φ(x'), downstream), `evaluate_samples` (the same for K sampled edits per unit: expected accuracies, energy score, downstream from the averaged class probabilities) and `state_metrics` (accuracy, NLL, ECE) |
 
 Data are loaded in the notebook with `pd.read_csv`: any table of discrete states (levels
 0..k-1) indexed by unit id works.

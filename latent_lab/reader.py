@@ -274,6 +274,14 @@ def mean_predict(readers: list[Reader], z: torch.Tensor) -> pd.DataFrame:
     return pd.DataFrame({c: p.argmax(-1).numpy() for c, p in mean_proba(readers, z).items()})
 
 
+def mean_sample(readers: list[Reader], z: torch.Tensor, seed: int = 0) -> pd.DataFrame:
+    """One draw per column from the readers' averaged psi(s_c | z)."""
+    g = torch.Generator().manual_seed(seed)
+    return pd.DataFrame(
+        {c: torch.multinomial(p, 1, generator=g).squeeze(1).numpy() for c, p in mean_proba(readers, z).items()}
+    )
+
+
 def state_metrics(
     proba: dict[str, torch.Tensor], states: pd.DataFrame, joint: list[str] | None = None, bins: int = 10
 ) -> pd.Series:

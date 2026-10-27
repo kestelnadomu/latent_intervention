@@ -7,7 +7,8 @@ import torch
 
 from latent_lab import (
     RENDERERS, Encoder, EditorRenderer, IdentityRenderer, OTEditorRenderer, LinearSCM, Pipeline, Reader, Renderer, StateEffectRenderer,
-    OutOfFold, cross_fit, evaluate, factual_score, mean_predict, state_metrics,
+    OutOfFold, cross_fit, evaluate, evaluate_samples, factual_score, mean_predict, mean_proba, mean_sample,
+    state_metrics,
 )
 
 
@@ -107,6 +108,27 @@ def test_state_metrics_and_evaluate(toy):
     out = evaluate(z, z, z, reader, states, predict=predict, outcome=states["D"], groups=states["X"])
     assert out["energy"] == 0 and out["shift"] == 0 and out["down_agree"] == 1
     assert {"joint_acc", "real_joint_acc", "down_acc", "parity_gap"} <= set(out.index)
+
+
+def test_evaluate_samples(toy):
+    z, states = toy
+    reader = Reader(["X", "D"]).fit(z, states, epochs=5)
+    proba = lambda latent: torch.stack([(latent[:, 0] <= 0).float(), (latent[:, 0] > 0).float()], 1)  # noqa: E731
+    z_prime, z_true = z + 0.5, z + 1.0
+    single = evaluate_samples(z, [z_prime], z_true, reader, states, predict_proba=proba, outcome=states["D"],
+                              groups=states["X"])
+    point = evaluate(z, z_prime, z_true, reader, states, predict=lambda latent: proba(latent).argmax(-1),
+                     outcome=states["D"], groups=states["X"])
+    for key in point.index:  # K = 1 reproduces evaluate
+        assert abs(single[key] - point[key]) < 1e-6, key
+    assert abs(single["energy_score"] - single["distance"]) < 1e-6
+    spread = evaluate_samples(z, [z + 0.5, z - 0.5], z_true, reader, states)
+    assert spread["energy_score"] < spread["distance"]  # the spread term rewards hedging
+    draws = [mean_sample([reader, reader], z, seed=s) for s in range(20)]
+    assert all(d.shape == (len(z), 2) for d in draws)
+    hit = np.mean([d["X"].to_numpy() == states["X"].to_numpy() for d in draws])  # draws follow the averaged proba
+    expected = float(mean_proba([reader, reader], z)["X"][torch.arange(len(z)), torch.tensor(states["X"].to_numpy())].mean())
+    assert abs(hit - expected) < 0.03
 
 
 def test_latents_project_a_wider_cache(tmp_path):

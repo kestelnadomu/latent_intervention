@@ -10,8 +10,8 @@ Data loading and operators are defined in the notebook; see experiment.ipynb in 
 """
 
 from latent_lab.encoder import ENCODERS, Encoder, Latents
-from latent_lab.pipeline import Pipeline, Result, evaluate, factual_score
-from latent_lab.reader import OutOfFold, Reader, cross_fit, mean_predict, mean_proba, state_metrics
+from latent_lab.pipeline import Pipeline, Result, evaluate, evaluate_samples, factual_score
+from latent_lab.reader import OutOfFold, Reader, cross_fit, mean_predict, mean_proba, mean_sample, state_metrics
 from latent_lab.renderer import (
     RENDERERS,
     ConstantRenderer,
@@ -47,8 +47,10 @@ __all__ = [
     "StateEffectRenderer",
     "cross_fit",
     "evaluate",
+    "evaluate_samples",
     "factual_score",
     "mean_predict",
     "mean_proba",
+    "mean_sample",
     "state_metrics",
 ]
