@@ -6,10 +6,15 @@ This implements the first regime of [the study design](wrong_symbolic_model.md),
 not its label-budget, downstream-Y, cross-fitting or wording-generation extensions.
 Preparation does not launch training or official-test evaluation.
 
-The active run was split across machines on 20 October 2026. See the
+The [consolidated results handoff](hz_misspecification_final_handoff.md) records
+the completed 196-fit assembly and the official-test evaluation launched on
+26 October 2026, including artifact locations, backups and resume commands.
+
+The run was split across machines on 20 October 2026 and consolidated on
+26 October. See the
 [50-fit remote agent handoff](hz_misspecification_remote50_handoff.md) for the
-disjoint assignment, portable bundle and shard-only launch/return commands.
-Do not resume the original `train --all` queue while this split is active.
+historical assignment, portable bundle and shard-only launch/return commands.
+All fitting is now complete; use the consolidated handoff for evaluation.
 
 ## Data and roles
 
