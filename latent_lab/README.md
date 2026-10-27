@@ -64,8 +64,20 @@ flowchart LR
 
 - Fitted by maximum likelihood of p(z | s) with AdamW (`lr=1e-3`, weight decay 1e-5),
   batch 64 and gradient clipping at 5. A `validation` share selects the epoch with the
-  lowest per-coordinate NLL; the learning rate halves after 10 stale epochs, training
-  stops after `patience`.
+  lowest per-coordinate objective (the NLL, plus the CE term below); the learning rate
+  halves after 10 stale epochs, training stops after `patience`.
+- `fidelity=λ` (default 0) adds a classification term, NLL / d + λ · CE. The CE is that
+  of the flow's own Bayes classifier p(s | z) ∝ p(z | s) π(s), with π the add-one smoothed
+  state frequencies of the training units, picking the true state against every state
+  that differs from it in one column (1 + Σ(k − 1) candidates, 10 for {X, T, D, U}, so
+  10 flow passes per batch). Why: log p(z | s) = log p(z) + log p(s | z) − log p(s), and
+  only the middle term depends on s. It is at most H(S) nats (log 108 ≈ 4.7), while the
+  NLL grows with d, so in high d maximum likelihood barely uses s and the flow hardly
+  moves z. λ weights the state term independently of d. EmbeddingGemma at d = 768 (seed 0,
+  fitted on pool folds 1–4): λ = 0.1–0.3 nearly triples the search fidelity (0.27 →
+  0.72–0.77) with slightly better realism and unchanged `acc_M`. At λ ≥ 1 the CE term
+  overfits: validation is best after a few epochs, so early stopping keeps a near-identity
+  flow that hardly edits z. Search λ in {0, 0.03, 0.1, 0.3}.
 - One learned state code, shared by all blocks: it gives the state far more weight in
   each block than a one-hot appended to d inputs would.
 - Permutations: a fixed random one per block; the second is built so that every

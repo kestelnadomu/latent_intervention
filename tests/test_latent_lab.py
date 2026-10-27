@@ -241,3 +241,34 @@ def test_early_stopping(toy, name):
     log = renderer.fit_log
     assert log["stopped_early"] and log["epochs_run"] < 200 and "validation" in log["history"][0]
     assert log["best_epoch"] == min(range(len(log["history"])), key=lambda i: log["history"][i]["validation"]) + 1
+
+
+def test_flow_fidelity_sharpens_its_own_classifier(toy):
+    from latent_lab.renderer import _neighbours
+
+    z, states = toy
+    assert _neighbours(torch.tensor([[0, 1]]), [3, 2]).tolist() == [[[0, 1], [1, 1], [2, 1], [0, 0]]]
+    index = torch.tensor(states[["X", "D"]].to_numpy())
+    candidates = _neighbours(index, [3, 2])
+
+    def neighbour_ce(renderer):  # the flow's p(s | z) over the true state and its neighbours (uniform prior)
+        log_lik = renderer.flow.log_prob(z.repeat_interleave(4, 0), candidates.flatten(0, 1)).view(len(z), 4)
+        return float(torch.nn.functional.cross_entropy(log_lik, torch.zeros(len(z), dtype=torch.long)))
+
+    plain = RENDERERS["flow"](["X", "D"], epochs=20).fit(z, states)
+    sharp = RENDERERS["flow"](["X", "D"], epochs=20, fidelity=5.0).fit(z, states)
+    with torch.no_grad():
+        assert neighbour_ce(sharp) < neighbour_ce(plain)
+    assert torch.allclose(sharp(z, states, states), z)
+    with pytest.raises(ValueError):
+        RENDERERS["flow"](["X"], fidelity=-1.0)
+
+
+def test_ot_flow_guidance(toy):
+    z, states = toy
+    with pytest.raises(ValueError):
+        RENDERERS["ot_flow"](["X", "D"], guidance=2.0)
+    guided = RENDERERS["ot_flow"](["X", "D"], epochs=2, guidance=2.0, condition_dropout=0.2).fit(z, states)
+    assert torch.allclose(guided(z, states, states), z)
+    moved = guided(z, states, states.assign(X=(states["X"] + 1) % 3))
+    assert moved.shape == z.shape and torch.isfinite(moved).all()
