@@ -23,15 +23,17 @@ def read_texts(path, expected_ids):
     return frame
 
 
-def check_vectors(z, rows, dimension):
+def check_vectors(z, rows, encoder_info):
+    # LangVAE's posterior means are not unit vectors; the embedding encoders' outputs are.
+    unit = encoder_info["encoder_variant"] != "langvae"
     if (
         not isinstance(z, torch.Tensor)
         or z.dtype != torch.float32
-        or z.shape != (rows, dimension)
+        or z.shape != (rows, encoder_info["latent_dimension"])
         or not torch.isfinite(z).all()
-        or not torch.allclose(z.norm(dim=1), torch.ones(rows), atol=1e-6, rtol=1e-6)
+        or unit and not torch.allclose(z.norm(dim=1), torch.ones(rows), atol=1e-6, rtol=1e-6)
     ):
-        raise ValueError("embeddings must be finite, unit-normalized float32 vectors")
+        raise ValueError("embeddings must be finite float32 vectors, unit-normalized for embedding encoders")
 
 
 def load_text_artifact(path, *, texts, expected_ids, kind, encoder_config, provenance):
@@ -56,7 +58,7 @@ def load_text_artifact(path, *, texts, expected_ids, kind, encoder_config, prove
     payload = torch.load(path, map_location="cpu", weights_only=True)
     if payload["ids"] != sorted(expected_ids) or payload["text_variant"] != kind:
         raise ValueError("auxiliary embedding IDs or text variant mismatch")
-    check_vectors(payload["z"], len(expected_ids), encoder_info["latent_dimension"])
+    check_vectors(payload["z"], len(expected_ids), encoder_info)
     return payload
 
 
@@ -73,7 +75,7 @@ def encode_text_artifact(
         frame["text"].tolist(), deterministic=True,
         batch_size=int(encoder_config["batch_size"]),
     ).detach().cpu()
-    check_vectors(z, len(frame), encoder_info["latent_dimension"])
+    check_vectors(z, len(frame), encoder_info)
     if sha256_file(texts) != before:
         raise ValueError("auxiliary input changed during encoding")
     save_torch(path, {"ids": frame["id"].tolist(), "z": z, "text_variant": kind})

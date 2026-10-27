@@ -1,4 +1,4 @@
-"""phi: the cached encodings of a frozen text encoder, one of the three embedding models we use.
+"""phi: the cached encodings of a frozen text encoder (three embedding models and LangVAE).
 
 ``Encoder("nomic", 128).latents("talent")`` loads the published encodings of an
 experiment's texts (``data/latents/<experiment>/<name>_<dim>/z_pairs.pt``). latent_lab
@@ -18,6 +18,7 @@ ENCODERS: dict[str, tuple[int, ...]] = {
     "nomic": (64, 128, 256, 512, 768),
     "qwen3": (32, 64, 128, 256, 512, 768, 1024),
     "embeddinggemma": (128, 256, 512, 768),
+    "langvae": (128,),   # one VAE latent space, not Matryoshka
 }
 
 
@@ -54,7 +55,8 @@ class Encoder:
 
     @property
     def tag(self) -> str:
-        return f"{self.name}_{self.dim}"
+        # src.config.encoder_tag: LangVAE's single space is just "langvae"
+        return self.name if self.name == "langvae" else f"{self.name}_{self.dim}"
 
     def __repr__(self) -> str:
         return f"Encoder({self.name!r}, {self.dim})"

@@ -1,4 +1,6 @@
 # Encoding only: no reader/editor fitting and no archived pilot inputs.
+# exp.encoding.talent_motivation --encoder picks the variant; the settings below are the
+# recipes of the original encoder comparison (src/config.yaml, g-all-encoders-v1).
 seed: 42
 sim_config: exp/sim_talent_motivation/config.yaml
 encoder:
@@ -11,6 +13,25 @@ encoder:
   embeddinggemma_max_len: 2048
   embeddinggemma_batch_size: 8
   embeddinggemma_cache_dir: .cache/huggingface/hub
+  nomic_model_name: nomic-ai/nomic-embed-text-v1.5
+  nomic_model_revision: e5cf08aadaa33385f5990def41f7a23405aec398
+  nomic_code_revision: 7710840340a098cfb869c4f65e87cf2b1b70caca
+  nomic_task: classification
+  qwen3_model_name: Qwen/Qwen3-Embedding-0.6B
+  qwen3_model_revision: 97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3
+  qwen3_instruction: ""
+  qwen3_max_len: 1024
+  qwen3_batch_size: 8
+  qwen3_cache_dir: .cache/huggingface/hub
+  model_name: neuro-symbolic-ai/eb-langvae-bert-base-cased-gpt2-l128
+  model_revision: 7f277f7c42e3a2ff94a4ce7299e1c944f872a8e6
+  langvae_encoder_model_name: bert-base-cased
+  langvae_encoder_model_revision: cd5ef92a9fb2f889e972770a36d4ed042daf221e
+  langvae_decoder_model_name: gpt2
+  langvae_decoder_model_revision: 607a30d783dfa663caf39e06633721c8d4cfcd7e
+  local_checkpoint: null
+  max_len: 512      # Nomic and LangVAE; the others use their own *_max_len
+  batch_size: 16    # Nomic and LangVAE; the others use their own *_batch_size
   device: cpu
   deterministic: true
   progress: true

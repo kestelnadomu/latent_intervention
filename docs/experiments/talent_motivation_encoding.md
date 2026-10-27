@@ -35,17 +35,26 @@ Adapting downstream models/splits is a separate task.
 ## Launch and resume
 
 ```bash
-bash scripts/run_talent_motivation_encoding.sh embeddinggemma-768-v1
+bash scripts/run_talent_motivation_encoding.sh embeddinggemma   # the original run, embeddinggemma-768-v1
+bash scripts/run_talent_motivation_encoding.sh nomic            # nomic-768-v1
+bash scripts/run_talent_motivation_encoding.sh qwen3            # qwen3-1024-v1
+bash scripts/run_talent_motivation_encoding.sh langvae          # langvae-128-v1
 ```
 
-The launcher validates the simulation in `.venv`, then checks tokenizer lengths and
-bounded inference in `.venv-embeddinggemma`. These environments stay separate; no
-dependencies are added. It launches `encode-talent-motivation-768` in detached tmux
-with four numerical threads and batch size eight. Closing the client does not stop it.
+Each encoder is encoded once at its full width with the recipe of the original encoder
+comparison (`g-all-encoders-v1`); latent_lab projects the narrower Matryoshka widths.
+The launcher validates the simulation in `.venv`, then runs the preflight and the
+encoding in the encoder's environment: `.venv-embeddinggemma`, `.venv-qwen3`, or `.venv`
+for Nomic and LangVAE. Only EmbeddingGemma's preflight audits token lengths; Qwen3
+refuses over-long inputs while encoding, and Nomic and LangVAE truncate at 512 tokens as
+in their original encodings. No dependencies are added. It launches
+`encode-talent-motivation` in detached tmux with four numerical threads; one encoder at
+a time (a second launch is refused while the session or the output lock exists).
+Closing the client does not stop it.
 
 ```bash
-tmux attach -t encode-talent-motivation-768
-tail -f reports/talent_motivation/encoding/embeddinggemma-768-v1/run.log
+tmux attach -t encode-talent-motivation
+tail -f reports/talent_motivation/encoding/nomic-768-v1/run.log
 ```
 
 Status is in the same directory's `status.json`. Matching completed artifacts are
@@ -54,7 +63,7 @@ already completed artifacts. Torn tensor/sidecar pairs are retained in hidden
 `.interrupted-*` directories. Changes to inputs/config/source are rejected for an
 existing run ID; existing published embeddings are never silently replaced.
 
-While running, outputs live in an ignored sibling `.embeddinggemma_768.<run>.pending`
+While running, outputs live in an ignored sibling `.<encoder>_<width>.<run>.pending`
 directory. Only after all three artifacts pass validation is the whole directory
 renamed into its final location. A filesystem lock excludes concurrent writers.
 Published artifacts and compact reports are Git-trackable; staging, locks and logs

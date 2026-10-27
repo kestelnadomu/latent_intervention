@@ -38,16 +38,17 @@
 !data/latents/talent/langvae_ft/
 !data/latents/talent/langvae_ft/z_pairs.pt
 !data/latents/talent/langvae_ft/z_pairs.info.json
-# Extended-DAG corpus: only complete published 768D artifacts, never staging files.
+# Extended-DAG corpus: only complete published artifacts of every encoder, never staging
+# files (those start with a dot, so [a-z]* skips them).
 !data/latents/talent_motivation/
-!data/latents/talent_motivation/embeddinggemma_768/
-!data/latents/talent_motivation/embeddinggemma_768/z_pairs.pt
-!data/latents/talent_motivation/embeddinggemma_768/z_pairs.info.json
-!data/latents/talent_motivation/embeddinggemma_768/z_floor.pt
-!data/latents/talent_motivation/embeddinggemma_768/z_floor.info.json
-!data/latents/talent_motivation/embeddinggemma_768/z_factual_vb.pt
-!data/latents/talent_motivation/embeddinggemma_768/z_factual_vb.info.json
-!data/latents/talent_motivation/embeddinggemma_768/manifest.json
+!data/latents/talent_motivation/[a-z]*/
+!data/latents/talent_motivation/[a-z]*/z_pairs.pt
+!data/latents/talent_motivation/[a-z]*/z_pairs.info.json
+!data/latents/talent_motivation/[a-z]*/z_floor.pt
+!data/latents/talent_motivation/[a-z]*/z_floor.info.json
+!data/latents/talent_motivation/[a-z]*/z_factual_vb.pt
+!data/latents/talent_motivation/[a-z]*/z_factual_vb.info.json
+!data/latents/talent_motivation/[a-z]*/manifest.json
 # Keep published semantic decoders and the oracle regression reference portable.
 # Trials, archives, legacy unselected h_Z models, encoder checkpoints and temporary files stay local.
 # models/**

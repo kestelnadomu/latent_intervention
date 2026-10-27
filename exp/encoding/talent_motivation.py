@@ -1,5 +1,7 @@
-"""One frozen 768D encoder, three artifacts, no downstream fitting.
+"""One frozen encoder at its full width, three artifacts, no downstream fitting.
 
+``--encoder`` picks the backend (default EmbeddingGemma, the original 768D run); narrower
+widths are Matryoshka prefixes that latent_lab projects from the full-width bundle.
 The established paired writer is unchanged. Completed artifacts resume after
 validation; an interrupted encoder pass restarts that artifact only. The complete
 bundle is published by one directory rename. Use the detached shell launcher.
@@ -25,11 +27,13 @@ import yaml
 from exp.encoding.queue import now, protocol, verify_artifact
 from exp.encoding.text_artifact import encode_text_artifact, load_text_artifact, read_texts
 from src.artifact_io import sha256_file, write_json
-from src.config import load_config
-from src.pair_encoding import _load_csv, _load_pair_index, encode_pairs
+from src.config import encoder_tag, load_config
+from src.encoder import encoder_dimension, get_encoder_factory
+from src.pair_encoding import _load_csv, _load_pair_index, encode_pairs, load_latent_artifact
 
 CONFIG = "configs/encoding_talent_motivation.yaml"
-RUN_ID = "embeddinggemma-768-v1"
+# Each encoder is encoded once at its full width; LangVAE has a single 128D space.
+FULL_WIDTH = {"embeddinggemma": 768, "nomic": 768, "qwen3": 1024, "langvae": 128}
 AUXILIARY = (
     ("floor", "texts_floor", "floor_latents"),
     ("factual_vb", "texts_held_out", "held_out_latents"),
@@ -38,6 +42,13 @@ INPUT_KEYS = (
     "texts", "texts_counterfactual", "texts_floor", "texts_held_out", "pair_index",
     "sim_factual", "sim_counterfactual", "partition", "interventions",
 )
+
+
+def load_encoding_config(encoder, path=CONFIG):
+    """``path`` resolved for one encoder at its full width."""
+    width = FULL_WIDTH[encoder]
+    dims = {f"{name}_dim": width if encoder == name else None for name in ("nomic", "qwen3", "embeddinggemma")}
+    return load_config(path=path, encoder_variant=encoder, **dims)
 
 
 def input_hashes(config):
@@ -99,10 +110,12 @@ def validate_simulation(config):
 
 
 def signature(config, config_path, threads, run_id):
-    if config["encoder"]["variant"] != "embeddinggemma" or config["encoder"]["embeddinggemma_latent_dim"] != 768:
-        raise ValueError("this experiment requires embeddinggemma_768")
+    encoder = config["encoder"]
+    width = FULL_WIDTH.get(encoder["variant"])
+    if width is None or encoder_dimension(encoder) != width or encoder.get("local_checkpoint"):
+        raise ValueError(f"encode a stock encoder once at its full width {FULL_WIDTH}")
     return {
-        "run_id": run_id, "encoding": protocol({768: config}, threads),
+        "run_id": run_id, "encoding": protocol({width: config}, threads),
         "config_sha256": sha256_file(config_path), "input_sha256": input_hashes(config),
         "source_sha256": {str(p): sha256_file(p) for p in (
             Path(__file__), Path("exp/encoding/text_artifact.py"),
@@ -114,6 +127,10 @@ def signature(config, config_path, threads, run_id):
 
 
 def preflight(config, sig):
+    if config["encoder"]["variant"] != "embeddinggemma":
+        # Qwen3 refuses over-long inputs while encoding; Nomic and LangVAE truncate at max_len
+        # exactly as in their original encodings. Nothing to audit up front.
+        return {"status": "passed", "protocol": sig, "paired": None, "auxiliary": None}
     from exp.encoding.embeddinggemma_preflight import run_preflight
     from src.encoder.embeddinggemma import cached_snapshot, format_text
     from transformers import AutoTokenizer
@@ -142,7 +159,7 @@ def preflight(config, sig):
 @contextmanager
 def output_lock(directory):
     directory.mkdir(parents=True, exist_ok=True)
-    with (directory / ".embeddinggemma-768.lock").open("a") as stream:
+    with (directory / ".encoding.lock").open("a") as stream:
         try:
             fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
@@ -168,8 +185,8 @@ def run_queue(config, root, sig, *, encoder_factory=None):
     output_keys = ("latents", "floor_latents", "held_out_latents")
     if any(Path(config["paths"][key]).parent != destination for key in output_keys):
         raise ValueError("all three artifacts must share one output directory")
-    if destination.name != "embeddinggemma_768":
-        raise ValueError("output directory must be named embeddinggemma_768")
+    if destination.name != encoder_tag(config["encoder"]):
+        raise ValueError(f"output directory must be named {encoder_tag(config['encoder'])}")
     pending = destination.with_name(f".{destination.name}.{sig['run_id']}.pending")
     work = destination if destination.exists() else pending
     if work.exists():
@@ -193,11 +210,7 @@ def run_queue(config, root, sig, *, encoder_factory=None):
     def encoder(_):
         nonlocal model
         if model is None:
-            if encoder_factory is None:
-                from src.encoder.embeddinggemma import make_embeddinggemma_encoder
-                model = make_embeddinggemma_encoder(config["encoder"])
-            else:
-                model = encoder_factory(config["encoder"])
+            model = (encoder_factory or get_encoder_factory(config["encoder"]))(config["encoder"])
         return model
 
     def update():
@@ -218,7 +231,9 @@ def run_queue(config, root, sig, *, encoder_factory=None):
             if key == "latents":
                 if not path.exists() and work != destination:
                     encode_pairs(staged, encoder_factory=encoder)
-                artifact = verify_artifact(staged)
+                # LangVAE's posterior means are not unit vectors; the others are L2-normalized.
+                langvae = config["encoder"]["variant"] == "langvae"
+                artifact = (load_latent_artifact if langvae else verify_artifact)(staged)
                 shapes = {"z": list(artifact.z.shape), "z_prime": list(artifact.z_prime.shape)}
             else:
                 kind, text_key, _ = next(item for item in AUXILIARY if item[2] == key)
@@ -262,15 +277,17 @@ def run_queue(config, root, sig, *, encoder_factory=None):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("stage", choices=("validate", "preflight", "run"))
+    parser.add_argument("--encoder", choices=sorted(FULL_WIDTH), default="embeddinggemma")
     parser.add_argument("--config", default=CONFIG)
-    parser.add_argument("--run-id", default=RUN_ID)
+    parser.add_argument("--run-id", help="default: <encoder>-<width>-v1")
     parser.add_argument("--threads", type=int, default=4)
     args = parser.parse_args()
+    config = load_encoding_config(args.encoder, args.config)
+    args.run_id = args.run_id or f"{args.encoder}-{FULL_WIDTH[args.encoder]}-v1"
     if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]*", args.run_id) or args.threads < 1:
         parser.error("invalid run ID or thread count")
     torch.set_num_threads(args.threads)
     torch.use_deterministic_algorithms(True)
-    config = load_config(path=args.config)
     root = Path(config["paths"]["encoding_reports"]) / args.run_id
     with output_lock(Path(config["paths"]["latents"]).parent.parent):
         if args.stage == "validate":

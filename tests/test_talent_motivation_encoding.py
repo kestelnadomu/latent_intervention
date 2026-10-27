@@ -14,7 +14,7 @@ import torch.nn.functional as F
 from exp.encoding import talent_motivation as queue
 from exp.encoding.text_artifact import load_text_artifact
 from src.artifact_io import sha256_file
-from src.config import load_config
+from src.config import CONFIG_PATH, encoder_tag, load_config
 from src.pair_encoding import _active_encoder_info, load_latent_artifact
 
 
@@ -50,31 +50,43 @@ def corpus(tmp_path, monkeypatch):
 
 
 class FakeEncoder:
-    latent_dim = 768
-
-    def __init__(self, fail_on_vb=False):
+    def __init__(self, fail_on_vb=False, latent_dim=768, batch_size=8, scale=1.0):
         self.calls = []
         self.fail_on_vb = fail_on_vb
+        self.latent_dim, self.batch_size, self.scale = latent_dim, batch_size, scale
 
     def encode(self, texts, deterministic=True, batch_size=8):
-        assert deterministic and batch_size == 8
+        assert deterministic and batch_size == self.batch_size
         self.calls.append(list(texts))
         if self.fail_on_vb and "vb4" in texts:
             raise RuntimeError("interrupted auxiliary encoding")
         rows = []
         for text in texts:
             offset = int(hashlib.sha256(text.encode()).hexdigest()[:8], 16) / 2**32
-            rows.append(torch.sin(torch.arange(768, dtype=torch.float32) / 17 + offset))
-        return F.normalize(torch.stack(rows), dim=1)
+            rows.append(torch.sin(torch.arange(self.latent_dim, dtype=torch.float32) / 17 + offset))
+        return self.scale * F.normalize(torch.stack(rows), dim=1)
 
 
-def test_configuration_preserves_original_encoder_recipe():
-    config = load_config(path=queue.CONFIG)
-    old = load_config(encoder_variant="embeddinggemma", embeddinggemma_dim=768)
+@pytest.mark.parametrize("encoder", sorted(queue.FULL_WIDTH))
+def test_configuration_preserves_original_encoder_recipe(encoder):
+    config = queue.load_encoding_config(encoder)
+    old = queue.load_encoding_config(encoder, CONFIG_PATH)  # the original encoder comparison
     assert _active_encoder_info(config["encoder"]) == _active_encoder_info(old["encoder"])
-    assert "talent_motivation/embeddinggemma_768/" in config["paths"]["latents"]
+    assert f"talent_motivation/{encoder_tag(config['encoder'])}/" in config["paths"]["latents"]
     assert sum(config["expected_counts"][name] for name in
                ("factual", "counterfactual", "floor", "factual_vb")) == 5700
+
+
+def test_langvae_queue_accepts_unnormalized_posterior_means(corpus):
+    config, report = corpus
+    config["encoder"] = queue.load_encoding_config("langvae")["encoder"]
+    for key in ("latents", "floor_latents", "held_out_latents"):
+        path = Path(config["paths"][key])
+        config["paths"][key] = str(path.parent.with_name("langvae") / path.name)
+    sig = {"run_id": "tiny", "input_sha256": queue.input_hashes(config)}
+    encoder = FakeEncoder(latent_dim=128, batch_size=16, scale=3.0)
+    assert queue.run_queue(config, report, sig, encoder_factory=lambda _: encoder)["status"] == "complete"
+    assert load_latent_artifact(config).z.norm(dim=1).allclose(torch.full((4,), 3.0))
 
 
 def test_queue_roundtrip_and_completed_resume(corpus):
@@ -149,12 +161,12 @@ def test_only_published_encoding_artifacts_are_trackable(tmp_path):
     (tmp_path / ".gitignore").write_text((root / ".gitignore").read_text())
     latents = "data/latents/talent_motivation"
     reports = "reports/talent_motivation/encoding/test-run"
-    tracked = [f"{latents}/embeddinggemma_768/{name}" for name in (
+    tracked = [f"{latents}/{tag}/{name}" for tag in ("embeddinggemma_768", "qwen3_1024", "langvae") for name in (
         "z_pairs.pt", "z_pairs.info.json", "z_floor.pt", "z_floor.info.json",
         "z_factual_vb.pt", "z_factual_vb.info.json", "manifest.json",
     )] + [f"{reports}/{name}.json" for name in ("protocol", "preflight", "status", "data_validation")]
     ignored = [f"{latents}/.embeddinggemma_768.test-run.pending/z_pairs.pt",
-               f"{latents}/.embeddinggemma-768.lock", f"{reports}/run.log",
+               f"{latents}/.encoding.lock", f"{reports}/run.log",
                f"{latents}/embeddinggemma_768/.interrupted-z_floor-test/z_floor.pt"]
     for name in tracked + ignored:
         path = tmp_path / name
