@@ -13,13 +13,15 @@ class                    z'                                                     
                          ``guard=<linear Reader>`` the edit is projected so the
                          guard's probabilities stay unchanged
 ``FlowRenderer``         u = F^-1(z; s), z' = F(u; s'), F a conditional RealNVP     s, s'
+                         (``fidelity`` adds the flow's own classification loss)
 ``EditorRenderer``       z + Delta(z, s'), trained so that a reader fitted on       s'
                          (z, s) reads s', with random targets s' ~ Uniform(S)
                          (a minimal edit; no operator in training)
 ``OTEditorRenderer``     grad_x Phi(x; s'), Phi input-convex; trained like the      s'
                          editor (OT-structured minimal edit)
 ``OTFlowRenderer``       u = F_s^-1(z), z' = F_s'(u), F_s a continuous flow fitted  s, s'
-                         by OT flow matching within each state
+                         by OT flow matching within each state (``guidance``:
+                         classifier-free guidance towards s')
 =======================  =========================================================  ==========
 
 ``c`` is the ``on`` column (default ``"X"``). All return ``z`` unchanged where
@@ -181,9 +183,15 @@ class FlowRenderer(Renderer):
 
     F is a conditional RealNVP fitted by maximum likelihood of p(z | s). The state enters
     every coupling through one learned code (an embedding per column, then a small MLP).
-    A ``validation`` share of the rows selects the epoch with the lowest per-coordinate
-    NLL; the learning rate halves after 10 stale epochs and training stops after
+    A ``validation`` share of the rows selects the epoch with the lowest objective per
+    coordinate; the learning rate halves after 10 stale epochs and training stops after
     ``patience`` of them. Defaults: the settings selected for EmbeddingGemma at d = 256.
+
+    ``fidelity`` = lambda > 0 adds a classification term, NLL / d + lambda * CE: the flow's
+    own Bayes classifier p(s | z) ~ p(z | s) pi(s) (pi: add-one smoothed state frequencies)
+    must pick the true state against every state that differs from it in one column.
+    In high d the likelihood barely depends on s (its s-dependent part is at most H(S)
+    nats, the rest grows with d); lambda weights that part independently of d.
     """
 
     def __init__(
@@ -200,13 +208,17 @@ class FlowRenderer(Renderer):
         grad_clip: float = 5.0,
         validation: float = 0.2,
         patience: int = 30,
+        fidelity: float = 0.0,
         levels: dict[str, int] | None = None,
     ) -> None:
         super().__init__(columns, levels)
+        if fidelity < 0:
+            raise ValueError(f"fidelity must be >= 0, got {fidelity}")
         self.validation = validation
         self.settings = dict(
             blocks=blocks, hidden=hidden, condition=condition, embed=embed, epochs=epochs, lr=lr,
             batch_size=batch_size, weight_decay=weight_decay, grad_clip=grad_clip, patience=patience,
+            fidelity=fidelity,
         )
 
     def _fit(self, z, states):
@@ -342,6 +354,12 @@ class OTFlowRenderer(Renderer):
     ``validation`` share of the rows, with one fixed coupled batch per state (weighted by
     its frequency), selects the best epoch and stops training after ``patience`` epochs
     without improvement.
+
+    Classifier-free guidance: with ``condition_dropout`` > 0 the state is replaced by a
+    null state in that share of the training rows, so the field also learns the
+    unconditional velocity v_0. Rendering integrates u -> z' with
+    v_0 + ``guidance`` * (v(s') - v_0); ``guidance`` > 1 weights the target state more
+    (fidelity) at some cost in realism. The inversion z -> u stays unguided.
     """
 
     def __init__(
@@ -354,19 +372,25 @@ class OTFlowRenderer(Renderer):
         smoothing_std: float = 0.01,
         validation: float = 0.2,
         patience: int = 30,
+        guidance: float = 1.0,
+        condition_dropout: float = 0.0,
         levels: dict[str, int] | None = None,
     ) -> None:
         super().__init__(columns, levels)
+        if guidance != 1.0 and not condition_dropout:
+            raise ValueError("guidance needs the unconditional field: set condition_dropout > 0")
         self.hidden, self.epochs, self.lr = hidden, epochs, lr
         self.batch_size, self.smoothing_std = batch_size, smoothing_std
         self.validation, self.patience = validation, patience
+        self.guidance, self.condition_dropout = guidance, condition_dropout
 
     def _fit(self, z, states):
         seed = int(torch.initial_seed())
         val, fit = _split(len(z), self.validation, seed)
         index = torch.tensor(states[self.columns].to_numpy(), dtype=torch.long)
         self.mean, self.std = z[fit].mean(0), z[fit].std(0, unbiased=False).clamp(min=1e-4)
-        self.velocity = _VelocityField(z.shape[1], self.levels, self.hidden)
+        self.velocity = _VelocityField(z.shape[1], self.levels, self.hidden, nullable=self.condition_dropout > 0)
+        null = torch.tensor(self.levels)  # the null level of each column
         x = (z - self.mean) / self.std
         x_fit = x[fit]
         state_ids, rows = index[fit].unique(dim=0, return_inverse=True)
@@ -386,6 +410,8 @@ class OTFlowRenderer(Renderer):
             for _ in range(steps):
                 group = int(rows[torch.randint(len(x_fit), (1,), generator=rng)])
                 path, t, cond, velocity = batch(x_fit[groups[group]], state_ids[group], rng)
+                if self.condition_dropout:
+                    cond = torch.where((torch.rand(n, generator=rng) < self.condition_dropout)[:, None], null, cond)
                 loss = (self.velocity(path, t, cond) - velocity).square().mean()
                 optimizer.zero_grad()
                 loss.backward()
@@ -410,8 +436,14 @@ class OTFlowRenderer(Renderer):
         if changed.any():
             x = (z[changed] - self.mean) / self.std
             u = _integrate(self.velocity, x, a[changed], reverse=True)
-            out[changed] = _integrate(self.velocity, u, b[changed]) * self.std + self.mean
+            forward = self.velocity if self.guidance == 1.0 else self._guided
+            out[changed] = _integrate(forward, u, b[changed]) * self.std + self.mean
         return out
+
+    def _guided(self, x: torch.Tensor, t, states: torch.Tensor) -> torch.Tensor:
+        """Classifier-free guided velocity v_0 + guidance * (v(s) - v_0)."""
+        unconditional = self.velocity(x, t, torch.tensor(self.levels).expand_as(states))
+        return unconditional + self.guidance * (self.velocity(x, t, states) - unconditional)
 
 
 RENDERERS: dict[str, type[Renderer]] = {
@@ -455,6 +487,26 @@ class _EarlyStop:
     def restore(self, module: nn.Module) -> None:
         if self.state is not None:
             module.load_state_dict(self.state)
+
+
+def _neighbours(states: torch.Tensor, levels: list[int]) -> torch.Tensor:
+    """Each state followed by every state that differs from it in exactly one column:
+    shape (n, 1 + sum(k - 1), columns)."""
+    out = [states]
+    for i, k in enumerate(levels):
+        for shift in range(1, k):
+            other = states.clone()
+            other[:, i] = (other[:, i] + shift) % k
+            out.append(other)
+    return torch.stack(out, 1)
+
+
+def _state_log_prior(states: torch.Tensor, levels: list[int]) -> tuple[torch.Tensor, torch.Tensor]:
+    """Add-one smoothed log frequencies of the joint states, and the strides that turn a
+    state into its flat index (``states @ strides``)."""
+    strides = torch.tensor([math.prod(levels[i + 1:]) for i in range(len(levels))])
+    counts = torch.bincount(states @ strides, minlength=math.prod(levels)).float() + 1
+    return (counts / counts.sum()).log(), strides
 
 
 def _coupled_batch(points: torch.Tensor, state: torch.Tensor, n: int, smoothing: float, rng: torch.Generator):
@@ -603,14 +655,27 @@ class _StateFlow(nn.Module):
 
 def _fit_state_flow(
     z_fit, s_fit, z_val, s_val, levels, seed, blocks, hidden, condition, embed,
-    epochs, lr, batch_size, weight_decay, grad_clip, patience,
+    epochs, lr, batch_size, weight_decay, grad_clip, patience, fidelity=0.0,
 ) -> _StateFlow:
-    """Conditional maximum likelihood with validation selection, as in the h_Z benchmark."""
+    """Conditional maximum likelihood (plus ``fidelity`` * d * the neighbour CE, see
+    ``FlowRenderer``) with validation selection, as in the h_Z benchmark."""
     with torch.random.fork_rng(devices=[]):  # the seed alone fixes the initial weights
         torch.manual_seed(seed)
         flow = _StateFlow(z_fit.shape[1], levels, blocks, hidden, condition, embed, seed)
     flow.mean.copy_(z_fit.mean(0))
     flow.scale.copy_(z_fit.std(0, unbiased=False).clamp(min=1e-6))
+    log_prior, strides = _state_log_prior(s_fit, levels)
+
+    def objective(zb, sb):  # summed over coordinates, averaged over units
+        nll = -flow.log_prob(zb, sb).mean()
+        if not fidelity:
+            return nll
+        candidates = _neighbours(sb, levels)  # the true state first
+        n, k = candidates.shape[:2]
+        log_lik = flow.log_prob(zb.repeat_interleave(k, 0), candidates.flatten(0, 1)).view(n, k)
+        ce = nn.functional.cross_entropy(log_lik + log_prior[candidates @ strides], torch.zeros(n, dtype=torch.long))
+        return nll + fidelity * zb.shape[1] * ce
+
     shuffle = torch.Generator().manual_seed(seed + 1)
     optimizer = torch.optim.AdamW(flow.parameters(), lr=lr, weight_decay=weight_decay)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
@@ -621,7 +686,7 @@ def _fit_state_flow(
     for epoch in range(1, epochs + 1):
         lr_now, total = optimizer.param_groups[0]["lr"], 0.0
         for batch in torch.randperm(len(z_fit), generator=shuffle).split(batch_size):
-            loss = -flow.log_prob(z_fit[batch], s_fit[batch]).mean()
+            loss = objective(z_fit[batch], s_fit[batch])
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
             torch.nn.utils.clip_grad_norm_(flow.parameters(), grad_clip, error_if_nonfinite=True)
@@ -630,9 +695,9 @@ def _fit_state_flow(
         history.append({"epoch": epoch, "train": total / len(z_fit) / z_fit.shape[1], "lr": lr_now})
         if not len(z_val):
             continue
-        with torch.no_grad():  # mean NLL per coordinate, in batches of 32 like the benchmark
+        with torch.no_grad():  # mean objective per coordinate, in batches of 32 like the benchmark
             value = sum(
-                float(-flow.log_prob(zb, sb).mean() / zb.shape[1]) * len(zb)
+                float(objective(zb, sb) / zb.shape[1]) * len(zb)
                 for zb, sb in zip(z_val.split(32), s_val.split(32))
             ) / len(z_val)
         history[-1]["validation"] = value
@@ -687,11 +752,12 @@ class _ConvexPotential(nn.Module):
 
 class _VelocityField(nn.Module):
     """v(x, t; s): an MLP on x, one embedding per state column and 16 sinusoidal time
-    features. The last layer starts at zero, so the untrained flow is the identity."""
+    features. The last layer starts at zero, so the untrained flow is the identity.
+    ``nullable`` adds a null level k to each column (the unconditional field)."""
 
-    def __init__(self, dim: int, levels: list[int], hidden: int, embed: int = 16) -> None:
+    def __init__(self, dim: int, levels: list[int], hidden: int, embed: int = 16, nullable: bool = False) -> None:
         super().__init__()
-        self.embeddings = nn.ModuleList(nn.Embedding(k, embed) for k in levels)
+        self.embeddings = nn.ModuleList(nn.Embedding(k + nullable, embed) for k in levels)
         self.net = nn.Sequential(
             nn.Linear(dim + len(levels) * embed + 16, hidden), nn.SiLU(),
             nn.Linear(hidden, hidden), nn.SiLU(),

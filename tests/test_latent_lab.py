@@ -7,7 +7,8 @@ import torch
 
 from latent_lab import (
     RENDERERS, Encoder, EditorRenderer, IdentityRenderer, OTEditorRenderer, LinearSCM, Pipeline, Reader, Renderer, StateEffectRenderer,
-    cross_fit, evaluate, factual_score, mean_predict, state_metrics,
+    OutOfFold, cross_fit, evaluate, evaluate_samples, factual_score, mean_predict, mean_proba, mean_sample,
+    state_metrics,
 )
 
 
@@ -74,6 +75,18 @@ def test_cross_fit_reads_out_of_fold(toy):
     assert mean_predict(readers, z).shape == (len(z), 2)
 
 
+def test_out_of_fold_reads_each_row_with_its_fold_reader(toy):
+    z, states = toy
+    folds = np.arange(len(z)) % 4
+    readings, readers = cross_fit(Reader(["X", "D"]), z, states, folds, seed=0)
+    oof = OutOfFold(readers, folds)
+    assert (oof.predict(z).to_numpy() == readings.to_numpy()).all()
+    assert (oof.rows(folds == 2).predict(z[folds == 2]).to_numpy() == readings[folds == 2].to_numpy()).all()
+    assert evaluate(z, z, z, oof, states)["joint_acc"] == oof.metrics(z, states)["joint_acc"]
+    with pytest.raises(ValueError):
+        oof.proba(z[:10])
+
+
 @pytest.mark.parametrize("editor_class", [EditorRenderer, OTEditorRenderer])
 def test_editor_moves_towards_target(toy, editor_class):
     z, states = toy
@@ -95,6 +108,27 @@ def test_state_metrics_and_evaluate(toy):
     out = evaluate(z, z, z, reader, states, predict=predict, outcome=states["D"], groups=states["X"])
     assert out["energy"] == 0 and out["shift"] == 0 and out["down_agree"] == 1
     assert {"joint_acc", "real_joint_acc", "down_acc", "parity_gap"} <= set(out.index)
+
+
+def test_evaluate_samples(toy):
+    z, states = toy
+    reader = Reader(["X", "D"]).fit(z, states, epochs=5)
+    proba = lambda latent: torch.stack([(latent[:, 0] <= 0).float(), (latent[:, 0] > 0).float()], 1)  # noqa: E731
+    z_prime, z_true = z + 0.5, z + 1.0
+    single = evaluate_samples(z, [z_prime], z_true, reader, states, predict_proba=proba, outcome=states["D"],
+                              groups=states["X"])
+    point = evaluate(z, z_prime, z_true, reader, states, predict=lambda latent: proba(latent).argmax(-1),
+                     outcome=states["D"], groups=states["X"])
+    for key in point.index:  # K = 1 reproduces evaluate
+        assert abs(single[key] - point[key]) < 1e-6, key
+    assert abs(single["energy_score"] - single["distance"]) < 1e-6
+    spread = evaluate_samples(z, [z + 0.5, z - 0.5], z_true, reader, states)
+    assert spread["energy_score"] < spread["distance"]  # the spread term rewards hedging
+    draws = [mean_sample([reader, reader], z, seed=s) for s in range(20)]
+    assert all(d.shape == (len(z), 2) for d in draws)
+    hit = np.mean([d["X"].to_numpy() == states["X"].to_numpy() for d in draws])  # draws follow the averaged proba
+    expected = float(mean_proba([reader, reader], z)["X"][torch.arange(len(z)), torch.tensor(states["X"].to_numpy())].mean())
+    assert abs(hit - expected) < 0.03
 
 
 def test_latents_project_a_wider_cache(tmp_path):
@@ -229,3 +263,34 @@ def test_early_stopping(toy, name):
     log = renderer.fit_log
     assert log["stopped_early"] and log["epochs_run"] < 200 and "validation" in log["history"][0]
     assert log["best_epoch"] == min(range(len(log["history"])), key=lambda i: log["history"][i]["validation"]) + 1
+
+
+def test_flow_fidelity_sharpens_its_own_classifier(toy):
+    from latent_lab.renderer import _neighbours
+
+    z, states = toy
+    assert _neighbours(torch.tensor([[0, 1]]), [3, 2]).tolist() == [[[0, 1], [1, 1], [2, 1], [0, 0]]]
+    index = torch.tensor(states[["X", "D"]].to_numpy())
+    candidates = _neighbours(index, [3, 2])
+
+    def neighbour_ce(renderer):  # the flow's p(s | z) over the true state and its neighbours (uniform prior)
+        log_lik = renderer.flow.log_prob(z.repeat_interleave(4, 0), candidates.flatten(0, 1)).view(len(z), 4)
+        return float(torch.nn.functional.cross_entropy(log_lik, torch.zeros(len(z), dtype=torch.long)))
+
+    plain = RENDERERS["flow"](["X", "D"], epochs=20).fit(z, states)
+    sharp = RENDERERS["flow"](["X", "D"], epochs=20, fidelity=5.0).fit(z, states)
+    with torch.no_grad():
+        assert neighbour_ce(sharp) < neighbour_ce(plain)
+    assert torch.allclose(sharp(z, states, states), z)
+    with pytest.raises(ValueError):
+        RENDERERS["flow"](["X"], fidelity=-1.0)
+
+
+def test_ot_flow_guidance(toy):
+    z, states = toy
+    with pytest.raises(ValueError):
+        RENDERERS["ot_flow"](["X", "D"], guidance=2.0)
+    guided = RENDERERS["ot_flow"](["X", "D"], epochs=2, guidance=2.0, condition_dropout=0.2).fit(z, states)
+    assert torch.allclose(guided(z, states, states), z)
+    moved = guided(z, states, states.assign(X=(states["X"] + 1) % 3))
+    assert moved.shape == z.shape and torch.isfinite(moved).all()

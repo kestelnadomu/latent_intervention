@@ -216,6 +216,53 @@ def cross_fit(
     return readings, readers
 
 
+class OutOfFold:
+    """The fold readers of :func:`cross_fit` as one reader of the cross-fitted rows:
+    row i is read by the reader of fold ``folds[i]``, which never saw it. Reads only
+    latents aligned with ``folds`` (e.g. those rows' edited or target latents);
+    ``rows(index)`` restricts it to a subset of them."""
+
+    def __init__(self, readers: list[Reader], folds) -> None:
+        self.readers, self.folds = list(readers), np.asarray(folds)
+        self.labels = np.unique(self.folds)  # readers[i] belongs to fold labels[i], as in cross_fit
+        if len(self.labels) != len(self.readers):
+            raise ValueError(f"{len(self.readers)} readers for {len(self.labels)} folds")
+        self.names = self.readers[0].names
+
+    def __repr__(self) -> str:
+        return f"OutOfFold({self.readers[0]!r}, {len(self.readers)} folds)"
+
+    def rows(self, index) -> "OutOfFold":
+        """The same readers for the rows ``index`` (positions or a boolean mask) only."""
+        subset = copy.copy(self)
+        subset.folds = self.folds[np.asarray(index)]
+        return subset
+
+    @torch.no_grad()
+    def proba(self, z: torch.Tensor) -> dict[str, torch.Tensor]:
+        """psi(s_c | z) per column, row i read by the reader of fold ``folds[i]``."""
+        if len(z) != len(self.folds):
+            raise ValueError(f"OutOfFold reads its {len(self.folds)} rows, got {len(z)} latents")
+        out = None
+        for k, reader in zip(self.labels, self.readers):
+            rows = torch.as_tensor(self.folds == k)
+            if not rows.any():
+                continue
+            proba = reader.proba(z[rows])
+            out = out or {c: torch.zeros(len(z), p.shape[1]) for c, p in proba.items()}
+            for c, p in proba.items():
+                out[c][rows] = p
+        return out
+
+    def predict(self, z: torch.Tensor) -> pd.DataFrame:
+        """The most likely level per column."""
+        return pd.DataFrame({c: p.argmax(-1).numpy() for c, p in self.proba(z).items()})
+
+    def metrics(self, z: torch.Tensor, states: pd.DataFrame, joint: list[str] | None = None) -> pd.Series:
+        """``state_metrics`` of the out-of-fold reading of (z, states)."""
+        return state_metrics(self.proba(z), states, joint)
+
+
 def mean_proba(readers: list[Reader], z: torch.Tensor) -> dict[str, torch.Tensor]:
     """The readers' averaged psi(s_c | z) per column."""
     probas = [r.proba(z) for r in readers]
@@ -225,6 +272,14 @@ def mean_proba(readers: list[Reader], z: torch.Tensor) -> dict[str, torch.Tensor
 def mean_predict(readers: list[Reader], z: torch.Tensor) -> pd.DataFrame:
     """The most likely level per column under the readers' averaged probabilities."""
     return pd.DataFrame({c: p.argmax(-1).numpy() for c, p in mean_proba(readers, z).items()})
+
+
+def mean_sample(readers: list[Reader], z: torch.Tensor, seed: int = 0) -> pd.DataFrame:
+    """One draw per column from the readers' averaged psi(s_c | z)."""
+    g = torch.Generator().manual_seed(seed)
+    return pd.DataFrame(
+        {c: torch.multinomial(p, 1, generator=g).squeeze(1).numpy() for c, p in mean_proba(readers, z).items()}
+    )
 
 
 def state_metrics(

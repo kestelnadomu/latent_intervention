@@ -117,6 +117,63 @@ def evaluate(
     return pd.Series(out)
 
 
+def evaluate_samples(
+    z: torch.Tensor,
+    z_primes: list[torch.Tensor],
+    z_true: torch.Tensor,
+    reader: Reader | None = None,
+    true_states: pd.DataFrame | None = None,
+    joint: list[str] | None = None,
+    predict_proba: Callable[[torch.Tensor], torch.Tensor] | None = None,
+    outcome: pd.Series | None = None,
+    groups: pd.Series | None = None,
+    scale: torch.Tensor | None = None,
+) -> pd.Series:
+    """Score K edits per unit, e.g. from K draws s ~ psi(. | z), s' = operator(s), against
+    the targets. With one edit (K = 1) every metric equals ``evaluate``'s.
+
+    - Every latent and reader metric of :func:`evaluate`, averaged over the K edits: so
+      ``acc_<c>`` and ``joint_acc`` are the expected accuracies of a sampled edit.
+    - ``energy_score``: per unit E|Z' - phi(x')| - 1/2 E|Z' - Z''| over the edits (the
+      fair estimator, pairs i != j), averaged, in ``evaluate``'s units. Proper: it rewards
+      a spread that matches the uncertainty. For K = 1 it is ``distance``.
+    - Downstream, from ``predict_proba`` (latents -> class probabilities) averaged over
+      the edits, p(Y' | z) = mean_j predict_proba(z'_j): ``down_acc`` of its argmax
+      against ``outcome``, ``down_nll``, ``down_agree`` with the argmax of
+      predict_proba(z), ``parity_gap`` (range over ``groups`` of the mean argmax class,
+      as in ``evaluate``) and ``parity_gap_soft`` (the same for the expected class);
+      ``real_*`` the same on phi(x').
+    """
+    if not z_primes:
+        raise ValueError("pass at least one edit per unit")
+    scale = z.std(0).clamp(min=1e-6) if scale is None else scale
+    root = z.shape[1] ** 0.5
+    out = pd.concat(
+        [evaluate(z, z_prime, z_true, reader, true_states, joint, scale=scale) for z_prime in z_primes], axis=1
+    ).mean(axis=1).to_dict()
+    edits = [z_prime / scale for z_prime in z_primes]
+    fit = torch.stack([(x - z_true / scale).norm(dim=1) for x in edits]).mean(0)
+    k, spread = len(edits), torch.zeros(len(z))
+    for i in range(k):
+        for j in range(i + 1, k):
+            spread += 2 * (edits[i] - edits[j]).norm(dim=1) / (k * (k - 1))
+    out["energy_score"] = float((fit - spread / 2).mean() / root)
+    if predict_proba is not None and outcome is not None:
+        y = torch.tensor(outcome.to_numpy())
+        source = predict_proba(z).argmax(-1)
+        for prefix, latents in (("", z_primes), ("real_", [z_true])):
+            p = torch.stack([predict_proba(latent) for latent in latents]).mean(0)
+            predicted = p.argmax(-1)
+            out[f"{prefix}down_acc"] = float((predicted == y).float().mean())
+            out[f"{prefix}down_nll"] = float(-p.gather(1, y[:, None]).clamp(min=1e-12).log().mean())
+            out[f"{prefix}down_agree"] = float((predicted == source).float().mean())
+            if groups is not None:
+                for name, value in (("parity_gap", predicted.float()), ("parity_gap_soft", p @ torch.arange(p.shape[1]).float())):
+                    means = pd.Series(value.numpy()).groupby(groups.to_numpy()).mean()
+                    out[f"{prefix}{name}"] = float(means.max() - means.min())
+    return pd.Series(out)
+
+
 def factual_score(
     renderer: Renderer, z: torch.Tensor, states: pd.DataFrame, reader: Reader, seed: int = 0, min_units: int = 10
 ) -> pd.Series:

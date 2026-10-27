@@ -5,10 +5,10 @@
 | piece | symbol | in latent_lab |
 |---|---|---|
 | encoder | φ | `Encoder(name, dim)`: `nomic` 64–768, `qwen3` 32–1024, `embeddinggemma` 128–768; `.latents("talent")` loads cached encodings (the models themselves run in `exp/encoding/`) |
-| reader | ψ | `Reader(columns, hidden=0)`: linear (`hidden=0`) or MLP probe; `cross_fit` reads each fold with readers fitted on the others, `mean_predict` averages them |
+| reader | ψ | `Reader(columns, hidden=0)`: linear (`hidden=0`) or MLP probe; `cross_fit` reads each fold with readers fitted on the others, `mean_predict` averages them, `mean_sample` draws from their average |
 | operator | ω_S | any function `states DataFrame -> target states DataFrame`. `LinearSCM(levels, parents, noise)` gives causal ones: `.do(X=3, blocked=None)`, also path-specific; `print(scm)` shows the equations |
 | renderer | ρ | subclasses of `Renderer`: `IdentityRenderer`, `ConstantRenderer`, `GroupOTRenderer`, `StateEffectRenderer` (`guard=` keeps a linear probe's reading fixed), `FlowRenderer`, `EditorRenderer` (minimal edit trained on random targets s' ~ Uniform(S)), `OTEditorRenderer` (the same with an input-convex gradient map), `OTFlowRenderer` (OT flow matching within each state, shared reference). New ones implement `_fit` and `_render` |
-| MLO | ω_Z | `Pipeline(reader, operator, renderer)`; `evaluate` (an independent reader's fidelity, latent distances to target latents φ(x'), downstream) and `state_metrics` (accuracy, NLL, ECE) |
+| MLO | ω_Z | `Pipeline(reader, operator, renderer)`; `evaluate` (an independent reader's fidelity, latent distances to target latents φ(x'), downstream), `evaluate_samples` (the same for K sampled edits per unit: expected accuracies, energy score, downstream from the averaged class probabilities) and `state_metrics` (accuracy, NLL, ECE) |
 
 Data are loaded in the notebook with `pd.read_csv`: any table of discrete states (levels
 0..k-1) indexed by unit id works.
@@ -64,8 +64,20 @@ flowchart LR
 
 - Fitted by maximum likelihood of p(z | s) with AdamW (`lr=1e-3`, weight decay 1e-5),
   batch 64 and gradient clipping at 5. A `validation` share selects the epoch with the
-  lowest per-coordinate NLL; the learning rate halves after 10 stale epochs, training
-  stops after `patience`.
+  lowest per-coordinate objective (the NLL, plus the CE term below); the learning rate
+  halves after 10 stale epochs, training stops after `patience`.
+- `fidelity=λ` (default 0) adds a classification term, NLL / d + λ · CE. The CE is that
+  of the flow's own Bayes classifier p(s | z) ∝ p(z | s) π(s), with π the add-one smoothed
+  state frequencies of the training units, picking the true state against every state
+  that differs from it in one column (1 + Σ(k − 1) candidates, 10 for {X, T, D, U}, so
+  10 flow passes per batch). Why: log p(z | s) = log p(z) + log p(s | z) − log p(s), and
+  only the middle term depends on s. It is at most H(S) nats (log 108 ≈ 4.7), while the
+  NLL grows with d, so in high d maximum likelihood barely uses s and the flow hardly
+  moves z. λ weights the state term independently of d. EmbeddingGemma at d = 768 (seed 0,
+  fitted on pool folds 1–4): λ = 0.1–0.3 nearly triples the search fidelity (0.27 →
+  0.72–0.77) with slightly better realism and unchanged `acc_M`. At λ ≥ 1 the CE term
+  overfits: validation is best after a few epochs, so early stopping keeps a near-identity
+  flow that hardly edits z. The notebook searches λ in {0, 0.1, 0.3}.
 - One learned state code, shared by all blocks: it gives the state far more weight in
   each block than a one-hot appended to d inputs would.
 - Permutations: a fixed random one per block; the second is built so that every
