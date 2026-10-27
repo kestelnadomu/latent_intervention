@@ -77,7 +77,7 @@ flowchart LR
   fitted on pool folds 1–4): λ = 0.1–0.3 nearly triples the search fidelity (0.27 →
   0.72–0.77) with slightly better realism and unchanged `acc_M`. At λ ≥ 1 the CE term
   overfits: validation is best after a few epochs, so early stopping keeps a near-identity
-  flow that hardly edits z. Search λ in {0, 0.03, 0.1, 0.3}.
+  flow that hardly edits z. The notebook searches λ in {0, 0.1, 0.3}.
 - One learned state code, shared by all blocks: it gives the state far more weight in
   each block than a one-hot appended to d inputs would.
 - Permutations: a fixed random one per block; the second is built so that every
