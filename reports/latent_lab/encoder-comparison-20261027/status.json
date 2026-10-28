@@ -1,0 +1,187 @@
+{
+  "status": "complete",
+  "started_at": "2026-10-27T17:31:05.943985+00:00",
+  "stage": "complete",
+  "completed": [
+    {
+      "stage": "encoding:nomic",
+      "report": {
+        "active_artifact": null,
+        "completed": [
+          {
+            "artifact_sha256": "9a0e18ecdd184d0f0352a13b5b1ce319f796d298328ae36a772861bd58b45b39",
+            "file": "z_pairs.pt",
+            "shapes": {
+              "z": [
+                4000,
+                768
+              ],
+              "z_prime": [
+                1000,
+                768
+              ]
+            }
+          },
+          {
+            "artifact_sha256": "349dec6aebe89f2a6efeaf985a79cbc4c5e0797ce1c433bab2574c558147670d",
+            "file": "z_floor.pt",
+            "shapes": {
+              "z": [
+                200,
+                768
+              ]
+            }
+          },
+          {
+            "artifact_sha256": "6757e3dfb1649b4b83f5671485fe33d56d53204a03a722855ae82a463cd39741",
+            "file": "z_factual_vb.pt",
+            "shapes": {
+              "z": [
+                500,
+                768
+              ]
+            }
+          }
+        ],
+        "elapsed_seconds": 2096.495417147875,
+        "finished_at": "2026-10-27T18:06:20.471894+00:00",
+        "output": "data/latents/talent_motivation/nomic_768",
+        "run_id": "nomic-768-v1",
+        "started_at": "2026-10-27T17:31:23.976511+00:00",
+        "status": "complete",
+        "total_texts": 5700,
+        "updated_at": "2026-10-27T18:06:20.471917+00:00"
+      }
+    },
+    {
+      "stage": "encoding:qwen3",
+      "report": {
+        "active_artifact": null,
+        "completed": [
+          {
+            "artifact_sha256": "5730cb6638a83860c626ffa64921342eadb0e788dc575d27c59c19e5bcc614b7",
+            "file": "z_pairs.pt",
+            "shapes": {
+              "z": [
+                4000,
+                1024
+              ],
+              "z_prime": [
+                1000,
+                1024
+              ]
+            }
+          },
+          {
+            "artifact_sha256": "600bff6e066f18a84e92b32d962261685719be93657efd71972eb4abdd03ef62",
+            "file": "z_floor.pt",
+            "shapes": {
+              "z": [
+                200,
+                1024
+              ]
+            }
+          },
+          {
+            "artifact_sha256": "c2f4169acc8d589338670805fdb4074169010e28c4b79ad2527156c23bb31d37",
+            "file": "z_factual_vb.pt",
+            "shapes": {
+              "z": [
+                500,
+                1024
+              ]
+            }
+          }
+        ],
+        "elapsed_seconds": 7928.593546465039,
+        "finished_at": "2026-10-27T20:18:59.832082+00:00",
+        "output": "data/latents/talent_motivation/qwen3_1024",
+        "run_id": "qwen3-1024-v1",
+        "started_at": "2026-10-27T18:06:51.238555+00:00",
+        "status": "complete",
+        "total_texts": 5700,
+        "updated_at": "2026-10-27T20:18:59.832095+00:00"
+      }
+    },
+    {
+      "stage": "encoding:langvae",
+      "report": {
+        "active_artifact": null,
+        "completed": [
+          {
+            "artifact_sha256": "5b0085c56f63aef0da216562bd65f42df49eb3900abe92548ef676d27e2c5af6",
+            "file": "z_pairs.pt",
+            "shapes": {
+              "z": [
+                4000,
+                128
+              ],
+              "z_prime": [
+                1000,
+                128
+              ]
+            }
+          },
+          {
+            "artifact_sha256": "4ef7e3e367a25c05e418f57c0bc26c0788efdcc96d31d41b001c535177a28064",
+            "file": "z_floor.pt",
+            "shapes": {
+              "z": [
+                200,
+                128
+              ]
+            }
+          },
+          {
+            "artifact_sha256": "d68d918cc6a6105908f3b45f1703609a8909754cc31f7c3b53b9621b81e7c7e0",
+            "file": "z_factual_vb.pt",
+            "shapes": {
+              "z": [
+                500,
+                128
+              ]
+            }
+          }
+        ],
+        "elapsed_seconds": 1459.821975827217,
+        "finished_at": "2026-10-27T20:43:31.541390+00:00",
+        "output": "data/latents/talent_motivation/langvae",
+        "run_id": "langvae-128-v1",
+        "started_at": "2026-10-27T20:19:11.719443+00:00",
+        "status": "complete",
+        "total_texts": 5700,
+        "updated_at": "2026-10-27T20:43:31.541412+00:00"
+      }
+    }
+  ],
+  "updated_at": "2026-10-27T21:59:38.370310+00:00",
+  "elapsed_seconds": 16112.426308333874,
+  "finished_at": "2026-10-27T21:59:38.370300+00:00",
+  "verification": {
+    "finished_at": "2026-10-27T21:59:37.566640+00:00",
+    "report": "reports/latent_lab/run-20261027-225936.json",
+    "baseline": "reports/latent_lab/run-20261027-075057.json",
+    "results_identical": true,
+    "latent_spaces": [
+      "embeddinggemma-128",
+      "embeddinggemma-256",
+      "embeddinggemma-512",
+      "embeddinggemma-768",
+      "langvae-128",
+      "nomic-128",
+      "nomic-256",
+      "nomic-512",
+      "nomic-64",
+      "nomic-768",
+      "qwen3-1024",
+      "qwen3-128",
+      "qwen3-256",
+      "qwen3-32",
+      "qwen3-512",
+      "qwen3-64",
+      "qwen3-768"
+    ],
+    "caches_loaded": 186,
+    "reader_cache_groups_fitted": 96
+  }
+}

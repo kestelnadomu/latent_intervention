@@ -1,0 +1,113 @@
+{
+  "auxiliary": null,
+  "paired": null,
+  "protocol": {
+    "config_sha256": "91cc695a4b9790a51ee0e8bbd4d68551e7610edbc0156eeffa836bc0c326aaf0",
+    "encoding": {
+      "batch_size": 8,
+      "comparison_tolerance": {
+        "atol": 1e-06,
+        "rtol": 1e-05
+      },
+      "derivation": "normalize(first_d_coordinates(normalize(last_nonpadding_token)))",
+      "device": "cpu",
+      "encoder": {
+        "code_revision": null,
+        "deterministic": true,
+        "encoder": "Qwen/Qwen3-Embedding-0.6B",
+        "encoder_variant": "qwen3",
+        "langvae_decoder_model": null,
+        "langvae_decoder_revision": null,
+        "langvae_encoder_model": null,
+        "langvae_encoder_revision": null,
+        "latent_dimension": 1024,
+        "local_checkpoint": null,
+        "local_checkpoint_sha256": null,
+        "max_length": 1024,
+        "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+        "qwen3_protocol": {
+          "add_special_tokens": true,
+          "attention_implementation": "sdpa",
+          "inference_dtype": "float32",
+          "instruction": "",
+          "normalization": "truncate_1024+l2",
+          "padding_side": "left",
+          "pooling": "last_nonpadding_token",
+          "truncation": "error",
+          "use_cache": false
+        },
+        "task": ""
+      },
+      "format_version": 1,
+      "input_sha256": {
+        "pair_index": "b606c87fa8a2ff5bb90d3f5ae1d552bc922c23d8c749b89055c61a5b44ea5ed5",
+        "texts": "62f1f1fd67d78957566302655efbedf83f605561cd5c51bdb7db33a12a572ce8",
+        "texts_counterfactual": "46032df495f93c67b1c78d9e1db999ec202e15255c78c1d78ed55fd5e9faae43"
+      },
+      "model_files_sha256": {
+        "config.json": "b5bf1f51fc45be473a54718cef92448d90a1be001bf9b9a44b8c7f10a19feaa9",
+        "merges.txt": "8831e4f1a044471340f7c0a83d7bd71306a5b867e95fd870f74d0c5308a904d5",
+        "model.safetensors": "0437e45c94563b09e13cb7a64478fc406947a93cb34a7e05870fc8dcd48e23fd",
+        "tokenizer.json": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a",
+        "tokenizer_config.json": "253153d0738ceb4c668d2eff957714dd2bea0b56de772a9fdccd96cbf517e6a0",
+        "vocab.json": "ca10d7e9fb3ed18575dd1e277a2579c16d108e32f27439684afa0e10b1440910"
+      },
+      "outputs": {
+        "1024": "/home/boustanip/latent_intervention/latent_intervention/data/latents/talent_motivation/qwen3_1024/z_pairs.pt"
+      },
+      "source_sha256": {
+        "/home/boustanip/latent_intervention/latent_intervention/exp/encoding/queue.py": "4f57fb6d08942dfac142fc8290a74dbe8c7b4f0611d3c9c8136b104d8fb6479a",
+        "exp/encoding/qwen3_preflight.py": "d1d4219d8af894e52865acc5b4dcfab9fe0f56f75e0dbd9d95d0aa2fbb30f12c",
+        "exp/encoding/qwen3_queue.py": "89a5e7a6f155d6abaf21c71aa1fd96ac6c657fb48e9ad9dd8ec879a054cfb499",
+        "exp/encoding/requirements/qwen3.lock": "9a2d6ce624a4e6b3a6e73e246bed535bc22732024137806399cd82b5f983667b",
+        "src/artifact_io.py": "1cf8efb12816b060615aff7ab55ef279acbc847bb07652a8acbf4925696e8d63",
+        "src/config.py": "09bb66109d0b24ea2456d6bf81e317df6c76c4ccf272c35f07f0ef124b28a02f",
+        "src/encoder/__init__.py": "da9da450c57c8fc87ed2366262503db20ad08e741003429a8e49caf882d884e7",
+        "src/encoder/langvae.py": "11945c9e829c63827d5d32ac42d50121c1c4ea85272682f2d936e367e4576f57",
+        "src/encoder/matryoshka.py": "e8a8493a5331a771c274d195484d773490830c504900f802527e89fe7cb21647",
+        "src/encoder/nomic.py": "5d3fa6f33a62f82faaaaa0319013850c8e3a9e98776a9049bbc368ffa27919ef",
+        "src/encoder/progress.py": "f65c12c8e75dc5db921f8e20c13e53f070872261760478d732fb64c40bb5fdfa",
+        "src/encoder/protocols.py": "44408fdee2384ef78afaca1948d179c8d5ad09cedabdc03904f478be889dda4b",
+        "src/encoder/qwen3.py": "de185a660d5b4c1a444be70d4082b26f0557d2746161fb0b6ad9ff519ba3892d",
+        "src/latent_writer.py": "67029c0b5c4a66f503cdd68aa7e9b623eebf1195173993c4c5bc7f50ffe826d1",
+        "src/pair_encoding.py": "674a324aa2d72cdae3dc4d6659d04d6a684fce695cc991a79c797102439849f7",
+        "uv.lock": "26059044ef0e387787372709e8ff59c5b061c778240661e31f6bc75aceb995de"
+      },
+      "threads": 4,
+      "torch_version": "2.12.1+cu130",
+      "transformers_version": "4.57.6"
+    },
+    "input_sha256": {
+      "codebook": "a8e889c097bd1aa4aefea204d0e4728f692909c07474751f428a03a9b2763139",
+      "codebook_held_out": "c818d695992212a7fa1e892a87c0254871a0dd40270d14b61d3b2ec4f523970d",
+      "interventions": "933021b65674fe34f58d7542c9543c8d71204aa5b71c76799399e05b663570fd",
+      "pair_index": "b606c87fa8a2ff5bb90d3f5ae1d552bc922c23d8c749b89055c61a5b44ea5ed5",
+      "partition": "b4dcb9202ff4729ade8adb6e6a9df539c336fe91f2231c2b3ec8ca220d68c409",
+      "render_plan.csv": "8e114b62734b1865ad81499f8b2313f4070ad9b4449bc0a3e06d195a9ccf94ef",
+      "sim_config": "18196d09573badabb7a54d3cf369954f82de4b2fa19722efb46d068b2086da2c",
+      "sim_counterfactual": "2e6524bd830dd0b4ab392fd31c63d5210eec3a02a8edea8f53c63001030841fd",
+      "sim_data_counterfactual_states.csv": "7b86f03b792fe1c53dcd1af8ef03ce50e9bd6d3cf265e1ff9752ebab3200a0f9",
+      "sim_data_epsilon.csv": "7fe877b6bc5ebff34d1dae19a42d48a0aa950981daac464d8dcd0e05a5a8d1eb",
+      "sim_factual": "d3298a0055fadb7b5c94f80d5627088fb7e8a7aa575761a24bec901f7cb72fd5",
+      "simulation_info.json": "f95e53586adfd6de317cef071edcb89b0fdb193c2abbc3307c58961f116f8e61",
+      "texts": "62f1f1fd67d78957566302655efbedf83f605561cd5c51bdb7db33a12a572ce8",
+      "texts_counterfactual": "46032df495f93c67b1c78d9e1db999ec202e15255c78c1d78ed55fd5e9faae43",
+      "texts_counterfactual_generation": "7ef88b329b297c468ab3d82fb98b335203e45d0d272dc9a5608c77d6510b81bc",
+      "texts_floor": "442cc22b95b6aed93c1bc4eae8e88e8213fe3052bdfcbbfd069652361ebabab3",
+      "texts_floor_generation": "d694a2e2156d5217052492d352fc2d0f5fb63635c3ae31f402b2e54c1878583e",
+      "texts_generation": "e14db3e039b64df001817b14e5138380fd80ad18222791eabaa51c2fc3dff2bc",
+      "texts_held_out": "dbd88fbac878c8928e03db95db2a418c2cd27de4cc410147e40604ba61d2c30a",
+      "texts_held_out_generation": "00d608334ff948a5ba0264dacb584140f4f12c8955982c3f86ed4c1778a77ea2"
+    },
+    "run_id": "qwen3-1024-v1",
+    "source_sha256": {
+      "/home/boustanip/latent_intervention/latent_intervention/exp/encoding/talent_motivation.py": "ef99388b93e8c73dfbcf84335d3a3c3197cb42364e878110b683badd6542aa79",
+      "exp/encoding/text_artifact.py": "fa63fec3581a1c0987028530f3308d23e17a2e1761f09e2f4f7adb3712ca114d",
+      "exp/sim/design.py": "874973fc01547851c115d8b74f7b52de1b17fe0f88b4e0d67ebaa85d96151ce2",
+      "exp/sim/paired_data.py": "e9a47c439c6b63272a1ad3f4cd6d99b998391358a4d2b5d226ed8743af0fef2f",
+      "exp/sim/render.py": "fc6f95ae893c9454a6223db55303dab5bc5158eb3c74c00b5f6bc2e2e0208e76",
+      "scripts/run_talent_motivation_encoding.sh": "ef5f8bc0c85e6db2fd2e582ecc68acf1fa8eb0c550972d1bc5f542f0abcd20ed"
+    }
+  },
+  "status": "passed"
+}
