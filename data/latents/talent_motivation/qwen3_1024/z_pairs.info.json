@@ -1,0 +1,41 @@
+{
+  "artifact_sha256": "5730cb6638a83860c626ffa64921342eadb0e788dc575d27c59c19e5bcc614b7",
+  "artifact_version": 1,
+  "code_revision": null,
+  "counterfactual_test_units": 1000,
+  "deterministic": true,
+  "encoder": "Qwen/Qwen3-Embedding-0.6B",
+  "encoder_variant": "qwen3",
+  "factual_units": 4000,
+  "identity_test_units": 0,
+  "input_sha256": {
+    "counterfactual_text": "46032df495f93c67b1c78d9e1db999ec202e15255c78c1d78ed55fd5e9faae43",
+    "factual_text": "62f1f1fd67d78957566302655efbedf83f605561cd5c51bdb7db33a12a572ce8",
+    "pair_index": "b606c87fa8a2ff5bb90d3f5ae1d552bc922c23d8c749b89055c61a5b44ea5ed5"
+  },
+  "langvae_decoder_model": null,
+  "langvae_decoder_revision": null,
+  "langvae_encoder_model": null,
+  "langvae_encoder_revision": null,
+  "langvae_version": null,
+  "latent_dimension": 1024,
+  "local_checkpoint": null,
+  "local_checkpoint_sha256": null,
+  "max_length": 1024,
+  "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+  "normalization": "truncate_1024+l2",
+  "qwen3_protocol": {
+    "add_special_tokens": true,
+    "attention_implementation": "sdpa",
+    "inference_dtype": "float32",
+    "instruction": "",
+    "normalization": "truncate_1024+l2",
+    "padding_side": "left",
+    "pooling": "last_nonpadding_token",
+    "truncation": "error",
+    "use_cache": false
+  },
+  "task": "",
+  "task_prefix": null,
+  "transformers_version": "4.57.6"
+}
