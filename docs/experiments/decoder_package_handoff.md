@@ -6,6 +6,35 @@ The package side was preferred for the sole merge conflict, in `.gitignore`.
 The additive text-decoder modules, configurations, isolated environment, tests,
 and historical reports were retained. No model was retrained or deleted.
 
+**Inspection of the earlier fitted package run (2026-10-27):** the
+`latent_lab` run present at the preservation check used
+`Encoder("embeddinggemma", 256)`, and its saved readers and flows consume
+256-D vectors. The 768-D cache described below is
+the source from which those vectors are derived, not the fitted package model
+dimension. These four historical decoders cannot directly decode its outputs.
+See the separate [package 256-D decoder workflow](text_realizer_package_256.md)
+for the new factual-only fit on `talent_motivation`.
+
+**Subsequent package update (2026-10-27):** commit `18f09e3`, now merged into
+`decoder`, fits the main pipeline at **768 dimensions** on the same package
+corpus. The 256-D compatibility statements below describe the earlier snapshot.
+The retained historical 768-D decoders match the new width but still have the
+older `talent` training corpus. A separate [768-D package decoder comparison](text_realizer_package_768.md)
+trains fresh factual-only 270M and 1B decoders on `talent_motivation`, preserving
+all earlier checkpoints and the running 256-D jobs.
+
+**Portable evaluation setup (2026-10-28):** the four new package-corpus
+factual-only decoders have completed and exported their inference checkpoints.
+The [package counterfactual evaluation runbook](text_realizer_package_evaluation.md)
+provides `prepare`, `generate`, and `score` commands for all 1,000 test units,
+from both oracle and predicted vectors. A verified portable bundle is ready
+locally; full generation was launched on all four GPUs at 11:58 Europe/Berlin
+on 28 October, with scoring scheduled after successful completion. Its manifest distinguishes
+the earlier 256-D reader/flow protocol from the updated 768-D protocol.
+Generation and scoring completed successfully at 22:42:52 that evening;
+all 8,000 outputs and their checksums were verified on 29 October. The runbook
+now includes the results and factual-fidelity limitations.
+
 ## Four retained inference checkpoints
 
 Paths are relative to the repository root on this GPU machine. These are
@@ -62,14 +91,16 @@ projection, normalization, and FP32 inference protocol. Metadata field names
 differ between the package manifest and decoder checkpoint; compare their
 meaning and full protocol, not raw dictionary equality across schemas.
 
-This establishes encoder compatibility, **not reconstruction quality** on new
+This establishes compatibility with the **full 768-D cache**, not with the
+package's fitted 256-D reader/flow outputs, and **not reconstruction quality** on new
 CVs or on predicted `h_Z` outputs. These decoders were trained on the older
 `talent` CV corpus, not the new `talent_motivation` corpus. New templates,
 attributes, interventions, and off-distribution edited vectors can affect
 performance. The saved evaluation results are not measurements on the new
 package data.
 
-Use only the package's compatible **768-D** outputs. The 256-D variants,
+Use these historical checkpoints only with compatible **768-D** outputs; the
+actual saved `latent_lab` run does not supply those outputs. Its 256-D vectors,
 LangVAE, and Nomic outputs are not interchangeable. Do not pad 256-D vectors or
 silently normalize edited vectors to make them fit. A stochastic editor's sample
 or component must be chosen reproducibly and remain aligned with its candidate
