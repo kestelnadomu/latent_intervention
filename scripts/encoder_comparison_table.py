@@ -1,7 +1,10 @@
 """Export the completed latent_lab encoder comparison without loading or fitting models.
 
-Writes the paper table ``overleaf/tables/encoder_decoder.tex`` (float and caption in
-``overleaf/appendix/encoder.tex``) and a Markdown/CSV/metadata record of it.
+Writes the paper table ``overleaf/tables/encoder_decoder.tex`` and figure
+``overleaf/figures/encoder_comparison.pdf`` (floats and captions in
+``overleaf/appendix/encoder.tex``) and a Markdown/CSV/metadata record of them:
+
+    uv run --with matplotlib==3.10.3 python scripts/encoder_comparison_table.py
 """
 
 from __future__ import annotations
@@ -20,6 +23,16 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPORT = ROOT / "reports/latent_lab/run-20261027-225936.json"
 DEFAULT_OUTPUT = ROOT / "reports/latent_lab/encoder-comparison-20261027"
 PAPER_TABLE = ROOT / "overleaf/tables/encoder_decoder.tex"
+PAPER_FIGURE = ROOT / "overleaf/figures/encoder_comparison.pdf"
+# Colour (categorical slots 1-4, checked with the dataviz palette validator) and marker per
+# encoder, in legend order: the order of the curves at their right end.
+STYLE = {
+    "embeddinggemma": ("#2A78D6", "o"),
+    "qwen3": ("#EB6834", "s"),
+    "nomic": ("#1BAF7A", "^"),
+    "langvae": ("#EDA100", "D"),
+}
+T95 = 2.776  # Student-t 0.975 quantile with 4 df: 95 % interval over the five psi seeds
 SIM = ROOT / "data/sim_talent_motivation"
 JOINT = ["X", "T", "D", "U"]
 VERBALIZED = ["X", "D", "U", "P", "L", "H", "A"]  # what the CVs show; T only through its proxies
@@ -207,6 +220,43 @@ def latex_table(
     return "\n".join(lines)
 
 
+def figure(rows: list[dict], path: Path) -> None:
+    """psi's joint accuracy over d (log scale) per encoder, 95 % seed intervals as bands."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    # TrueType fonts: ACM rejects the Type 3 fonts matplotlib embeds by default.
+    plt.rcParams.update({"font.size": 7, "pdf.fonttype": 42})
+    fig, ax = plt.subplots(figsize=(4.1, 2.1))
+    for family, (color, marker) in STYLE.items():
+        series = [r for r in rows if r["encoder_key"].startswith(f"{family}-")]
+        d = [r["dimension"] for r in series]
+        acc = np.array([100 * r["eval_joint_acc"] for r in series])
+        half = np.array([100 * T95 * r["eval_joint_acc_sd"] / math.sqrt(5) for r in series])
+        if len(series) > 1:
+            ax.fill_between(d, acc - half, acc + half, color=color, alpha=0.2, linewidth=0)
+        else:  # a single width: its interval as an error bar
+            ax.errorbar(d, acc, yerr=half, fmt="none", ecolor=color, elinewidth=1)
+        ax.plot(d, acc, color=color, marker=marker, markersize=5, linewidth=1.5,
+                markeredgecolor="white", markeredgewidth=0.6, label=FAMILIES[family][0])
+    ticks = [32, 64, 128, 256, 512, 1024]  # 768 sits unlabelled between 512 and 1024
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(ticks, [str(t) for t in ticks])
+    ax.minorticks_off()
+    ax.set_ylim(0, 100)
+    ax.set_xlabel("Latent width $d$ (log scale)")
+    ax.set_ylabel(r"Joint accuracy of $\psi$ (%)")
+    ax.grid(axis="y", color="0.9", linewidth=0.6)
+    ax.set_axisbelow(True)
+    ax.spines[["top", "right"]].set_visible(False)
+    ax.legend(loc="center left", bbox_to_anchor=(1.02, 0.5), frameon=False)
+    # No creation date: the same report gives the same PDF bytes.
+    fig.savefig(path, bbox_inches="tight", metadata={"CreationDate": None})
+    plt.close(fig)
+
+
 def markdown_table(
     rows: list[dict], best: dict[str, float], refs: dict, source: str, sha: str
 ) -> str:
@@ -313,6 +363,7 @@ def main() -> None:
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)
     PAPER_TABLE.write_text(latex_table(rows, best, refs, source, sha), newline="\n")
+    figure(rows, PAPER_FIGURE)
     (output / "encoder_comparison.md").write_text(
         markdown_table(rows, best, refs, source, sha), encoding="utf-8", newline="\n"
     )
