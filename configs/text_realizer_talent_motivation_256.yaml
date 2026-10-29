@@ -1,0 +1,76 @@
+# Separate factual-only decoder for the actual latent_lab package representation.
+format_version: 1
+experiment: talent_motivation_256
+seed: 42
+inputs:
+  factual: data/text_talent_motivation/cv_factual.csv
+  pairs: data/sim_talent_motivation/pair_index.csv
+  partition: data/sim_talent_motivation/partition.csv
+  latents: data/latents/talent_motivation/embeddinggemma_768/z_pairs.pt
+  info: data/latents/talent_motivation/embeddinggemma_768/z_pairs.info.json
+  manifest: data/latents/talent_motivation/embeddinggemma_768/manifest.json
+  sha256:
+    factual: 62f1f1fd67d78957566302655efbedf83f605561cd5c51bdb7db33a12a572ce8
+    pairs: b606c87fa8a2ff5bb90d3f5ae1d552bc922c23d8c749b89055c61a5b44ea5ed5
+    partition: b4dcb9202ff4729ade8adb6e6a9df539c336fe91f2231c2b3ec8ca220d68c409
+    latents: 110c9bc16ef7f7917e7af647336ecafb0c9e16036af2d60febedf36c1ccfe617
+    info: 3f899ff310f4f2f93c12b60a64129a69d753b83c579a369de9da5707df219960
+    manifest: 33799b16597056f8f452fd6982df77f46ca404a04d50427f59d11a5eab101d90
+paths:
+  prepared: data/latents/talent_motivation/embeddinggemma_256/text-realizer-prepared
+  models: models/talent_motivation/embeddinggemma_256/text-realizer
+  reports: reports/talent_motivation/embeddinggemma_256/text-realizer
+  cache: .cache/huggingface/hub
+encoder:
+  embeddinggemma_model_name: google/embeddinggemma-300m
+  embeddinggemma_model_revision: 57c266a740f537b4dc058e1b0cda161fd15afa75
+  embeddinggemma_latent_dim: 256
+  embeddinggemma_max_len: 2048
+model:
+  name: google/gemma-3-270m
+  revision: 9b0cfec892e2bc2afd938c98eabe4e4a7b1e0ca1
+  # SDPA fails cached/full parity at the sliding-window boundary on this stack.
+  # Eager passes the unchanged preflight tolerance; this is not an architecture change.
+  attention_implementation: eager
+  latent_dim: 256
+  prefix_tokens: 16
+  input_scaling: sqrt_latent_dim
+  lora_rank: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  lora_targets: [q_proj, k_proj, v_proj, o_proj, gate_proj, up_proj, down_proj]
+split:
+  fit_count: 2800
+  tune_count: 200
+  evaluation_count: 1000
+training:
+  epochs: 30
+  effective_batch: 32
+  projector_lr: 0.001
+  lora_lr: 0.0002
+  weight_decay: 0.01
+  warmup_fraction: 0.05
+  clip: 1.0
+  patience: 5
+  min_delta: 0.0001
+  checkpoint_every: 25
+  precision: float32
+  gradient_checkpointing: true
+generation:
+  minimum_budget: 1024
+  budget_multiple: 128
+  batch_size: 1
+selection:
+  nll_gap: 0.05
+  character_gap: 0.02
+evaluation:
+  bootstrap_samples: 2000
+  bootstrap_seed: 20261027
+  minimum_retrieval_gain: 0.02
+  examples: 20
+preflight:
+  smoke_updates: 20
+  benchmark_steps: 100
+  overfit_updates: 500
+  overfit_character_similarity: 0.95
+  memory_headroom: 0.15
