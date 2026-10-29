@@ -1,0 +1,62 @@
+{
+  "bertscore": {
+    "device": "cpu",
+    "idf": false,
+    "model": "FacebookAI/roberta-large",
+    "num_layers": 17,
+    "rescale_with_baseline": false,
+    "revision": "722cf37b1afa9454edce342e7895e588b6ff1d59"
+  },
+  "definition": "floor text (unit re-rendered with another country of the same region, same state) scored against the unit's factual CV",
+  "format_version": 1,
+  "inputs_sha256": {
+    "factual": "62f1f1fd67d78957566302655efbedf83f605561cd5c51bdb7db33a12a572ce8",
+    "floor": "442cc22b95b6aed93c1bc4eae8e88e8213fe3052bdfcbbfd069652361ebabab3"
+  },
+  "row": {
+    "character_similarity": 0.45273668052665117,
+    "chrf": 0.6891684826303632,
+    "f1": 0.9249131807684898,
+    "facts": {
+      "country": {
+        "accuracy": 0.0,
+        "reference_scorable": 197
+      },
+      "degree": {
+        "accuracy": 0.9747474747474747,
+        "reference_scorable": 198
+      },
+      "project_count": {
+        "accuracy": 0.9186046511627907,
+        "reference_scorable": 172
+      },
+      "region": {
+        "accuracy": 0.9949238578680203,
+        "reference_scorable": 197
+      },
+      "university_tier": {
+        "accuracy": 1.0,
+        "reference_scorable": 200
+      }
+    },
+    "mean_absolute_sentiment_delta": 0.005850000000000001,
+    "mean_sentiment_delta": -0.0010390000000000043,
+    "method": "same_state_rewrite",
+    "precision": 0.9251268050074577,
+    "recall": 0.9247107097506523,
+    "rouge_l": 0.48030518744254624,
+    "units": 200
+  },
+  "unit_ids_sha256": "b2abfb377aa45f59de25817a069ea2a1f9102450f85652e23da9c69da5af5ce6",
+  "units": 200,
+  "vader": {
+    "vaderSentiment": "3.3.2"
+  },
+  "versions": {
+    "bert-score": "0.3.13",
+    "rapidfuzz": "3.14.1",
+    "sacrebleu": "2.5.1",
+    "torch": "2.12.1",
+    "transformers": "4.48.0"
+  }
+}

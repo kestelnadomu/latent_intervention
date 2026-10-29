@@ -1,7 +1,8 @@
 """Portable LaTeX tables for the four package CV decoders; standard library only.
 
-Render from the shipped aggregate JSON and its non-generative reference rows (retrieval,
-unedited x; ``exp.text_realizer_package_eval.baselines``), without CV texts or downloads:
+Render from the shipped aggregate JSON, its non-generative reference rows (retrieval,
+unedited x) and the noise floor (same-state rewrite; both from
+``exp.text_realizer_package_eval.baselines``), without CV texts or downloads:
     python -m exp.paper_tables.decoder_package_table --output tables/decoder.tex
 
 Refresh the aggregate on a machine holding the completed evaluation reports:
@@ -23,6 +24,7 @@ from .decoder_table import bold, cell
 ROOT = Path(__file__).resolve().parents[2]
 SUMMARY = ROOT / "docs/experiments/results/decoder_package_v1.json"
 BASELINES = ROOT / "docs/experiments/results/decoder_package_baselines_v1.json"
+FLOOR = ROOT / "docs/experiments/results/decoder_package_floor_v1.json"
 DIMENSIONS = (256, 768)
 DECODERS = ("256-270m", "256-1b", "768-270m", "768-1b")
 CONDITIONS = ("oracle", "predicted")
@@ -252,10 +254,37 @@ def _row(panel: str, dim: str, label: str, values: dict) -> str:
     return "  " + " & ".join([dim, label, *cells]) + ROW_END
 
 
-def render(summary: dict, baselines: dict) -> dict[str, str]:
+def validate_floor(floor: dict) -> dict:
+    """The noise-floor row: same-state rewrites against their factual CVs (own units)."""
+    if floor.get("format_version") != 1:
+        raise ValueError("unsupported noise-floor format")
+    row = floor["row"]
+    for name in ("character_similarity", "chrf", "rouge_l", "f1"):
+        _number(row[name])
+    _number(row["mean_sentiment_delta"], -2, 2)
+    _number(row["mean_absolute_sentiment_delta"], 0, 2)
+    for field in FIELDS:
+        if row["facts"][field]["accuracy"] is not None:
+            _number(row["facts"][field]["accuracy"])
+    return row
+
+
+def render(summary: dict, baselines: dict, floor: dict) -> dict[str, str]:
     """Render text, overall-fact, changed-fact and preserved-fact tabulars."""
     base, bert, vader, changed = validate(summary)
     references = validate_baselines(summary, baselines, base, changed)
+    rewrite = validate_floor(floor)
+
+    def floor_values(panel: str) -> dict:
+        if panel == "text":
+            return rewrite
+        # the rewrite changes the country by construction; it has no changed/preserved split
+        return {
+            f: rewrite["facts"][f]["accuracy"]
+            if panel == "facts" and f != "country"
+            else None
+            for f in FIELDS
+        }
 
     def decoder_values(key: tuple, panel: str) -> dict:
         if panel == "text":
@@ -297,6 +326,8 @@ def render(summary: dict, baselines: dict) -> dict[str, str]:
             "% All four decoders are factual-only. Oracle/predicted refers to input vectors.",
             "% Retrieval: the fit CV with the closest latent; unedited x: the factual CV as x'.",
             f"% Reference rows SHA256: {_digest(baselines['rows'])}",
+            f"% Same-state rewrite (noise floor): {floor['units']} floor texts against their"
+            " factual CVs; the country differs by construction.",
             "% 256-D and 768-D reader/flow training protocols differ; not a dimension-only comparison.",
             "% Text scores use raw 0--1 scales; facts are percentages; VADER differences are raw.",
             "% Fact n is the scorable denominator; -- means n=0. Interpret small groups cautiously.",
@@ -308,13 +339,13 @@ def render(summary: dict, baselines: dict) -> dict[str, str]:
             + ROW_END,
         ]
         for condition, label in (
-            ("oracle", r"Oracle $Z'$"),
-            ("predicted", r"Predicted $\hat{Z}'$"),
+            ("oracle", r"$\varphi^{-1}(\varphi(x'))$ against $x'$"),
+            ("predicted", r"$\varphi^{-1}(z')$ against $x'$"),
         ):
             lines.extend(
                 [
                     r"  \midrule",
-                    rf"  \multicolumn{{{columns}}}{{l}}{{\textit{{{label}; {summary['units']:,} test CVs}}}} \\",
+                    rf"  \multicolumn{{{columns}}}{{l}}{{\textit{{{label}}}}} \\",
                 ]
             )
             for dim in DIMENSIONS:
@@ -330,6 +361,7 @@ def render(summary: dict, baselines: dict) -> dict[str, str]:
             [
                 r"  \midrule",
                 _row(panel, "--", r"Unedited $x$", values),
+                _row(panel, "--", "Same-state rewrite", floor_values(panel)),
                 r"  \bottomrule",
                 r"\end{tabular}",
             ]
@@ -361,6 +393,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--summary", type=Path, default=SUMMARY)
     parser.add_argument("--baselines", type=Path, default=BASELINES)
+    parser.add_argument("--floor", type=Path, default=FLOOR)
     parser.add_argument(
         "--reports",
         type=Path,
@@ -378,7 +411,11 @@ def main() -> None:
     summary = (
         collect(args.reports) if args.reports else json.loads(args.summary.read_text())
     )
-    tables = render(summary, json.loads(args.baselines.read_text(encoding="utf-8")))
+    baselines, floor = (
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in (args.baselines, args.floor)
+    )
+    tables = render(summary, baselines, floor)
     if args.reports:
         _write(
             args.summary,

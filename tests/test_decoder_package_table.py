@@ -117,20 +117,41 @@ def reference_rows(summary):
     }
 
 
+# Synthetic noise floor: 3 same-state rewrites against their factual CVs.
+FLOOR = {
+    "format_version": 1,
+    "units": 3,
+    "row": {
+        "character_similarity": 0.5,
+        "chrf": 0.7,
+        "rouge_l": 0.5,
+        "f1": 0.93,
+        "mean_sentiment_delta": 0.0,
+        "mean_absolute_sentiment_delta": 0.005,
+        "facts": {f: {"accuracy": 0.8, "reference_scorable": 3} for f in table.FIELDS},
+    },
+}
+
+
 def test_portable_collection_and_rendering(reports):
     summary = table.collect(reports)
     assert "SYNTHETIC-CV-TEXT" not in json.dumps(summary)
-    panels = table.render(summary, reference_rows(summary))
+    panels = table.render(summary, reference_rows(summary), FLOOR)
     assert set(panels) == {"text", "facts", "changed", "preserved"}
     assert all(text.count("256 & Gemma 3 270M") == 2 for text in panels.values())
     assert all(text.count("& Retrieval &") == 4 for text in panels.values())
     assert all(text.count("-- & Unedited $x$") == 1 for text in panels.values())
+    # the rewrite changes the country by construction and has no changed/preserved split
+    assert "-- & Same-state rewrite & -- & 80.0 &" in panels["facts"]
+    assert "-- & Same-state rewrite & -- & -- & -- & -- & --" in panels["changed"]
+    assert "-- & Same-state rewrite & 0.500 & 0.700" in panels["text"]
     assert "0.8456" in panels["text"] and "-0.00004" in panels["text"]
     assert "90.0" in panels["facts"] and "$n=10$" in panels["facts"]
     assert "$n=0$" in panels["preserved"] and " & -- & -- & " in panels["preserved"]
     assert "$n=1$" in panels["changed"]
     for text in panels.values():
-        assert "Oracle $Z'$" in text and "Predicted $\\hat{Z}'$" in text
+        assert r"$\varphi^{-1}(\varphi(x'))$ against $x'$" in text
+        assert r"$\varphi^{-1}(z')$ against $x'$" in text
         assert "Oracle-exposed decoder" not in text
         assert text.count(r"\begin{tabular}") == text.count(r"\end{tabular}") == 1
         assert all(line.endswith(r"\\") for line in text.splitlines() if " & " in line)
@@ -177,14 +198,14 @@ def test_incompatible_reports_refused(reports, problem):
         row["accuracy"] = 1.0
     with pytest.raises(ValueError):
         summary["reports_sha256"] = table._digest(data)
-        table.render(summary, baselines)
+        table.render(summary, baselines, FLOOR)
 
 
 def test_modified_aggregate_checksum_refused(reports):
     summary = table.collect(reports)
     summary["reports"]["scores"]["metrics"][0]["chrf"] = 0.9
     with pytest.raises(ValueError, match="checksum"):
-        table.render(summary, reference_rows(summary))
+        table.render(summary, reference_rows(summary), FLOOR)
 
 
 def test_cli_renders_without_site_packages_or_raw_reports(reports, tmp_path):
@@ -193,6 +214,8 @@ def test_cli_renders_without_site_packages_or_raw_reports(reports, tmp_path):
     summary.write_text(json.dumps(collected))
     baselines = tmp_path / "baselines.json"
     baselines.write_text(json.dumps(reference_rows(collected)))
+    floor = tmp_path / "floor.json"
+    floor.write_text(json.dumps(FLOOR))
     (reports / "scores/comparisons.jsonl").unlink()
     output = tmp_path / "paper/decoder.tex"
     root = Path(__file__).resolve().parents[1]
@@ -206,6 +229,8 @@ def test_cli_renders_without_site_packages_or_raw_reports(reports, tmp_path):
             str(summary),
             "--baselines",
             str(baselines),
+            "--floor",
+            str(floor),
             "--output",
             str(output),
         ],

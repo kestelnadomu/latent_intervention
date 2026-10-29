@@ -626,6 +626,15 @@ made on CPU by `exp.text_realizer_package_eval.baselines` (RoBERTa-large
 BERTScore with the decoders' settings, on CPU and the root environment's
 torch/transformers; command in its docstring).
 
+A last **same-state rewrite** row is the noise floor: the 200 floor texts (the
+unit re-rendered with another country of the same region, so the same state)
+scored against their own factual CVs with the same metrics. It shows how close
+two correct CVs of one state get, i.e. roughly the best a decoder can reach
+against x'. It uses other units and references than the 1,000 test pairs, the
+country differs by construction (shown as `--`), and it has no changed/preserved
+split. Aggregates: [`results/decoder_package_floor_v1.json`](results/decoder_package_floor_v1.json),
+from `exp.text_realizer_package_eval.baselines --floor` (about 7 minutes on CPU).
+
 For example, in a two-column paper (the float and caption remain under the
 paper's control, as with the historical renderer):
 
