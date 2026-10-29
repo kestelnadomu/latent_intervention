@@ -1,4 +1,8 @@
-"""Export the completed latent_lab encoder comparison without loading or fitting models."""
+"""Export the completed latent_lab encoder comparison without loading or fitting models.
+
+Writes the paper table ``overleaf/tables/encoder_decoder.tex`` (float and caption in
+``overleaf/appendix/encoder.tex``) and a Markdown/CSV/metadata record of it.
+"""
 
 from __future__ import annotations
 
@@ -9,9 +13,16 @@ import json
 import math
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_REPORT = ROOT / "reports/latent_lab/run-20261027-225936.json"
 DEFAULT_OUTPUT = ROOT / "reports/latent_lab/encoder-comparison-20261027"
+PAPER_TABLE = ROOT / "overleaf/tables/encoder_decoder.tex"
+SIM = ROOT / "data/sim_talent_motivation"
+JOINT = ["X", "T", "D", "U"]
+VERBALIZED = ["X", "D", "U", "P", "L", "H", "A"]  # what the CVs show; T only through its proxies
 FAMILIES = {
     "langvae": ("LangVAE", (128,)),
     "nomic": ("Nomic Embed v1.5", (64, 128, 256, 512, 768)),
@@ -29,26 +40,11 @@ METRICS = {
     "judge_oof_joint_acc": ("joint_acc", "judge"),
 }
 DISPLAY = (
-    ("pool_oof_joint_acc", "pool_oof_joint_acc_sd", 100, 1, "max"),
     ("eval_joint_nll", "eval_joint_nll_sd", 1, 3, "min"),
     ("judge_oof_joint_nll", None, 1, 3, "min"),
     ("eval_joint_acc", "eval_joint_acc_sd", 100, 1, "max"),
     ("judge_oof_joint_acc", None, 100, 1, "max"),
 )
-
-CAPTION = r"""Frozen-encoder comparison on the extended-DAG factual CVs.
-All readers have independent categorical heads and two width-256 GELU hidden layers;
-the two reader columns denote roles, not independent versus autoregressive architectures.
-Joint metrics cover $S=(X,T,D,U)$; the additional fitted $M$ head is excluded from them.
-For $\psi$, pool accuracy uses out-of-fold predictions on 2,800 units, while evaluation
-on 1,000 separate units averages the five fold models' marginal probabilities.
-Entries for $\psi$ are means $\pm$ sample standard deviations across seeds 0--4.
-The evaluation reader $\psi_{\mathrm{eval}}$ uses a disjoint labelled half of the data,
-including evaluation units, with five-fold cross-fitting at seed 0: each unit is
-scored by the model that excluded that unit. Its entries have no across-seed deviation.
-NLL is in nats; accuracies are percentages. Bold entries mark the best mean per column,
-without asserting statistical significance. All results use the original wording
-$\mathcal V_A$; paraphrase robustness is a separate analysis."""
 
 
 def load_rows(report: dict) -> list[dict]:
@@ -106,6 +102,45 @@ def load_rows(report: dict) -> list[dict]:
     return rows
 
 
+def lf_sha256(data: bytes) -> str:
+    """Hash with LF line endings, so a CRLF checkout (core.autocrlf) gives the same digest."""
+    return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
+
+
+def references() -> dict[str, dict[str, float]]:
+    """Latent-free rows on the evaluation units: the null model and the Bayes-optimal reader."""
+    from exp.sim_talent.talent_sfm import _talent_log_posterior
+    from exp.sim_talent_motivation.talent_motivation import T_PRIOR
+
+    factual = pd.read_csv(SIM / "sim_data_factual.csv", index_col="id")
+    partition = pd.read_csv(SIM / "partition.csv", index_col="id")
+    pool, evaluation = (
+        factual.loc[partition.index[partition["partition"] == name]]
+        for name in ("pool", "eval")
+    )
+    cards = {c: int(factual[c].max()) + 1 for c in factual}
+    # null model: the Laplace-smoothed empirical joint of s on the pool, ignoring z
+    counts = pool.groupby(JOINT).size()
+    total = counts.sum() + np.prod([cards[c] for c in JOINT])
+    cells = list(evaluation[JOINT].itertuples(index=False, name=None))
+    null = {
+        "joint_nll": -np.mean([np.log((counts.get(c, 0) + 1) / total) for c in cells]),
+        "joint_acc": np.mean([c == counts.idxmax() for c in cells]),
+    }
+    # Bayes-optimal: X, D and U are read exactly, T by its exact posterior under the known SCM
+    log_post = _talent_log_posterior(evaluation, VERBALIZED, cards, T_PRIOR)
+    log_post -= np.logaddexp.reduce(log_post, axis=1, keepdims=True)
+    t = evaluation["T"].to_numpy()
+    bayes = {
+        "joint_nll": -log_post[np.arange(len(t)), t].mean(),
+        "joint_acc": (log_post.argmax(axis=1) == t).mean(),
+    }
+    return {
+        "Null model": {k: float(v) for k, v in null.items()},
+        "Bayes-optimal": {k: float(v) for k, v in bayes.items()},
+    }
+
+
 def best_values(rows: list[dict]) -> dict[str, float]:
     return {
         field: (min if direction == "min" else max)(r[field] for r in rows)
@@ -121,24 +156,35 @@ def cells(row: dict, best: dict[str, float], latex: bool) -> list[str]:
             mean = rf"\textbf{{{mean}}}" if latex else f"**{mean}**"
         if sd:
             spread = f"{row[sd] * scale:.{places}f}"
-            mean += rf"{{\tiny$\pm${spread}}}" if latex else f" ± {spread}"
+            mean += (
+                rf"{{\tiny$\pm${spread.removeprefix('0')}}}" if latex else f" ± {spread}"
+            )
         result.append(mean)
     return result
 
 
-def latex_table(rows: list[dict], best: dict[str, float], source: str, sha: str) -> str:
+def latex_table(
+    rows: list[dict], best: dict[str, float], refs: dict, source: str, sha: str
+) -> str:
+    def bold(text: str) -> str:
+        return rf"{{\bfseries\boldmath {text}}}"
+
     lines = [
-        "% Generated by scripts/encoder_comparison_table.py; do not edit by hand.",
-        f"% Source: {source}",
-        f"% Source SHA-256: {sha}",
-        "% Requires booktabs. See encoder_comparison.md for the caption and protocol.",
-        r"\begin{tabular}{@{}lrrrrrr@{}}",
+        f"% Generated by scripts/encoder_comparison_table.py from {source}",
+        f"% (SHA-256 {sha}).",
+        "% Do not edit by hand; regenerate instead. The table float and caption live in",
+        "% appendix/encoder.tex.",
+        r"\begin{tabular}{@{}lrrrrr@{}}",
         r"  \toprule",
-        r"  & & \textbf{Pool OOF} & \multicolumn{2}{c}{\textbf{Eval. joint NLL} $\downarrow$}"
-        r" & \multicolumn{2}{c}{\textbf{Eval. joint acc. (\%)} $\uparrow$} \\",
-        r"  \cmidrule(lr){3-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}",
-        r"  \textbf{Encoder $\varphi$} & \textbf{$d$} & \textbf{$\psi$ joint acc. (\%)} $\uparrow$"
-        r" & $\psi$ & $\psi_{\mathrm{eval}}$ & $\psi$ & $\psi_{\mathrm{eval}}$ \\",
+        rf"  & & \multicolumn{{2}}{{c}}{{{bold(r'Joint NLL $\downarrow$')}}}"
+        rf" & \multicolumn{{2}}{{c}}{{{bold(r'Joint acc.\ (\%) $\uparrow$')}}} \\",
+        r"  \cmidrule(lr){3-4} \cmidrule(lr){5-6}",
+        "  "
+        + " & ".join(
+            bold(text)
+            for text in (r"Encoder $\varphi$", "$d$", *2 * [r"$\psi$", r"$\psi_{\mathrm{eval}}$"])
+        )
+        + r" \\",
     ]
     previous = None
     for row in rows:
@@ -151,12 +197,18 @@ def latex_table(rows: list[dict], best: dict[str, float], source: str, sha: str)
             + r" \\"
         )
         previous = row["encoder"]
+    lines.append(r"  \midrule")
+    for name, ref in refs.items():
+        lines.append(
+            rf"  {name} & -- & \multicolumn{{2}}{{c}}{{{ref['joint_nll']:.3f}}}"
+            rf" & \multicolumn{{2}}{{c}}{{{100 * ref['joint_acc']:.1f}}} \\"
+        )
     lines.extend([r"  \bottomrule", r"\end{tabular}", ""])
     return "\n".join(lines)
 
 
 def markdown_table(
-    rows: list[dict], best: dict[str, float], source: str, sha: str
+    rows: list[dict], best: dict[str, float], refs: dict, source: str, sha: str
 ) -> str:
     leaders = {
         r["encoder_key"]
@@ -167,9 +219,8 @@ def markdown_table(
     if len(leaders) == 1:
         leader = next(row for row in rows if row["encoder_key"] in leaders)
         finding = (
-            f"{leader['encoder']} at {leader['dimension']}D has the best mean pool out-of-fold "
-            "accuracy, evaluation joint NLL and evaluation joint accuracy among the 17 tested "
-            "spaces. It also leads the separately trained evaluation-reader columns."
+            f"{leader['encoder']} at {leader['dimension']}D has the best mean evaluation joint "
+            "NLL and joint accuracy among the 17 tested spaces, for ψ and for ψ_eval."
         )
     else:
         finding = "Different columns favour different encoders; bold entries identify each column's best mean."
@@ -180,9 +231,9 @@ def markdown_table(
         "",
         finding,
         "",
-        "| Encoder | d | Pool OOF joint acc. ψ (%) ↑ | Eval. joint NLL ψ ↓ | "
-        "Eval. joint NLL ψ_eval ↓ | Eval. joint acc. ψ (%) ↑ | Eval. joint acc. ψ_eval (%) ↑ |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "| Encoder | d | Eval. joint NLL ψ ↓ | Eval. joint NLL ψ_eval ↓ | "
+        "Eval. joint acc. ψ (%) ↑ | Eval. joint acc. ψ_eval (%) ↑ |",
+        "|---|---:|---:|---:|---:|---:|",
     ]
     for row in rows:
         lines.append(
@@ -192,6 +243,9 @@ def markdown_table(
             )
             + " |"
         )
+    for name, ref in refs.items():
+        nll, acc = f"{ref['joint_nll']:.3f}", f"{100 * ref['joint_acc']:.1f}"
+        lines.append(f"| {name} | – | {nll} | {nll} | {acc} | {acc} |")
     lines.extend(
         [
             "",
@@ -214,19 +268,16 @@ def markdown_table(
             "- The saved internal validation losses cover all **five** heads and different within-fold "
             "validation subsets. They are not the same quantity as the four-variable NLL in this table; "
             "they are therefore not relabelled as the old table's validation column.",
-            "- Autoregressive readers and LangVAE-FT were not run on this corpus. Null and Bayes-optimal "
-            "joint reference rows were not computed in this comparison. None of their old-data numbers "
-            "is carried forward.",
+            "- Autoregressive readers and LangVAE-FT were not run on this corpus; none of their "
+            "old-data numbers is carried forward.",
+            "- The reference rows are recomputed on this corpus and need no latents. Null model: the "
+            "Laplace-smoothed empirical joint of (X, T, D, U) on the 2,800 pool units. Bayes-optimal: "
+            "X, D and U read exactly, T by its exact posterior under the known SCM given X, D, U and "
+            "the proxies P, L, H, A.",
             "- These descriptive results concern factual CVs in the original wording, not downstream "
             "counterfactual quality. The source report separately contains held-out wording results. "
             "Best mean does not establish statistically significant superiority; the test comparison "
-            "is exploratory, and the pool OOF column provides a training-pool-only diagnostic.",
-            "",
-            "## Suggested LaTeX caption",
-            "",
-            "```latex",
-            CAPTION,
-            "```",
+            "is exploratory.",
             "",
             "## Regenerate",
             "",
@@ -234,8 +285,10 @@ def markdown_table(
             "python scripts/encoder_comparison_table.py",
             "```",
             "",
-            "The `.tex` file contains only the tabular, ready for the paper's existing table float. "
-            "The CSV stores full-precision values, and the metadata records the source and generator hashes.",
+            "The LaTeX tabular is written to `overleaf/tables/encoder_decoder.tex`; its float and "
+            "caption live in `overleaf/appendix/encoder.tex`. The CSV stores full-precision values "
+            "(including the pool out-of-fold joint accuracy of ψ), and the metadata records the "
+            "source and generator hashes.",
             "",
         ]
     )
@@ -251,16 +304,17 @@ def main() -> None:
     report = json.loads(raw)
     rows = load_rows(report)
     best = best_values(rows)
+    refs = references()
     source = args.report.resolve()
     source = (
-        str(source.relative_to(ROOT)) if source.is_relative_to(ROOT) else str(source)
+        source.relative_to(ROOT).as_posix() if source.is_relative_to(ROOT) else str(source)
     )
-    sha = hashlib.sha256(raw).hexdigest()
+    sha = lf_sha256(raw)
     output = args.output_dir
     output.mkdir(parents=True, exist_ok=True)
-    (output / "encoder_comparison.tex").write_text(latex_table(rows, best, source, sha))
+    PAPER_TABLE.write_text(latex_table(rows, best, refs, source, sha), newline="\n")
     (output / "encoder_comparison.md").write_text(
-        markdown_table(rows, best, source, sha)
+        markdown_table(rows, best, refs, source, sha), encoding="utf-8", newline="\n"
     )
     with (output / "encoder_comparison.csv").open("w", newline="") as stream:
         writer = csv.DictWriter(stream, fieldnames=list(rows[0]))
@@ -271,7 +325,7 @@ def main() -> None:
         "source_sha256": sha,
         "run_created": report["created"],
         "run_git_commit": report["git_commit"],
-        "generator_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "generator_sha256": lf_sha256(Path(__file__).read_bytes()),
         "joint_variables": report["settings"]["states"][report["settings"]["main"]],
         "seeds": report["settings"]["seeds"],
         "rows": len(rows),
@@ -285,7 +339,7 @@ def main() -> None:
             field: [r["encoder_key"] for r in rows if r[field] == value]
             for field, value in best.items()
         },
-        "caption_latex": CAPTION,
+        "references": refs,
     }
     (output / "encoder_comparison.metadata.json").write_text(
         json.dumps(metadata, indent=2, allow_nan=False) + "\n"

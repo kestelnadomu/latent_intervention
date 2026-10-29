@@ -3,7 +3,7 @@
   "source_sha256": "b3291d2e801cac8dcacb45800e4d038f8d4fe9127f326c8fd18643d6f961047a",
   "run_created": "2026-10-27T22:59:36",
   "run_git_commit": "50d0a852781d41e13ca79e74780078e65f47ff68",
-  "generator_sha256": "d2c211c3562ca4c9090f23eb99144e522051471ec6566eadc6d81b5b60857d3f",
+  "generator_sha256": "8fb28742d80ba00b6e14bc103867293e730a96357cdc45df394924a028edb192",
   "joint_variables": [
     "X",
     "T",
@@ -25,9 +25,6 @@
   "nll_units": "nats",
   "sd": "sample standard deviation across five psi seeds (ddof=1)",
   "best_by_column": {
-    "pool_oof_joint_acc": [
-      "embeddinggemma-768"
-    ],
     "eval_joint_nll": [
       "embeddinggemma-768"
     ],
@@ -41,5 +38,14 @@
       "embeddinggemma-768"
     ]
   },
-  "caption_latex": "Frozen-encoder comparison on the extended-DAG factual CVs.\nAll readers have independent categorical heads and two width-256 GELU hidden layers;\nthe two reader columns denote roles, not independent versus autoregressive architectures.\nJoint metrics cover $S=(X,T,D,U)$; the additional fitted $M$ head is excluded from them.\nFor $\\psi$, pool accuracy uses out-of-fold predictions on 2,800 units, while evaluation\non 1,000 separate units averages the five fold models' marginal probabilities.\nEntries for $\\psi$ are means $\\pm$ sample standard deviations across seeds 0--4.\nThe evaluation reader $\\psi_{\\mathrm{eval}}$ uses a disjoint labelled half of the data,\nincluding evaluation units, with five-fold cross-fitting at seed 0: each unit is\nscored by the model that excluded that unit. Its entries have no across-seed deviation.\nNLL is in nats; accuracies are percentages. Bold entries mark the best mean per column,\nwithout asserting statistical significance. All results use the original wording\n$\\mathcal V_A$; paraphrase robustness is a separate analysis."
+  "references": {
+    "Null model": {
+      "joint_nll": 3.935845262024166,
+      "joint_acc": 0.061
+    },
+    "Bayes-optimal": {
+      "joint_nll": 0.1753930396370331,
+      "joint_acc": 0.936
+    }
+  }
 }
