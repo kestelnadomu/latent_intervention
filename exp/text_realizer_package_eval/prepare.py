@@ -130,6 +130,48 @@ def predict_vectors(
     }
 
 
+def replay(
+    config: dict,
+    pipeline: dict,
+    dim: int,
+    payload: dict,
+    ids: list[int],
+    do_values: list[int],
+) -> tuple[torch.Tensor, torch.Tensor, dict]:
+    """Oracle and predicted vectors of the evaluation units, checked against the package."""
+    z = aligned_vectors(payload, ids, dim, oracle=False)
+    oracle = aligned_vectors(payload, ids, dim, oracle=True)
+    predicted, states = predict_vectors(config, pipeline, dim, z, do_values)
+    # Check the replay against the already-published scalar result, without
+    # choosing a checkpoint or seed from the reconstructed text.
+    report = read_json(checked_source(pipeline["report"]))
+    expected = [
+        row
+        for row in report["results"]
+        if row["S"] == "S1"
+        and row["rho"] == "flow"
+        and row["train"] == "ψ(z)"
+        and row["test"] == "ψ(z)"
+        and row["seed"] == config["seed"]
+    ]
+    if len(expected) != 1:
+        raise ValueError("missing package replay reference")
+    measured = {
+        "cosine": float(F.cosine_similarity(predicted, oracle).mean()),
+        "distance": float(
+            ((predicted - oracle) / z.std(0).clamp(min=1e-6)).norm(dim=1).mean()
+            / math.sqrt(dim)
+        ),
+    }
+    for metric, value in measured.items():
+        if not math.isclose(value, expected[0][metric], abs_tol=2e-5, rel_tol=2e-5):
+            raise ValueError(
+                f"{dim}-D package replay differs on {metric}: {value} vs {expected[0][metric]}"
+            )
+    states["reproduced_package_metrics"] = measured
+    return oracle, predicted, states
+
+
 def prepare(config: dict, output: Path, *, allow_oracle: bool = False) -> dict:
     if not allow_oracle:
         raise PermissionError("official test export requires --allow-oracle-evaluation")
@@ -228,38 +270,9 @@ def prepare(config: dict, output: Path, *, allow_oracle: bool = False) -> dict:
             }
         for width, pipeline in config["pipelines"].items():
             dim = int(width)
-            z = aligned_vectors(payload, ids, dim, oracle=False)
-            oracle = aligned_vectors(payload, ids, dim, oracle=True)
-            predicted, states = predict_vectors(config, pipeline, dim, z, do_values)
-            # Check the replay against the already-published scalar result, without
-            # choosing a checkpoint or seed from the reconstructed text.
-            report = read_json(checked_source(pipeline["report"]))
-            expected = [
-                row
-                for row in report["results"]
-                if row["S"] == "S1"
-                and row["rho"] == "flow"
-                and row["train"] == "ψ(z)"
-                and row["test"] == "ψ(z)"
-                and row["seed"] == config["seed"]
-            ]
-            if len(expected) != 1:
-                raise ValueError("missing package replay reference")
-            measured = {
-                "cosine": float(F.cosine_similarity(predicted, oracle).mean()),
-                "distance": float(
-                    ((predicted - oracle) / z.std(0).clamp(min=1e-6)).norm(dim=1).mean()
-                    / math.sqrt(dim)
-                ),
-            }
-            for metric, value in measured.items():
-                if not math.isclose(
-                    value, expected[0][metric], abs_tol=2e-5, rel_tol=2e-5
-                ):
-                    raise ValueError(
-                        f"{dim}-D package replay differs on {metric}: {value} vs {expected[0][metric]}"
-                    )
-            states["reproduced_package_metrics"] = measured
+            oracle, predicted, states = replay(
+                config, pipeline, dim, payload, ids, do_values
+            )
             path = output / f"vectors-{dim}.pt"
             save_torch(
                 path,

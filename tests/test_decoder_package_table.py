@@ -85,12 +85,46 @@ def reports(tmp_path):
     return tmp_path
 
 
+def reference_rows(summary):
+    """Synthetic retrieval/unedited rows sharing the fixture's units and fact cohorts."""
+    changed = {
+        f: 10 if f in ("country", "region") else 1 if f == "project_count" else 3
+        for f in table.FIELDS
+    }
+    row = {
+        "units": 10,
+        "character_similarity": 0.4,
+        "chrf": 0.6,
+        "rouge_l": 0.3,
+        "f1": 0.87,
+        "mean_sentiment_delta": 0.001,
+        "mean_absolute_sentiment_delta": 0.01,
+        "facts": {f: {"accuracy": 0.5, "reference_scorable": 10} for f in table.FIELDS},
+        "changed": {f: {"units": changed[f], "accuracy": 0.0} for f in table.FIELDS},
+        "preserved": {
+            f: {"units": 10 - changed[f], "accuracy": None if changed[f] == 10 else 1.0}
+            for f in table.FIELDS
+        },
+    }
+    keys = [("retrieval", d, c) for d in table.DIMENSIONS for c in table.CONDITIONS]
+    return {
+        "format_version": 1,
+        "unit_ids_sha256": summary["unit_ids_sha256"],
+        "rows": [
+            {"method": m, "dim": d, "condition": c, **copy.deepcopy(row)}
+            for m, d, c in [*keys, ("unedited", None, None)]
+        ],
+    }
+
+
 def test_portable_collection_and_rendering(reports):
     summary = table.collect(reports)
     assert "SYNTHETIC-CV-TEXT" not in json.dumps(summary)
-    panels = table.render(summary)
+    panels = table.render(summary, reference_rows(summary))
     assert set(panels) == {"text", "facts", "changed", "preserved"}
-    assert all(text.count("256 & 270M") == 2 for text in panels.values())
+    assert all(text.count("256 & Gemma 3 270M") == 2 for text in panels.values())
+    assert all(text.count("& Retrieval &") == 4 for text in panels.values())
+    assert all(text.count("-- & Unedited $x$") == 1 for text in panels.values())
     assert "0.8456" in panels["text"] and "-0.00004" in panels["text"]
     assert "90.0" in panels["facts"] and "$n=10$" in panels["facts"]
     assert "$n=0$" in panels["preserved"] and " & -- & -- & " in panels["preserved"]
@@ -112,12 +146,19 @@ def test_portable_collection_and_rendering(reports):
         "nan",
         "empty_accuracy",
         "wrong_accuracy",
+        "baseline_units",
+        "baseline_cohort",
     ],
 )
 def test_incompatible_reports_refused(reports, problem):
     summary = table.collect(reports)
     data = summary["reports"]
-    if problem == "mixed_input":
+    baselines = reference_rows(summary)
+    if problem == "baseline_units":
+        baselines["unit_ids_sha256"] = "other"
+    elif problem == "baseline_cohort":
+        baselines["rows"][0]["changed"]["degree"]["units"] = 4
+    elif problem == "mixed_input":
         data["vader"]["identity"]["input_sha256"] = "other"
     elif problem == "missing_row":
         data["scores"]["metrics"].pop()
@@ -136,19 +177,22 @@ def test_incompatible_reports_refused(reports, problem):
         row["accuracy"] = 1.0
     with pytest.raises(ValueError):
         summary["reports_sha256"] = table._digest(data)
-        table.render(summary)
+        table.render(summary, baselines)
 
 
 def test_modified_aggregate_checksum_refused(reports):
     summary = table.collect(reports)
     summary["reports"]["scores"]["metrics"][0]["chrf"] = 0.9
     with pytest.raises(ValueError, match="checksum"):
-        table.render(summary)
+        table.render(summary, reference_rows(summary))
 
 
 def test_cli_renders_without_site_packages_or_raw_reports(reports, tmp_path):
     summary = tmp_path / "portable.json"
-    summary.write_text(json.dumps(table.collect(reports)))
+    collected = table.collect(reports)
+    summary.write_text(json.dumps(collected))
+    baselines = tmp_path / "baselines.json"
+    baselines.write_text(json.dumps(reference_rows(collected)))
     (reports / "scores/comparisons.jsonl").unlink()
     output = tmp_path / "paper/decoder.tex"
     root = Path(__file__).resolve().parents[1]
@@ -160,6 +204,8 @@ def test_cli_renders_without_site_packages_or_raw_reports(reports, tmp_path):
             "exp.paper_tables.decoder_package_table",
             "--summary",
             str(summary),
+            "--baselines",
+            str(baselines),
             "--output",
             str(output),
         ],

@@ -44,7 +44,9 @@ def read_config(path: Path = DEFAULT_CONFIG) -> dict:
 def checked_source(item: dict) -> Path:
     path = Path(item["path"])
     path = path if path.is_absolute() else ROOT / path
-    if sha256_file(path) != item["sha256"]:
+    # A CRLF checkout (core.autocrlf on Windows) of a pinned text file still verifies.
+    lf = hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    if item["sha256"] not in (sha256_file(path), lf):
         raise ValueError(f"source checksum mismatch: {path}")
     return path
 

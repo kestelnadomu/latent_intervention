@@ -1,0 +1,529 @@
+{
+  "bertscore": {
+    "device": "cpu",
+    "idf": false,
+    "model": "FacebookAI/roberta-large",
+    "num_layers": 17,
+    "rescale_with_baseline": false,
+    "revision": "722cf37b1afa9454edce342e7895e588b6ff1d59"
+  },
+  "format_version": 1,
+  "inputs_sha256": {
+    "counterfactual": "46032df495f93c67b1c78d9e1db999ec202e15255c78c1d78ed55fd5e9faae43",
+    "factual": "62f1f1fd67d78957566302655efbedf83f605561cd5c51bdb7db33a12a572ce8",
+    "info": "3f899ff310f4f2f93c12b60a64129a69d753b83c579a369de9da5707df219960",
+    "interventions": "933021b65674fe34f58d7542c9543c8d71204aa5b71c76799399e05b663570fd",
+    "latents": "110c9bc16ef7f7917e7af647336ecafb0c9e16036af2d60febedf36c1ccfe617",
+    "manifest": "33799b16597056f8f452fd6982df77f46ca404a04d50427f59d11a5eab101d90",
+    "pairs": "b606c87fa8a2ff5bb90d3f5ae1d552bc922c23d8c749b89055c61a5b44ea5ed5",
+    "partition": "b4dcb9202ff4729ade8adb6e6a9df539c336fe91f2231c2b3ec8ca220d68c409"
+  },
+  "pipelines": {
+    "256": {
+      "flow": {
+        "path": "models/latent_lab/rho-S1-flow-psi-seed0-d5262b639d96ac19.pt",
+        "sha256": "af53266a88042ba21ccdf6e0bac21ef64ee85ca4d13e0147ecc690cba76a2e96"
+      },
+      "label": "2026-10-24 provided 256-D pipeline; 1,000 labelled reader units; no flow fidelity term",
+      "reader": {
+        "path": "models/latent_lab/psi-seed0-cb6ef0447a01533f.pt",
+        "sha256": "ba03c1f413f49cbde0baf622b105e9f014bbf67f1b8bc9232d6d29dd4e6920bd"
+      },
+      "report": {
+        "path": "reports/latent_lab/run-20261024-164358.json",
+        "sha256": "ee5f130a6aa59b9676a3888e7c8f1e594f538759b4edf1e71062f822c603eb2a"
+      }
+    },
+    "768": {
+      "flow": {
+        "path": "models/latent_lab/rho-S1-flow-psi-seed0-a4a2561d40a76cca.pt",
+        "sha256": "07053ab581e12fbc81b8fc4e32a8bf2994dd8cdfef826f9a43749e93743ee39a"
+      },
+      "label": "2026-10-27 updated 768-D pipeline; 2,000 labelled reader units; flow fidelity 0.1",
+      "reader": {
+        "path": "models/latent_lab/psi-embeddinggemma-768-seed0-a0bd1aad7aa19ae8.pt",
+        "sha256": "916651fac681bb991b3040b730b79375bde663968a28218edfa3b30f00eeee95"
+      },
+      "report": {
+        "path": "reports/latent_lab/run-20261027-075057.json",
+        "sha256": "1b6d4820fb7d40d80e477c7aa69bddec7a57b02507152723cd3cb525c96f2faa"
+      }
+    }
+  },
+  "reproduced_package_metrics": {
+    "256": {
+      "cosine": 0.9387419819831848,
+      "distance": 0.6511702537536621
+    },
+    "768": {
+      "cosine": 0.9216268062591553,
+      "distance": 0.6627591252326965
+    }
+  },
+  "retrieval": "factual CV of the fit (pool) unit with the highest cosine between its canonical latent and the oracle or predicted vector",
+  "rows": [
+    {
+      "changed": {
+        "country": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 977
+        },
+        "degree": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 420
+        },
+        "project_count": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 1
+        },
+        "region": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 977
+        },
+        "university_tier": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 479
+        }
+      },
+      "character_similarity": 0.44299253401563593,
+      "chrf": 0.6759386355357989,
+      "condition": null,
+      "dim": null,
+      "f1": 0.9224598920345306,
+      "facts": {
+        "country": {
+          "accuracy": 0.0,
+          "reference_scorable": 988
+        },
+        "degree": {
+          "accuracy": 0.5590631364562119,
+          "reference_scorable": 982
+        },
+        "project_count": {
+          "accuracy": 0.9172413793103448,
+          "reference_scorable": 870
+        },
+        "region": {
+          "accuracy": 0.0,
+          "reference_scorable": 988
+        },
+        "university_tier": {
+          "accuracy": 0.521,
+          "reference_scorable": 1000
+        }
+      },
+      "mean_absolute_sentiment_delta": 0.006221,
+      "mean_sentiment_delta": 5.6200000000001807e-05,
+      "method": "unedited",
+      "precision": 0.9226829732656479,
+      "preserved": {
+        "country": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "degree": {
+          "accuracy": 1.0,
+          "correct": 549,
+          "units": 549
+        },
+        "project_count": {
+          "accuracy": 1.0,
+          "correct": 798,
+          "units": 798
+        },
+        "region": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "university_tier": {
+          "accuracy": 1.0,
+          "correct": 521,
+          "units": 521
+        }
+      },
+      "recall": 0.9222479524612427,
+      "rouge_l": 0.467011680671262,
+      "units": 1000
+    },
+    {
+      "changed": {
+        "country": {
+          "accuracy": 0.9447287615148413,
+          "correct": 923,
+          "units": 977
+        },
+        "degree": {
+          "accuracy": 0.7380952380952381,
+          "correct": 310,
+          "units": 420
+        },
+        "project_count": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 1
+        },
+        "region": {
+          "accuracy": 0.9754350051177073,
+          "correct": 953,
+          "units": 977
+        },
+        "university_tier": {
+          "accuracy": 0.5553235908141962,
+          "correct": 266,
+          "units": 479
+        }
+      },
+      "character_similarity": 0.3123461361142363,
+      "chrf": 0.5651445964712901,
+      "condition": "oracle",
+      "dim": 256,
+      "f1": 0.8903123784661293,
+      "facts": {
+        "country": {
+          "accuracy": 0.9453441295546559,
+          "reference_scorable": 988
+        },
+        "degree": {
+          "accuracy": 0.6843177189409368,
+          "reference_scorable": 982
+        },
+        "project_count": {
+          "accuracy": 0.19540229885057472,
+          "reference_scorable": 870
+        },
+        "region": {
+          "accuracy": 0.9757085020242915,
+          "reference_scorable": 988
+        },
+        "university_tier": {
+          "accuracy": 0.529,
+          "reference_scorable": 1000
+        }
+      },
+      "mean_absolute_sentiment_delta": 0.0072926,
+      "mean_sentiment_delta": -0.0001909999999999996,
+      "method": "retrieval",
+      "precision": 0.8904727644324303,
+      "preserved": {
+        "country": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "degree": {
+          "accuracy": 0.6429872495446266,
+          "correct": 353,
+          "units": 549
+        },
+        "project_count": {
+          "accuracy": 0.20050125313283207,
+          "correct": 160,
+          "units": 798
+        },
+        "region": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "university_tier": {
+          "accuracy": 0.5047984644913628,
+          "correct": 263,
+          "units": 521
+        }
+      },
+      "recall": 0.8901610643267631,
+      "rouge_l": 0.28013123430630066,
+      "units": 1000
+    },
+    {
+      "changed": {
+        "country": {
+          "accuracy": 0.18526100307062435,
+          "correct": 181,
+          "units": 977
+        },
+        "degree": {
+          "accuracy": 0.5428571428571428,
+          "correct": 228,
+          "units": 420
+        },
+        "project_count": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 1
+        },
+        "region": {
+          "accuracy": 0.638689866939611,
+          "correct": 624,
+          "units": 977
+        },
+        "university_tier": {
+          "accuracy": 0.453027139874739,
+          "correct": 217,
+          "units": 479
+        }
+      },
+      "character_similarity": 0.31450460540308495,
+      "chrf": 0.5661337372534938,
+      "condition": "predicted",
+      "dim": 256,
+      "f1": 0.8910496487617493,
+      "facts": {
+        "country": {
+          "accuracy": 0.1862348178137652,
+          "reference_scorable": 988
+        },
+        "degree": {
+          "accuracy": 0.5712830957230143,
+          "reference_scorable": 982
+        },
+        "project_count": {
+          "accuracy": 0.19425287356321838,
+          "reference_scorable": 870
+        },
+        "region": {
+          "accuracy": 0.6406882591093117,
+          "reference_scorable": 988
+        },
+        "university_tier": {
+          "accuracy": 0.479,
+          "reference_scorable": 1000
+        }
+      },
+      "mean_absolute_sentiment_delta": 0.007446899999999999,
+      "mean_sentiment_delta": 7.450000000000101e-05,
+      "method": "retrieval",
+      "precision": 0.8911862238049507,
+      "preserved": {
+        "country": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "degree": {
+          "accuracy": 0.5956284153005464,
+          "correct": 327,
+          "units": 549
+        },
+        "project_count": {
+          "accuracy": 0.19799498746867167,
+          "correct": 158,
+          "units": 798
+        },
+        "region": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "university_tier": {
+          "accuracy": 0.5028790786948176,
+          "correct": 262,
+          "units": 521
+        }
+      },
+      "recall": 0.8909222096204757,
+      "rouge_l": 0.2838162806157188,
+      "units": 1000
+    },
+    {
+      "changed": {
+        "country": {
+          "accuracy": 0.9498464687819856,
+          "correct": 928,
+          "units": 977
+        },
+        "degree": {
+          "accuracy": 0.7380952380952381,
+          "correct": 310,
+          "units": 420
+        },
+        "project_count": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 1
+        },
+        "region": {
+          "accuracy": 0.977482088024565,
+          "correct": 955,
+          "units": 977
+        },
+        "university_tier": {
+          "accuracy": 0.5532359081419624,
+          "correct": 265,
+          "units": 479
+        }
+      },
+      "character_similarity": 0.31338680257980084,
+      "chrf": 0.5654753734736023,
+      "condition": "oracle",
+      "dim": 768,
+      "f1": 0.8903954690098762,
+      "facts": {
+        "country": {
+          "accuracy": 0.9504048582995951,
+          "reference_scorable": 988
+        },
+        "degree": {
+          "accuracy": 0.6822810590631364,
+          "reference_scorable": 982
+        },
+        "project_count": {
+          "accuracy": 0.18620689655172415,
+          "reference_scorable": 870
+        },
+        "region": {
+          "accuracy": 0.9777327935222672,
+          "reference_scorable": 988
+        },
+        "university_tier": {
+          "accuracy": 0.523,
+          "reference_scorable": 1000
+        }
+      },
+      "mean_absolute_sentiment_delta": 0.007226299999999999,
+      "mean_sentiment_delta": -0.000285099999999999,
+      "method": "retrieval",
+      "precision": 0.8905149077177048,
+      "preserved": {
+        "country": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "degree": {
+          "accuracy": 0.6375227686703097,
+          "correct": 350,
+          "units": 549
+        },
+        "project_count": {
+          "accuracy": 0.19172932330827067,
+          "correct": 153,
+          "units": 798
+        },
+        "region": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "university_tier": {
+          "accuracy": 0.4952015355086372,
+          "correct": 258,
+          "units": 521
+        }
+      },
+      "recall": 0.8902852249741554,
+      "rouge_l": 0.2815489525739287,
+      "units": 1000
+    },
+    {
+      "changed": {
+        "country": {
+          "accuracy": 0.13715455475946775,
+          "correct": 134,
+          "units": 977
+        },
+        "degree": {
+          "accuracy": 0.5095238095238095,
+          "correct": 214,
+          "units": 420
+        },
+        "project_count": {
+          "accuracy": 0.0,
+          "correct": 0,
+          "units": 1
+        },
+        "region": {
+          "accuracy": 0.4820880245649949,
+          "correct": 471,
+          "units": 977
+        },
+        "university_tier": {
+          "accuracy": 0.4321503131524008,
+          "correct": 207,
+          "units": 479
+        }
+      },
+      "character_similarity": 0.318129321722816,
+      "chrf": 0.5680998742160699,
+      "condition": "predicted",
+      "dim": 768,
+      "f1": 0.8918103150129318,
+      "facts": {
+        "country": {
+          "accuracy": 0.13663967611336034,
+          "reference_scorable": 988
+        },
+        "degree": {
+          "accuracy": 0.5763747454175153,
+          "reference_scorable": 982
+        },
+        "project_count": {
+          "accuracy": 0.19540229885057472,
+          "reference_scorable": 870
+        },
+        "region": {
+          "accuracy": 0.4797570850202429,
+          "reference_scorable": 988
+        },
+        "university_tier": {
+          "accuracy": 0.468,
+          "reference_scorable": 1000
+        }
+      },
+      "mean_absolute_sentiment_delta": 0.007580299999999998,
+      "mean_sentiment_delta": -0.0003400999999999987,
+      "method": "retrieval",
+      "precision": 0.8919776846170425,
+      "preserved": {
+        "country": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "degree": {
+          "accuracy": 0.6320582877959927,
+          "correct": 347,
+          "units": 549
+        },
+        "project_count": {
+          "accuracy": 0.19298245614035087,
+          "correct": 154,
+          "units": 798
+        },
+        "region": {
+          "accuracy": null,
+          "correct": 0,
+          "units": 0
+        },
+        "university_tier": {
+          "accuracy": 0.5009596928982726,
+          "correct": 261,
+          "units": 521
+        }
+      },
+      "recall": 0.8916519072651863,
+      "rouge_l": 0.2899858254305247,
+      "units": 1000
+    }
+  ],
+  "unedited": "the unit's own factual CV",
+  "unit_ids_sha256": "9b320623a24bedb6e19538dd50b85a51f69288fef5fa9684e2136f4a5c215c01",
+  "units": 1000,
+  "vader": {
+    "vaderSentiment": "3.3.2"
+  },
+  "versions": {
+    "bert-score": "0.3.13",
+    "rapidfuzz": "3.14.1",
+    "sacrebleu": "2.5.1",
+    "torch": "2.12.1",
+    "transformers": "4.48.0"
+  }
+}

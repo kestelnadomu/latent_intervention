@@ -595,11 +595,11 @@ is sufficient; neither the root ML environment nor a GPU is needed:
 
 ```bash
 python -m exp.paper_tables.decoder_package_table \
-  --output overleaf/tables/decoder_package.tex
+  --output overleaf/tables/decoder.tex
 ```
 
 The command creates four bare `booktabs` tabulars using the same formatting
-helpers as the historical table:
+helpers as the historical table (shown below with the stem `decoder_package`):
 
 | File | Columns after dimension and Gemma size |
 | --- | --- |
@@ -613,7 +613,18 @@ accuracies are percentages; text scores use their raw 0–1 scales, and VADER
 differences retain their raw scale. Each factual column displays its own
 scorable denominator. Undefined accuracy is `--`; the project-change column
 explicitly has `n=1`. No winning values are bolded across the differing flow
-protocols, and no confidence intervals or new baselines are invented.
+protocols, and no confidence intervals are invented.
+
+Each vector block also has a non-generative **retrieval** row per dimension: the
+factual CV of the fit (pool) unit whose canonical latent is closest in cosine to
+the oracle or predicted vector, as in the earlier pilot. A final **unedited x**
+row offers the unit's own factual CV as its counterfactual. Both are scored with
+the decoders' metrics against the same references and must share their fact
+cohorts. Their portable aggregates are
+[`results/decoder_package_baselines_v1.json`](results/decoder_package_baselines_v1.json),
+made on CPU by `exp.text_realizer_package_eval.baselines` (RoBERTa-large
+BERTScore with the decoders' settings, on CPU and the root environment's
+torch/transformers; command in its docstring).
 
 For example, in a two-column paper (the float and caption remain under the
 paper's control, as with the historical renderer):
