@@ -1,0 +1,25 @@
+[project]
+name = "text-realizer-package-export"
+version = "0.1.0"
+description = "CPU-only package checkpoint loading and latent export"
+requires-python = "==3.12.*"
+dependencies = [
+  "numpy==2.2.6",
+  "pandas==3.0.3",
+  "scipy==1.15.3",
+  "torch==2.6.0+cpu",
+  "pyyaml==6.0.3",
+  "pytest==8.4.2",
+]
+
+[tool.uv]
+package = false
+environments = ["sys_platform == 'linux' and platform_machine == 'x86_64'"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cpu" }
