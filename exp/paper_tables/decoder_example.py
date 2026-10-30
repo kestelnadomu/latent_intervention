@@ -31,7 +31,7 @@ SUMMARY = ROOT / "docs/experiments/results/decoder_package_v1.json"
 CODEBOOK = ROOT / "exp/sim/codebook.yaml"
 OUTPUT = ROOT / "overleaf/generated/decoder"
 UNIT = 1898  # the worked example of the simulation appendix
-DECODER = "256-270m"  # the highest mean fact accuracy for both vectors
+DECODER = "768-270m"  # its z' is the paper's main pipeline (768-D state flow, seed 0)
 NUMBER = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine)"
 # The spans behind exp.text_realizer.facts.extract, per field it scores.
 PATTERNS = {

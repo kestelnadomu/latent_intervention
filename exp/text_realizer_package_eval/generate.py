@@ -51,6 +51,11 @@ def read_completed(
     return rows
 
 
+def conditions(manifest: dict) -> tuple[str, ...]:
+    """The bundle's vector sets: oracle and predicted, or e.g. one per renderer."""
+    return tuple(manifest.get("conditions", CONDITIONS))
+
+
 def load_vectors(bundle: Path, manifest: dict, model: dict) -> dict:
     dim = model["latent_dim"]
     payload = torch.load(
@@ -59,12 +64,12 @@ def load_vectors(bundle: Path, manifest: dict, model: dict) -> dict:
         weights_only=True,
     )
     if (
-        set(payload) != {"ids", "oracle", "predicted", "encoder"}
+        set(payload) != {"ids", "encoder", *conditions(manifest)}
         or payload["ids"] != manifest["ids"]
         or payload["encoder"] != model["encoder"]
     ):
         raise ValueError("incompatible vector bundle")
-    for condition in CONDITIONS:
+    for condition in conditions(manifest):
         z = payload[condition]
         if (
             not isinstance(z, torch.Tensor)
@@ -97,12 +102,12 @@ def run_generation(
         or (limit is not None and limit < 1)
     ):
         raise ValueError("invalid shard, limit or CPU thread count")
-    if condition not in (*CONDITIONS, "both"):
-        raise ValueError("unknown conditioning arm")
     if device != "cpu" and not device.startswith("cuda:"):
         raise ValueError("use cpu or an explicit visible CUDA device")
     torch.set_num_threads(threads)
     manifest = load_manifest(bundle)
+    if condition not in (*conditions(manifest), "both", "all"):
+        raise ValueError("unknown conditioning arm")
     specification = manifest["models"][model_key]
     checkpoint = checked_file(bundle, specification)
     payload = load_vectors(bundle, manifest, specification)
@@ -116,7 +121,7 @@ def run_generation(
         "device_type": device.split(":")[0],
     }
     model = None
-    for arm in CONDITIONS if condition == "both" else (condition,):
+    for arm in conditions(manifest) if condition in ("both", "all") else (condition,):
         folder = output / model_key / arm
         path = folder / f"part-{shard_index:03d}-of-{num_shards:03d}.jsonl"
         meta = {

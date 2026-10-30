@@ -73,8 +73,14 @@ def check_training_record(actual: dict, expected: dict) -> None:
 
 
 def predict_vectors(
-    config: dict, pipeline: dict, dim: int, z: torch.Tensor, do_values: list[int]
+    config: dict,
+    pipeline: dict,
+    dim: int,
+    z: torch.Tensor,
+    do_values: list[int],
+    kind: str = "flow",
 ) -> tuple[torch.Tensor, dict]:
+    """The edits of the renderer ``pipeline[kind]`` (S1, trained on psi(z))."""
     from latent_lab import LinearSCM, Pipeline, mean_predict
 
     report = read_json(checked_source(pipeline["report"]))
@@ -83,9 +89,11 @@ def predict_vectors(
         checked_source(pipeline["reader"]), map_location="cpu", weights_only=False
     )
     flow = torch.load(
-        checked_source(pipeline["flow"]), map_location="cpu", weights_only=False
+        checked_source(pipeline[kind]), map_location="cpu", weights_only=False
     )
-    if len(readers) != 5 or flow.flow.state_dict()["mean"].numel() != dim:
+    if len(readers) != 5 or (
+        kind == "flow" and flow.flow.state_dict()["mean"].numel() != dim
+    ):
         raise ValueError("wrong fold count or flow dimension")
     records = [
         r
@@ -105,13 +113,13 @@ def predict_vectors(
     record = [
         r
         for r in report["training"]
-        if r["model"] == "rho-flow"
+        if r["model"] == f"rho-{kind}"
         and r["S"] == "S1"
         and r["train"] == "ψ(z)"
         and r["seed"] == config["seed"]
     ]
     if len(record) != 1:
-        raise ValueError("missing matching flow training record")
+        raise ValueError(f"missing matching {kind} training record")
     check_training_record(flow.fit_log, record[0])
     scm_config = config["scm"]
     if flow.columns != list(scm_config["levels"]):
@@ -126,7 +134,7 @@ def predict_vectors(
     return predicted, {
         "source": result.s.to_dict(orient="records"),
         "target": result.s_prime.to_dict(orient="records"),
-        "flow_settings": flow.settings,
+        f"{kind}_settings": getattr(flow, "settings", None),
     }
 
 
@@ -137,11 +145,12 @@ def replay(
     payload: dict,
     ids: list[int],
     do_values: list[int],
+    kind: str = "flow",
 ) -> tuple[torch.Tensor, torch.Tensor, dict]:
     """Oracle and predicted vectors of the evaluation units, checked against the package."""
     z = aligned_vectors(payload, ids, dim, oracle=False)
     oracle = aligned_vectors(payload, ids, dim, oracle=True)
-    predicted, states = predict_vectors(config, pipeline, dim, z, do_values)
+    predicted, states = predict_vectors(config, pipeline, dim, z, do_values, kind)
     # Check the replay against the already-published scalar result, without
     # choosing a checkpoint or seed from the reconstructed text.
     report = read_json(checked_source(pipeline["report"]))
@@ -149,7 +158,7 @@ def replay(
         row
         for row in report["results"]
         if row["S"] == "S1"
-        and row["rho"] == "flow"
+        and row["rho"] == kind
         and row["train"] == "ψ(z)"
         and row["test"] == "ψ(z)"
         and row["seed"] == config["seed"]

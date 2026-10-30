@@ -156,6 +156,93 @@ def test_generation_never_needs_reference_text_and_preserves_edited_vectors(
     assert fake_decoder[0].norm() > 1
 
 
+def test_sharded_generation_covers_every_vector_set_of_a_renderer_bundle(
+    bundle, tmp_path, fake_decoder
+):
+    # a renderer bundle (renderers.prepare) names its vector sets instead of oracle/predicted
+    manifest = read_json(bundle / "manifest.json")
+    z = torch.zeros(4, 768)
+    z[:, 0] = torch.tensor(manifest["ids"])
+    path = bundle / "vectors-768.pt"
+    encoder = {"embeddinggemma_latent_dim": 768}
+    save_torch(
+        path,
+        {
+            "ids": manifest["ids"],
+            "encoder": encoder,
+            "editor": z + 1,
+            "group_ot": z + 2,
+            "factual": z + 3,
+        },
+    )
+    manifest["files"]["vectors-768"] = file_record(bundle, path)
+    manifest["conditions"] = ["editor", "group_ot", "factual"]
+    manifest["models"] = {"768-270m": manifest["models"]["768-270m"]}
+    manifest["replays"] = {}
+    write_json(bundle / "manifest.json", manifest)
+    output = tmp_path / "predictions"
+    for shard in (0, 1):
+        generation.run_generation(
+            bundle, output, "768-270m", shard_index=shard, num_shards=2
+        )
+    assert sorted(p.name for p in (output / "768-270m").iterdir()) == [
+        "editor",
+        "factual",
+        "group_ot",
+    ]
+    assert sorted(int(v[0, 0]) for v in fake_decoder) == sorted(
+        key + offset for key in manifest["ids"] for offset in (1, 2, 3)
+    )
+    with pytest.raises(ValueError, match="unknown conditioning arm"):
+        generation.run_generation(bundle, output, "768-270m", condition="oracle")
+
+
+def test_renderer_scoring_reads_every_vector_set(
+    bundle, tmp_path, fake_decoder, monkeypatch
+):
+    from exp import text_realizer_vader
+    from exp.text_realizer_package_eval import baselines, renderers
+
+    test_sharded_generation_covers_every_vector_set_of_a_renderer_bundle(
+        bundle, tmp_path, fake_decoder
+    )
+
+    class Analyzer:
+        def polarity_scores(self, text):
+            return {"compound": 0.5}
+
+    class Scorer:
+        class _tokenizer:  # noqa: N801 - BERTScorer's attribute name
+            @staticmethod
+            def encode(text, **kwargs):
+                return text.split()
+
+    # stand-ins for the RoBERTa-large and VADER models; everything else is real
+    monkeypatch.setattr(text_realizer_vader, "load_analyzer", lambda: (Analyzer(), {}))
+    monkeypatch.setattr(baselines, "bertscorer", lambda *a, **kw: Scorer())
+    monkeypatch.setattr(baselines, "bertscore", lambda scorer, pairs: {"f1": 0.9})
+    monkeypatch.setattr(baselines, "provenance", lambda vader, device: {})
+    monkeypatch.setattr(renderers, "RESULTS", tmp_path / "results.json")
+    result = renderers.score(
+        bundle, tmp_path / "predictions", tmp_path / "scores", "cpu"
+    )
+    rows = {row["method"]: row for row in result["rows"]}
+    assert list(rows) == ["editor", "group_ot", "factual"]
+    assert all(row["units"] == 4 and row["f1"] == 0.9 for row in result["rows"])
+    # the fake decoder writes (nearly) x', so phi^-1(phi(x)), scored against x, falls behind
+    assert [row["against"] for row in rows.values()] == ["x'", "x'", "x"]
+    assert rows["editor"]["character_similarity"] > 0.9
+    assert rows["factual"]["character_similarity"] < 0.5
+    comparisons = (tmp_path / "scores/comparisons.jsonl").read_text().splitlines()
+    assert [json.loads(line)["id"] for line in comparisons] == [7, 2, 9, 4]
+    assert set(json.loads(comparisons[0])["generated"]) == {
+        "768-270m/editor",
+        "768-270m/group_ot",
+        "768-270m/factual",
+    }
+    assert read_json(tmp_path / "results.json")["rows"] == result["rows"]
+
+
 def test_portable_resume_repairs_only_uncommitted_tail(bundle, tmp_path, fake_decoder):
     output = tmp_path / "predictions"
     generation.run_generation(bundle, output, "256-270m", limit=1)

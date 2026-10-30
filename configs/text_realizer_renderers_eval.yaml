@@ -1,0 +1,28 @@
+# Decode the edits of the five other renderers with the 768-D Gemma 3 270M decoder.
+# The package evaluation (package-v1) decoded the state flow only. Deployment setting as there:
+# S1, rho trained and tested with psi(z), seed 0, each test unit under its own do(O = k).
+# Inputs, SCM, reader and run report come from the base config; the decoder export and the
+# references from the package-v1 bundle. Renderer fits are pinned by file and checksum; each
+# replay must also reproduce the run report's cosine and distance. The bundle also holds the
+# unedited phi(x) of the same units (set "factual"), whose decoding is scored against x.
+format_version: 1
+base: configs/text_realizer_package_eval.yaml
+source_bundle: models/talent_motivation/text-realizer-evaluation/package-v1
+width: 768
+decoder: 768-270m
+renderers:
+  editor:
+    path: models/latent_lab/rho-S1-editor-psi-seed0-0d3750666c784db0.pt
+    sha256: f4c828dcdd1a4f501a6c1485c8b359ce95a26bd2788d582bdef7115672105d9d
+  ot_editor:
+    path: models/latent_lab/rho-S1-ot_editor-psi-seed0-bf1ad04f148b3cfa.pt
+    sha256: 3f48d543e44677d494dd207bf33116e7dfedaf86d1c94da874ecef655776938e
+  ot_flow:
+    path: models/latent_lab/rho-S1-ot_flow-psi-seed0-c4789caccb897824.pt
+    sha256: 77802b9add52a16cd164153b062b91d17aa1377f2bfe3df4c05e6a207c39fe2a
+  state_effect:
+    path: models/latent_lab/rho-S1-state_effect-psi-seed0-e3b57c213b02af87.pt
+    sha256: f8587a751ddf589600d6c9fb7f89afad7048b65119674e459204703dc3da7b82
+  group_ot:
+    path: models/latent_lab/rho-S1-group_ot-psi-seed0-e21746c2a523fa11.pt
+    sha256: b2af384580d66350f703bea332924768118de7fabfe47132a1cb25acd8bec4b6

@@ -26,7 +26,9 @@ def main() -> None:
         "--model", required=True, choices=("256-270m", "256-1b", "768-270m", "768-1b")
     )
     generate.add_argument(
-        "--condition", choices=("oracle", "predicted", "both"), default="both"
+        "--condition",
+        default="all",
+        help="one of the bundle's vector sets, or all of them (all/both)",
     )
     generate.add_argument(
         "--device", required=True, help="cpu or a visible device such as cuda:0"

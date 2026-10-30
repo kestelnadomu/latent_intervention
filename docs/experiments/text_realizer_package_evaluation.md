@@ -686,3 +686,42 @@ four outputs reproduced exactly. The four real-data tabulars compiled with
 was attempted and still stops in seven existing modules requiring the absent
 `dotenv`/`langvae` dependencies. The paper tables do not depend on either.
 
+## The other renderers (renderers-v1)
+
+package-v1 decoded the state flow's edits only. `renderers-v1` decodes the edits of
+the editor, OT editor, OT flow, state effect and group OT with the 768-D Gemma 3 270M
+decoder, on the same 1,000 test units and in the same setting (S1, rho trained and
+tested with psi(z), seed 0, each unit under its own do(O = k)). It also decodes the
+unedited phi(x) of the same units (vector set `factual`): phi^-1(phi(x)) against x is the
+decoder's reconstruction of held-out factual CVs, the task it was trained on (its 2,800
+fit and 200 tune units exclude the test units). 6,000 CVs in total. Nothing is
+retrained. `configs/text_realizer_renderers_eval.yaml` pins the five renderer fits by
+file and checksum; `prepare` also requires each replay to reproduce the run report's
+cosine and distance, and reuses package-v1's decoder export and references. On the GPU
+machine, from the repository root on the `decoder` branch:
+
+```bash
+# 1. CPU, about a minute: the bundle models/.../text-realizer-evaluation/renderers-v1
+exp/text_realizer_package_eval/environment/.venv/bin/python \
+  -m exp.text_realizer_package_eval.renderers prepare --allow-oracle-evaluation
+# 2. check that scoring's packages resolve before the long run
+UV_CACHE_DIR=.cache/text-realizer-uv .cache/text-realizer-tools/uv run \
+  --project exp/text_realizer/environment --frozen \
+  --with bert-score==0.3.13 --with vaderSentiment==3.3.2 \
+  python -c "import bert_score, vaderSentiment"
+# 3. inside tmux, with all four GPUs idle: generation (about 6-6.5 h), then scoring
+UV=.cache/text-realizer-tools/uv UV_CACHE_DIR=.cache/text-realizer-uv \
+  bash scripts/run_text_realizer_renderers.sh 0 1 2 3
+```
+
+Each GPU decodes one shard of 250 units for all five renderers and phi(x) (about 15 s per
+CV). Logs and `.progress.json` files are under
+`reports/talent_motivation/text-realizer-evaluation/renderers-v1/`; rerunning the launcher
+resumes. After all shards are complete, `renderers score` runs on the first GPU (minutes):
+text similarity, VADER and overall fact accuracy as `exp.text_realizer_package_eval.score`
+and VADER, and RoBERTa-large BERTScore with the BERTScore follow-up's settings; the
+renderers against x', phi^-1(phi(x)) against x. It writes every text to
+`renderers-v1/scores/comparisons.jsonl` and the portable aggregates to
+`docs/experiments/results/decoder_package_renderers_v1.json`, one row per vector set in the
+reference rows' schema plus `against` (`x'` or `x`). Commit these two files (the
+comparisons file with `git add -f`, as the report tree is excluded locally).

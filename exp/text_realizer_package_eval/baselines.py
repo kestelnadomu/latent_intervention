@@ -60,22 +60,22 @@ SUMMARY = ROOT / "docs/experiments/results/decoder_package_v1.json"
 OUTPUT = ROOT / "docs/experiments/results/decoder_package_baselines_v1.json"
 FLOOR = ROOT / "docs/experiments/results/decoder_package_floor_v1.json"
 FLOOR_TEXTS = ROOT / "data/text_talent_motivation/cv_floor.csv"
-BERTSCORE = {  # the decoders' settings (exp.text_realizer_bertscore), on CPU
+BERTSCORE = {  # the decoders' settings (exp.text_realizer_bertscore)
     "num_layers": 17,
     "idf": False,
     "rescale_with_baseline": False,
-    "device": "cpu",
 }
 
 
-def bertscorer():
+def bertscorer(device: str = "cpu", download: bool = True):
     from bert_score import BERTScorer
 
     return BERTScorer(
-        model_type=str(snapshot(CACHE, download=True)),
+        model_type=str(snapshot(CACHE, download=download)),
         lang="en",
         batch_size=BATCH_SIZE,
         use_fast_tokenizer=False,
+        device=device,
         **BERTSCORE,
     )
 
@@ -161,9 +161,14 @@ def baseline_texts(config: dict) -> tuple[list[int], dict, dict, dict]:
     return ids, texts, variants, replays
 
 
-def provenance(vader: dict) -> dict:
+def provenance(vader: dict, device: str = "cpu") -> dict:
     return {
-        "bertscore": {"model": MODEL, "revision": REVISION, **BERTSCORE},
+        "bertscore": {
+            "model": MODEL,
+            "revision": REVISION,
+            **BERTSCORE,
+            "device": device,
+        },
         "vader": vader["versions"],
         "versions": versions(
             ("torch", "transformers", "bert-score", "rapidfuzz", "sacrebleu")
