@@ -1,4 +1,5 @@
-# Decode the edits of the five other renderers with the 768-D Gemma 3 270M decoder.
+# Decode the edits of the five other renderers with the 768-D Gemma 3 270M decoder, and of all
+# six with the true target states (see target_states).
 # The package evaluation (package-v1) decoded the state flow only. Deployment setting as there:
 # S1, rho trained and tested with psi(z), seed 0, each test unit under its own do(O = k).
 # Inputs, SCM, reader and run report come from the base config; the decoder export and the
@@ -10,6 +11,11 @@ base: configs/text_realizer_package_eval.yaml
 source_bundle: models/talent_motivation/text-realizer-evaluation/package-v1
 width: 768
 decoder: 768-270m
+# the simulation's true target state of every unit under its own do(O = k): all six renderers
+# (the state flow too) are also decoded conditioned on it instead of the operator's draw
+target_states:
+  path: data/sim_talent_motivation/sim_data_counterfactual.csv
+  sha256: 2e6524bd830dd0b4ab392fd31c63d5210eec3a02a8edea8f53c63001030841fd
 renderers:
   editor:
     path: models/latent_lab/rho-S1-editor-psi-seed0-0d3750666c784db0.pt

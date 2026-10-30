@@ -178,7 +178,8 @@ def test_sharded_generation_covers_every_vector_set_of_a_renderer_bundle(
     manifest["files"]["vectors-768"] = file_record(bundle, path)
     manifest["conditions"] = ["editor", "group_ot", "factual"]
     manifest["models"] = {"768-270m": manifest["models"]["768-270m"]}
-    manifest["replays"] = {}
+    manifest["replays"], manifest["true_target_latent"] = {}, {}
+    manifest["same_edits"] = {"group_ot-true-target": "group_ot"}
     write_json(bundle / "manifest.json", manifest)
     output = tmp_path / "predictions"
     for shard in (0, 1):
@@ -227,10 +228,11 @@ def test_renderer_scoring_reads_every_vector_set(
         bundle, tmp_path / "predictions", tmp_path / "scores", "cpu"
     )
     rows = {row["method"]: row for row in result["rows"]}
-    assert list(rows) == ["editor", "group_ot", "factual"]
+    assert list(rows) == ["editor", "group_ot", "factual", "group_ot-true-target"]
     assert all(row["units"] == 4 and row["f1"] == 0.9 for row in result["rows"])
     # the fake decoder writes (nearly) x', so phi^-1(phi(x)), scored against x, falls behind
-    assert [row["against"] for row in rows.values()] == ["x'", "x'", "x"]
+    assert [row["against"] for row in rows.values()] == ["x'", "x'", "x", "x'"]
+    assert rows["group_ot-true-target"]["chrf"] == rows["group_ot"]["chrf"]
     assert rows["editor"]["character_similarity"] > 0.9
     assert rows["factual"]["character_similarity"] < 0.5
     comparisons = (tmp_path / "scores/comparisons.jsonl").read_text().splitlines()
@@ -239,6 +241,7 @@ def test_renderer_scoring_reads_every_vector_set(
         "768-270m/editor",
         "768-270m/group_ot",
         "768-270m/factual",
+        "768-270m/group_ot-true-target",
     }
     assert read_json(tmp_path / "results.json")["rows"] == result["rows"]
 

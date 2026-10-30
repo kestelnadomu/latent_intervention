@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Foreground launcher (detach with tmux or a scheduler): decode the five renderers' edits and
-# the unedited phi(x) with the 768-D Gemma 3 270M decoder, one shard of the 1,000 test units
-# per GPU, then score all texts (text similarity, VADER, facts, BERTScore) on the first GPU.
+# Foreground launcher (detach with tmux or a scheduler): decode the renderers' edits (with the
+# operator's and with the true target states) and the unedited phi(x) with the 768-D Gemma 3
+# 270M decoder, one shard of the 1,000 test units per GPU, then score all texts (text
+# similarity, VADER, facts, BERTScore) on the first GPU.
 # Prepare the bundle first:
 #   exp/text_realizer_package_eval/environment/.venv/bin/python \
 #     -m exp.text_realizer_package_eval.renderers prepare --allow-oracle-evaluation

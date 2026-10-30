@@ -2,12 +2,15 @@
 
 The package evaluation (package-v1) decoded the state flow's edits only. This decodes the
 editor, OT editor, OT flow, state effect and group OT on the same 1,000 test units, in the
-same deployment setting (``configs/text_realizer_renderers_eval.yaml``), and phi(x) itself:
+same deployment setting (``configs/text_realizer_renderers_eval.yaml``), and phi(x) itself.
+It also decodes all six renderers (the state flow too) conditioned on the simulation's true
+target state s' instead of the operator's draw, with psi(z) as source state as before:
 
 1. ``prepare`` (CPU, package-eval environment, next to package-v1 and the latent_lab cache)
    replays every renderer's edits, each checked against the run report, into a new bundle
-   with package-v1's decoder export and references, one vector set per renderer and the
-   unedited phi(x) as the set ``factual``;
+   with package-v1's decoder export and references, one vector set per renderer, one per
+   renderer with the true s' (``<renderer>-true-target``, with their latent metrics) and
+   the unedited phi(x) as the set ``factual``;
 2. ``python -m exp.text_realizer_package_eval generate`` on that bundle, one shard per GPU;
 3. ``score`` (one GPU) scores every renderer's texts against x', and phi^-1(phi(x)) against
    x, with the paper tables' metrics: text similarity, VADER, overall fact accuracy and
@@ -25,6 +28,7 @@ import argparse
 import json
 from pathlib import Path
 
+import pandas as pd
 import torch
 import yaml
 
@@ -50,7 +54,7 @@ from .common import (
     read_config,
     source_hashes,
 )
-from .prepare import aligned_vectors, replay
+from .prepare import aligned_vectors, predict_vectors, replay
 
 CONFIG = ROOT / "configs/text_realizer_renderers_eval.yaml"
 BUNDLE = ROOT / "models/talent_motivation/text-realizer-evaluation/renderers-v1"
@@ -62,6 +66,8 @@ def prepare(spec: dict, bundle: Path, *, allow_oracle: bool = False) -> dict:
     """The renderers' edits of the test units, with package-v1's decoder and references."""
     if not allow_oracle:
         raise PermissionError("official test export requires --allow-oracle-evaluation")
+    from latent_lab import evaluate
+
     config = read_config(ROOT / spec["base"])
     source = ROOT / spec["source_bundle"]
     base = load_manifest(source)
@@ -89,19 +95,40 @@ def prepare(spec: dict, bundle: Path, *, allow_oracle: bool = False) -> dict:
         # package-v1's IDs, in the partition order that reproduces the operator's draws
         ids = base["ids"]
         do_values = [int(interventions[unit]["do_value"]) for unit in ids]
+        target = pd.read_csv(
+            checked_source(spec["target_states"]), index_col="id"
+        ).loc[ids]
+        if target["X"].tolist() != do_values:
+            raise ValueError("true target states do not follow each unit's do(O = k)")
         payload = torch.load(inputs["latents"], map_location="cpu", weights_only=True)
         pipeline = {**config["pipelines"][str(dim)], **spec["renderers"]}
-        vectors, replays = {"ids": ids, "encoder": model["encoder"]}, {}
-        for kind in spec["renderers"]:
-            _, vectors[kind], states = replay(
+        # the renderers' input phi(x), decoded as a reconstruction of x
+        z = aligned_vectors(payload, ids, dim, oracle=False)
+        vectors = {"ids": ids, "encoder": model["encoder"], "factual": z}
+        replays, latent, same = {}, {}, {}
+        for kind in ("flow", *spec["renderers"]):
+            oracle, sampled, states = replay(
                 config, pipeline, dim, payload, ids, do_values, kind
             )
             replays[kind] = states["reproduced_package_metrics"]
             print(
                 f"{kind}: replay reproduces the run report {replays[kind]}", flush=True
             )
-        # the renderers' input phi(x), decoded as a reconstruction of x
-        vectors["factual"] = aligned_vectors(payload, ids, dim, oracle=False)
+            if kind != "flow":  # package-v1 decoded the state flow's edits
+                vectors[kind] = sampled
+            name = f"{kind}-true-target"
+            vectors[name], _ = predict_vectors(
+                config, pipeline, dim, z, do_values, kind, target
+            )
+            metrics = evaluate(z, vectors[name], oracle)
+            latent[name] = metrics[["gap_closed", "distance", "cosine"]].to_dict()
+            print(f"{name}: {latent[name]}", flush=True)
+            # e.g. group OT reads only O, which do(O = k) sets exactly; greedy decoding
+            # of identical vectors gives identical texts, so score reuses them
+            if kind in vectors and torch.equal(vectors[name], vectors[kind]):
+                same[name] = kind
+                del vectors[name]
+                print(f"{name}: identical to {kind}, not decoded again", flush=True)
         files = {}
         for name in ("references", key):
             destination = bundle / base["files"][name]["file"]
@@ -114,13 +141,16 @@ def prepare(spec: dict, bundle: Path, *, allow_oracle: bool = False) -> dict:
             "format_version": 1,
             "complete": True,
             "ids": ids,
-            "conditions": [*spec["renderers"], "factual"],
+            "conditions": [*spec["renderers"], "factual", *(n for n in latent if n not in same)],
+            "same_edits": same,
             "models": {key: {**model, **files[key]}},
             "files": files,
             "provenance": provenance,
             "replays": replays,
+            "true_target_latent": latent,
             "scope": "official test: decoded edits of the renderers other than the state flow; "
-            "S1, rho trained and tested with psi(z), seed 0; and the unedited phi(x)",
+            "S1, rho trained and tested with psi(z), seed 0; the unedited phi(x); all six "
+            "renderers with psi(z) as source and the true target state",
         }
         immutable_json(bundle / "manifest.json", manifest)
         return manifest
@@ -178,6 +208,9 @@ def score(bundle: Path, predictions: Path, output: Path, device: str) -> dict:
             f"{kind} against {against}: chrF {row['chrf']:.3f}, BERTScore F1 {row['f1']:.4f}",
             flush=True,
         )
+    for name, kind in manifest["same_edits"].items():
+        rows.append({**next(r for r in rows if r["method"] == kind), "method": name})
+        outputs[f"{key}/{name}"] = outputs[f"{key}/{kind}"]
     output.mkdir(parents=True, exist_ok=True)
     path = output / "comparisons.jsonl"
     with atomic_output(path) as temporary:
@@ -196,6 +229,7 @@ def score(bundle: Path, predictions: Path, output: Path, device: str) -> dict:
         "bundle_sha256": bundle_hash,
         "comparisons_sha256": sha256_file(path),
         "replays": manifest["replays"],
+        "true_target_latent": manifest["true_target_latent"],
         **provenance(vader, device),
         "rows": rows,
     }

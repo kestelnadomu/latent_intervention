@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn.functional as F
 
@@ -79,8 +80,11 @@ def predict_vectors(
     z: torch.Tensor,
     do_values: list[int],
     kind: str = "flow",
+    target: pd.DataFrame | None = None,
 ) -> tuple[torch.Tensor, dict]:
-    """The edits of the renderer ``pipeline[kind]`` (S1, trained on psi(z))."""
+    """The edits of the renderer ``pipeline[kind]`` (S1, trained on psi(z)); with
+    ``target`` (one row per unit), conditioned on these target states instead of the
+    operator's draw."""
     from latent_lab import LinearSCM, Pipeline, mean_predict
 
     report = read_json(checked_source(pipeline["report"]))
@@ -125,8 +129,14 @@ def predict_vectors(
     if flow.columns != list(scm_config["levels"]):
         raise ValueError("flow/SCM state columns differ")
     states = mean_predict(readers, z)
-    scm = LinearSCM(**scm_config, seed=config["seed"])
-    operator = scm.do(X=lambda _: np.asarray(do_values))
+    if target is None:
+        scm = LinearSCM(**scm_config, seed=config["seed"])
+        operator = scm.do(X=lambda _: np.asarray(do_values))
+    else:
+
+        def operator(s: pd.DataFrame) -> pd.DataFrame:
+            return target[s.columns].reset_index(drop=True)
+
     result = Pipeline(None, operator, flow)(z, states)
     predicted = result.z_prime.detach().cpu().float()
     if predicted.shape != z.shape or not torch.isfinite(predicted).all():
