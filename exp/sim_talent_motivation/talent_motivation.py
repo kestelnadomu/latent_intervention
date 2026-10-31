@@ -27,7 +27,7 @@ import pandas as pd
 from exp.sim_talent import talent_sfm as base
 from exp.sim.scm import SCM, LinearMechanism, NoiseSampler, linear_mechanism
 from exp.sim.symbolic import SymbolicIntervention
-from src.schema import ColumnSpec, load_schema
+from exp.sim.schema import ColumnSpec, load_schema
 
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
 
@@ -161,7 +161,7 @@ def outcome_bayes_predictions(
 
 if __name__ == "__main__":
     from exp.sim.paired_data import auxiliary_columns
-    from src.schema import load_intervention
+    from exp.sim.schema import load_intervention
 
     config = _as_config(None)
     columns, outcome = load_schema(config)
