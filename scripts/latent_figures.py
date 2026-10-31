@@ -5,11 +5,13 @@
 - ``latent_gap.pdf``: per-unit gap closed to phi(x') per renderer, in isolation, with the
   noise floor;
 - ``latent_downstream.pdf``: counterfactual fairness, do(O = Western Europe) for every unit in
-  the deployment setting: mean predicted qualification per factual region.
+  the deployment setting: boxplots of the per-unit expected predicted qualification per factual region.
+- ``latent_downstream_hist.pdf``: the predicted class per factual region, one panel per method (seed 0),
+  with the true Y and Y' as reference panels.
 
 The trade-off reads the run report. The gap and the downstream figure recompute the edits
-from the cached fits without refitting; their gap closed (against the report) and SPD
-(against the notebook's cached fairness evaluation) per renderer and seed must match. Writes
+from the cached fits without refitting; their gap closed (against the report) and region
+means (against the notebook's cached fairness evaluation) per renderer and seed must match. Writes
 to ``overleaf_paper/figures/``:
 
     uv run --with matplotlib==3.10.3 python scripts/latent_figures.py
@@ -175,27 +177,26 @@ def gap_figure(report: dict, run: dict) -> None:
 
 
 def downstream_figure(report: dict, run: dict) -> None:
-    """Counterfactual fairness: mean predicted qualification per factual region under
-    do(O = Western Europe), for the unedited, edited and real latents."""
+    """Counterfactual fairness: per-unit expected predicted qualification per factual region
+    under do(O = Western Europe), for the unedited, edited and real latents."""
     records = [t for t in report["training"] if t["model"] == "pi"]
     pi = run_fit("pi-*.pt", records, lambda fit: [fit.fit_log])
+    levels = torch.arange(3, dtype=torch.float32)
 
     def predict(z: torch.Tensor) -> np.ndarray:
         return pi.proba(z)["Y"].argmax(-1).numpy()
 
+    def score(z: torch.Tensor) -> np.ndarray:  # E[Y] under pi's predicted distribution
+        return (pi.proba(z)["Y"] @ levels).numpy()
+
     x = run["x"]  # the factual region of each unit
-
-    def by_region(values: np.ndarray, groups: np.ndarray = x) -> pd.Series:
-        return pd.Series(values).groupby(groups).mean()
-
-    edited = {key: by_region(predict(z_prime)) for key, z_prime in run["fair"].items()}
     # the notebook's cached fairness evaluation (cell-fair) must agree with the replay
     (path,) = CACHE.glob("fairness-*.pt")
     cached = torch.load(path, weights_only=False)
     for r in cached[(cached["train"] == "ψ(z)") & (cached["test"] == "ψ(z)")].itertuples():
-        means = edited[r.rho, r.seed]
-        if abs(means[3] - means[0] - r.spd) > 1e-6:
-            raise ValueError(f"{r.rho}, seed {r.seed}: the replay does not reproduce the SPD")
+        means = pd.Series(predict(run["fair"][r.rho, r.seed])).groupby(x).mean()
+        if any(abs(means[k] - getattr(r, f"mean_X{k}")) > 1e-6 for k in means.index):
+            raise ValueError(f"{r.rho}, seed {r.seed}: the replay does not reproduce the region means")
     # the real latents under X = 3: the unit's own text if it is from there, else its target
     # text if its drawn do() was X = 3; the other units have none
     real = (x == FAIR_X) | (run["do"] == FAIR_X)
@@ -203,40 +204,79 @@ def downstream_figure(report: dict, run: dict) -> None:
     states = pd.read_csv(DATA / "sim_data_counterfactual_states.csv")
     y_fair = (states[(states["do_value"] == FAIR_X) & (states["target"] == "total")]
               .set_index("id").loc[run["ids"], "Y"].to_numpy())
-    # benchmarks: label, colour, marker, filled, mean per region
-    series = [(r"unedited $\pi(z)$", "0.6", "o", True, by_region(predict(run["z"])))]
-    for kind, (label, color, marker, filled) in RENDERERS.items():
-        series.append((label, color, marker, filled,
-                       sum(edited[kind, seed] for seed in range(5)) / 5))
-    series.append((r"real latents", "0.25", "*", True, by_region(predict(z_real), x[real])))
-    references = [(r"true $\mathtt{Y}'$ under $do(\mathsf{O} = $ WE$)$", "#6250D6", by_region(y_fair))]
+    y = pd.read_csv(DATA / "sim_data_factual.csv", index_col="id").loc[run["ids"], "Y"].to_numpy()
+    we = x == FAIR_X
+    print(f"WE units: pi(z) accuracy against Y {(predict(run['z'])[we] == y[we]).mean():.3f}, "
+          f"Y'_(O=3) == Y for {(y_fair[we] == y[we]).mean():.3f}")
+    # benchmarks: label, colour, filled, per-unit scores, their regions (renderers: all seeds)
+    series = [(r"unedited $\pi(z)$", "0.6", True, score(run["z"]), x)]
+    for kind, (label, color, _, filled) in RENDERERS.items():
+        series.append((label, color, filled, np.concatenate([score(run["fair"][kind, seed]) for seed in range(5)]),
+                       np.tile(x, 5)))
+    series.append((r"real latents", "0.25", True, score(z_real), x[real]))
     names = yaml.safe_load(CODEBOOK.read_text(encoding="utf-8"))["columns"]["X"]
     offsets = np.linspace(-0.36, 0.36, len(series))
     width = 0.8 * (offsets[1] - offsets[0])
     fig, ax = plt.subplots(figsize=(5.3, 2.3))
-    for offset, (label, color, marker, filled, means) in zip(offsets, series):
-        xs = means.index + offset
-        # a transparent bar from 0 up to the benchmark's symbol, behind everything
-        ax.bar(xs, means.to_numpy(), width=width, color=color, alpha=0.25, linewidth=0, zorder=1)
-        ax.scatter(xs, means.to_numpy(), marker=marker, label=label, s=40 if marker == "*" else 18,
-                   facecolors=color if filled else "white", edgecolors=color, linewidths=0.8, zorder=3)
-    for label, color, means in references:  # a line across each region's benchmarks
-        ax.hlines(means.to_numpy(), means.index + offsets[0] - width, means.index + offsets[-1] + width,
-                  colors=color, linewidth=1.2, label=label, zorder=2)
-    ax.set_ylim(0.5, 1.6)
+    for offset, (label, color, filled, values, groups) in zip(offsets, series):
+        regions = sorted(set(groups))
+        ax.boxplot([values[groups == k] for k in regions], positions=np.array(regions) + offset,
+                   widths=width, whis=(5, 95), showfliers=False, patch_artist=True, manage_ticks=False,
+                   boxprops={"facecolor": color if filled else "white", "edgecolor": color, "linewidth": 0.6},
+                   medianprops={"color": "white" if filled else color, "linewidth": 0.8},
+                   whiskerprops={"color": color, "linewidth": 0.6}, capprops={"color": color, "linewidth": 0.6})
+        ax.plot([], [], "s", color=color, markerfacecolor=color if filled else "white", label=label)
+    true_means = pd.Series(y_fair).groupby(x).mean()  # a line across each region's boxes
+    ax.hlines(true_means.to_numpy(), true_means.index + offsets[0] - width, true_means.index + offsets[-1] + width,
+              colors="#6250D6", linewidth=1.2, zorder=4,
+              label=r"mean true $\mathtt{Y}'$ under $do(\mathsf{O} = $ WE$)$")
+    ax.set_ylim(0, 2)
     for boundary in np.arange(0.5, len(names) - 1):
         ax.axvline(boundary, color="0.9", linewidth=0.6)
     ax.set_xticks(range(len(names)), [names[k] for k in range(len(names))])
     ax.set_xlabel("Factual region $\\mathsf{O}$")  # a mathtt O looks like a zero
-    ax.set_ylabel("Mean predicted qualification")
+    ax.set_ylabel("Expected predicted\nqualification")
     ax.grid(axis="y", color="0.9", linewidth=0.6)
     ax.set_axisbelow(True)
     ax.spines[["top", "right"]].set_visible(False)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.25), ncol=5, frameon=False,
               handletextpad=0.2, columnspacing=0.8)
     save(fig, "latent_downstream.pdf")
-    for label, *_, means in series + references:
-        print(f"{label:28s} " + "  ".join(f"{m:.2f}" for m in means) + f"  SPD {means[3] - means[0]:+.2f}")
+    # the alternative: per method, the predicted class per factual region for one seed
+    # (no pooling); fair = the regions' bars are equal. The true Y' is the reference panel.
+    seed = 0
+    renderer = {kind: (RENDERERS[kind][0], predict(run["fair"][kind, seed]), x) for kind in RENDERERS}
+    # row 1: the outcomes and the minimal/constant-noise/closed-form base variants; row 2: the
+    # real latents and the OT variants
+    classes = [(r"true $\mathtt{Y}$", y, x), (r"true $\mathtt{Y}'$", y_fair, x),
+               renderer["editor"], renderer["flow"], renderer["state_effect"],
+               (r"$\pi(\varphi(x))$", predict(run["z"]), x), (r"$\pi(\varphi(x'))$", predict(z_real), x[real]),
+               renderer["ot_editor"], renderer["ot_flow"], renderer["group_ot"]]
+    fig, axes = plt.subplots(2, 5, figsize=(5.3, 2.5), sharex=True, sharey=True,
+                             gridspec_kw={"hspace": 0.45, "wspace": 0.12})
+    # regions ordered by factual qualification: a sequential ramp, light (SSA) to dark (WE)
+    region_colors = ["#F2A93B", "#D1495B", "#7B3294", "#1B1B6B"]
+    bar = 0.8 / len(names)
+    for ax, (label, values, groups) in zip(axes.flat, classes):
+        for k in range(len(names)):
+            share = np.bincount(values[groups == k], minlength=3) / (groups == k).sum() * 100
+            ax.bar(np.arange(3) + (k - (len(names) - 1) / 2) * bar, share, width=bar,
+                   color=region_colors[k], linewidth=0)
+        ax.set_title(label, fontsize=7, pad=2)
+        ax.set_xticks(range(3))
+        ax.grid(axis="y", color="0.9", linewidth=0.6)
+        ax.set_axisbelow(True)
+        ax.spines[["top", "right"]].set_visible(False)
+    fig.supxlabel("Qualification (class)", fontsize=7, y=-0.05)
+    fig.supylabel("Units of the region (%)", fontsize=7, x=0.02)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c, linewidth=0) for c in region_colors]
+    fig.legend(handles, [names[k] for k in range(len(names))], loc="upper center",
+               bbox_to_anchor=(0.5, -0.09), ncol=len(names), frameon=False, handlelength=1.2,
+               title="Factual region $\\mathsf{O}$", title_fontsize=7)
+    save(fig, "latent_downstream_hist.pdf")
+    for label, _, _, values, groups in series:
+        means = pd.Series(values).groupby(groups).mean()
+        print(f"{label:28s} " + "  ".join(f"{m:.2f}" for m in means) + f"  var {means.var(ddof=0) * 100:.2f}e-2")
 
 
 def main() -> None:
