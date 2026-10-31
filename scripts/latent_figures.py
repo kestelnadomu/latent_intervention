@@ -2,8 +2,7 @@
 
 - ``latent_tradeoff.pdf``: joint fidelity against preservation of M, per renderer and seed,
   for the renderer in isolation (true source state s, true counterfactual state s');
-- ``latent_gap.pdf``: per-unit gap closed to phi(x') per renderer, in isolation, with the
-  noise floor;
+- ``latent_gap.pdf``: per-unit gap closed to phi(x') per renderer, in isolation;
 - ``latent_downstream.pdf``: counterfactual fairness, do(O = Western Europe) for every unit in
   the deployment setting: boxplots of the per-unit expected predicted qualification per factual region.
 - ``latent_downstream_hist.pdf``: the predicted class per factual region, one panel per method (seed 0),
@@ -151,10 +150,6 @@ def gap_figure(report: dict, run: dict) -> None:
     per_unit = {key: (1 - (z_prime - z_cf).norm(dim=1) / before).numpy() for key, z_prime in run["alone"].items()}
     check(report, "gap_closed", {key: float(v.mean()) for key, v in per_unit.items()})
     gaps = {kind: np.concatenate([per_unit[kind, seed] for seed in range(5)]) for kind in RENDERERS}
-    floor = run["encoder"].auxiliary("talent_motivation", "z_floor.pt")
-    rows = run["ids"].get_indexer(floor.ids)
-    # a perfect edit still lies as far from phi(x') as a same-state rewrite from its text
-    ceiling = (1 - (floor.factual(floor.ids) - z[rows]).norm(dim=1) / before[rows]).numpy()
     fig, axes = plt.subplots(2, 3, figsize=(2.9, 2.2), sharex=True, sharey=True,
                              gridspec_kw={"hspace": 0.45})
     # the OT flow's long tail below -0.4 is collected in the leftmost bin
@@ -165,15 +160,11 @@ def gap_figure(report: dict, run: dict) -> None:
         values = np.clip(gaps[kind], bins[0], bins[-1])
         ax.hist(values, bins=bins, weights=np.full(len(values), 100 / len(values)),
                 color=color if filled else "white", edgecolor=color, linewidth=0.6)
-        ax.axvline(ceiling.mean(), color="0.25", linewidth=0.8)
         ax.set_title(label, fontsize=7, pad=2)
         ax.spines[["top", "right"]].set_visible(False)
-    axes[1, 1].annotate("noise\nfloor", (ceiling.mean(), 1), xycoords=("data", "axes fraction"),
-                        xytext=(-2, 0), textcoords="offset points", ha="right", va="top", fontsize=6)
     fig.supxlabel("Gap closed to $\\varphi(x')$ per unit", fontsize=7, y=-0.06)
     fig.supylabel("Units (%)", fontsize=7, x=0.0)
     save(fig, "latent_gap.pdf")
-    print(f"noise floor: mean {ceiling.mean():.3f} over {len(ceiling)} units")
 
 
 def downstream_figure(report: dict, run: dict) -> None:
