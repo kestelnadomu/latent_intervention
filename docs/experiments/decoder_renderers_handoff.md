@@ -15,8 +15,12 @@ decodes, with the **768-D Gemma 3 270M decoder** (`768-270m`), on the same 1,000
 The group OT reads only O, which do(O = k) sets exactly, so its true-target edits equal its
 sampled ones. `prepare` detects this and does not decode them twice; `score` reuses the
 texts. That leaves 11 vector sets, 11,000 CVs. Nothing is retrained. Score everything against
-x', except phi^-1(phi(x)), which is scored against x, with the paper tables' metrics,
-BERTScore included. Full procedure: section "The other renderers (renderers-v1)" of
+x', except phi^-1(phi(x)), which is scored against x, with text similarity, BERTScore,
+VADER and overall/changed/preserved fact accuracy. The group-OT alias gives 12 reported
+conditions from 11 decoding jobs; sampled state-flow results remain in package-v1.
+The true-target conditions still use predicted psi(z) as the source state: they are
+oracle-assisted diagnostics, not a deployable setting or a removal of all reader error.
+Full procedure: section "The other renderers (renderers-v1)" of
 [text_realizer_package_evaluation.md](text_realizer_package_evaluation.md).
 
 ## Before running, check on this machine
@@ -47,11 +51,11 @@ BERTScore included. Full procedure: section "The other renderers (renderers-v1)"
    exp/text_realizer/environment/.venv/bin/python -m pytest tests/text_realizer_package_eval -q
    ```
 
-   All 13 tests should pass.
+   All 19 tests should pass.
 6. **Capacity.**
    - Four GPUs, idle (`nvidia-smi`), for about 12 hours. The launcher takes physical indices.
-   - Disk: under 100 MB in total. The bundle is about 34 MB of vectors plus the decoder
-     export; the outputs are about 11,000 texts.
+   - Disk: budget 0.3 GB for the bundle, predictions and scores, plus several GB if scoring
+     dependencies/model caches need downloading. The prepared bundle alone is about 87 MB.
 
 ## Run
 
@@ -59,15 +63,22 @@ BERTScore included. Full procedure: section "The other renderers (renderers-v1)"
 # 1. CPU, a few minutes: writes models/.../text-realizer-evaluation/renderers-v1
 exp/text_realizer_package_eval/environment/.venv/bin/python \
   -m exp.text_realizer_package_eval.renderers prepare --allow-oracle-evaluation
-# 2. the scoring packages must resolve before the long run
+# 2. resolve scoring packages and verify GPU execution before the long run
 UV_CACHE_DIR=.cache/text-realizer-uv .cache/text-realizer-tools/uv run \
   --project exp/text_realizer/environment --frozen \
+  --index https://download.pytorch.org/whl/cu124 --with torch==2.6.0+cu124 \
   --with bert-score==0.3.13 --with vaderSentiment==3.3.2 \
-  python -c "import bert_score, vaderSentiment"
+  python -c 'import bert_score, torch, vaderSentiment; print("Scoring GPU ready:", torch.__version__, torch.ones(1, device="cuda:0").item())'
 # 3. inside tmux: generation on four GPUs, then scoring on the first
 UV=.cache/text-realizer-tools/uv UV_CACHE_DIR=.cache/text-realizer-uv \
   bash scripts/run_text_realizer_renderers.sh 0 1 2 3
 ```
+
+`--frozen` locks the project environment but not the extra `--with` packages. The explicit
+PyTorch CUDA 12.4 pin keeps scoring compatible with this machine's driver. The launcher
+uses the prepared dependency cache offline and repeats the GPU check before starting any
+generation worker; imports alone cannot verify CUDA compatibility. It holds the existing
+text-realizer GPU leases and refuses duplicate, reserved or busy devices.
 
 **Expected behaviour.**
 
@@ -87,25 +98,105 @@ UV=.cache/text-realizer-tools/uv UV_CACHE_DIR=.cache/text-realizer-uv \
   - Rerunning the launcher resumes.
 - **Scoring:** takes minutes and prints one line per decoded vector set (11) with chrF and
   BERTScore F1: the renderers "against x'", "factual against x".
+  The portable result also contains per-field `changed` and `preserved` counts/accuracies.
+  Both original and target facts must be extractable; unparseable generated values count
+  as errors. For factual reconstruction, the target is x, so changed groups are empty
+  (`accuracy: null`) and every scorable fact belongs to the preserved group.
 
 ## Stop and report instead of working around
 
 - **`prepare` refuses:** a checksum mismatch, "replay differs" from the run report, or "true
   target states do not follow each unit's do(O = k)". The pinned fits or inputs are then not
   the evaluated ones.
-- **Step 2 fails:** the packages don't resolve, offline or locked.
+- **Step 2 fails:** the packages don't resolve, or the scoring environment cannot execute on the GPU.
 - **A worker fails or a GPU is busy.**
 
 Do not edit the config, the pinned files or the code to make a step pass. Do not pull while
 the run is in progress: the run pins the code's hashes and would refuse to resume.
 
+## Local readiness verification (30 October 2026)
+
+- The production bundle is prepared for all 1,000 IDs and 11 distinct vector sets. All
+  pinned hashes and six sampled renderer replays passed.
+- The first four IDs (18, 19, 21, 22) were decoded across all four GPUs: 44 CVs in 177
+  seconds. End-to-end scoring produced all 12 condition rows, including the group-OT
+  alias and changed/preserved-fact metrics. This is a functional smoke test, not a
+  performance estimate for the paper. Its artifacts are in `.cache/renderers-ready-smoke/`.
+- BERTScore passed at batch size 16 using the longest reference (502 tokens), with
+  PyTorch 2.6.0+cu124. Both model caches and scoring dependencies are available offline.
+- All 33 focused pipeline/metric tests, Ruff and shell syntax checks passed. The eight
+  encoder tests and four LangVAE-FT encoding tests passed in a separate compatible
+  environment; LangVAE requires Transformers 4.48 rather than the decoder's 4.57.
+- The wider repository sweep still has six pre-existing Git tracking-policy failures:
+  those tests expect blanket artifact exclusions that the package branch disabled.
+  The preferred package policy and local exclusions are preserved. These failures do
+  not affect generation or scoring. Logs: `.cache/renderers-ready-pytest.log` and
+  `.cache/renderers-ready-langvae*-tests.log`.
+- The full 11,000-CV run started on 30 October at 23:10 CET in tmux session
+  `decoder-renderers-v1-20261030-231004`. Generation finished on 31 October at 09:52 CET;
+  all 44 shards and 11,000 CVs passed completion, ID and checksum verification.
+- Scoring stopped at 09:59 CET after seven conditions: the `editor-true-target` CV for
+  ID 2333 has 518 RoBERTa tokens, exceeding the 512-token limit. It terminated normally
+  with EOS; its reference has 397 tokens. A complete scan found exactly one overlength
+  prediction among 11,000; all other pairs fit. The no-truncation guard remains intact.
+  This interrupted the final aggregate/comparisons export. The completed decoding does
+  not need repeating; the scoring-only follow-up is described below.
+  Launch logs, prediction shards and `length-diagnostic.json` are in
+  `reports/talent_motivation/text-realizer-evaluation/renderers-v1/`.
+
+## Scoring-only follow-up (31 October 2026)
+
+The agreed policy excludes ID 2333 from **BERTScore only, in every condition**, giving
+one common cohort of 999/1,000 IDs (99.9% coverage). All other metrics and every exported
+CV retain all 1,000 IDs. CVs are never truncated. The result records `bertscore_cohort`
+(literal IDs, hash, excluded IDs and coverage) and `bertscore_units` on each row.
+Unlisted overlength inputs still cause an error. This BERTScore cohort differs from the
+original package-v1 results on 1,000 IDs; tables must identify the denominator explicitly.
+
+On an allocated idle GPU, use the existing bundle and saved predictions directly:
+
+```bash
+UV_CACHE_DIR=.cache/text-realizer-uv .cache/text-realizer-tools/uv run \
+  --project exp/text_realizer/environment --frozen --offline \
+  --index https://download.pytorch.org/whl/cu124 --with torch==2.6.0+cu124 \
+  --with bert-score==0.3.13 --with vaderSentiment==3.3.2 \
+  python -m exp.text_realizer_package_eval.renderers score \
+    --device cuda:0 --bertscore-exclude-id 2333
+```
+
+Do not repeat preparation or the generation launcher for this completed run: its
+generation hashes describe the original code, while this follow-up changes only scoring.
+Scoring verifies the saved bundle/checkpoints and every prediction shard, and records the
+updated scoring source hashes separately. Allow about 10–15 minutes for scoring on one GPU.
+
+The scoring-only job started at 11:11 CET on GPU 0 in tmux session
+`decoder-renderers-score-20261031-111059` and finished successfully at **11:21:54 CET**
+(exit code 0). All 12 condition rows and the complete 1,000-ID CV comparison export
+are written. Bundle, comparison, cohort and scoring-source hashes were verified;
+the original references and reused group-OT texts match. All four GPUs are idle.
+Its command, cohort and log path are recorded in `renderers-v1/score-launch.json`.
+All 36 focused pipeline/metric checks and Ruff passed before launch; the wider sweep
+still reports only the same six pre-existing Git tracking-policy failures.
+
 ## Deliver
 
-On `decoder`, commit and push:
+On `decoder`, publish the code/tests/documentation changes and these completed results:
 
 - `docs/experiments/results/decoder_package_renderers_v1.json`
 - `reports/talent_motivation/text-realizer-evaluation/renderers-v1/scores/comparisons.jsonl`
   (add it with `git add -f`; the report tree is excluded locally)
+- The run's prediction JSONL shards, metadata/completion/progress JSONs, launch records,
+  length diagnostic and logs. Exclude transient `.lock` files.
+- `reports/talent_motivation/text-realizer-evaluation/renderers-v1/bundle-manifest.json`,
+  an exact copy of the scored bundle's manifest, verified against the result's
+  `bundle_sha256`. This preserves input/checkpoint provenance without transferring weights.
+
+The run outputs total about 78 MB before Git compression; the largest file is the
+29.18 MiB comparison JSONL. They contain every CV, including ID 2333 in all conditions.
+Only BERTScore excludes that ID. On the other cluster, `git pull origin decoder`
+while on `decoder` retrieves the results for analysis; no GPU or model weights are needed
+to read the JSON/JSONL files. Decoder checkpoints and environment/model caches are separate
+from this results transfer.
 
 Report back:
 

@@ -19,12 +19,26 @@ mkdir -p -- "$rr_output/logs"
 exec 9>"$rr_output/.launch.lock"
 flock -n 9 || { echo 'The renderer evaluation is already running' >&2; exit 2; }
 rr_uuids=()
+# Share the leases used by exp.text_realizer.runtime.gpu_lease.
+mkdir -p .cache/text-realizer-gpu-locks
 for rr_gpu in "$@"; do
     [[ "$rr_gpu" =~ ^[0-9]+$ ]] || { echo 'Use physical GPU indices' >&2; exit 2; }
-    rr_uuids+=("$(nvidia-smi --id "$rr_gpu" --query-gpu=uuid --format=csv,noheader)")
+    rr_uuid="$(nvidia-smi --id "$rr_gpu" --query-gpu=uuid --format=csv,noheader)"
+    exec {rr_gpu_fd}>".cache/text-realizer-gpu-locks/$rr_uuid.lock"
+    flock -n "$rr_gpu_fd" || { echo "GPU $rr_gpu is reserved or listed twice" >&2; exit 2; }
+    rr_used="$(nvidia-smi --id "$rr_gpu" --query-gpu=memory.used --format=csv,noheader,nounits)"
+    (( rr_used <= 256 )) || { echo "GPU $rr_gpu is busy ($rr_used MiB used)" >&2; exit 2; }
+    rr_uuids+=("$rr_uuid")
 done
 export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+# --frozen locks the project, not the --with overlay; pin its CUDA build explicitly.
+rr_score=("${UV:-uv}" run --project exp/text_realizer/environment --frozen --offline
+    --index https://download.pytorch.org/whl/cu124 --with torch==2.6.0+cu124
+    --with bert-score==0.3.13 --with vaderSentiment==3.3.2)
+# Check GPU execution before spending hours generating CVs.
+CUDA_VISIBLE_DEVICES="${rr_uuids[0]}" "${rr_score[@]}" python -c \
+    'import bert_score, torch, vaderSentiment; print("Scoring GPU ready:", torch.__version__, torch.ones(1, device="cuda:0").item())'
 rr_pids=()
 for rr_i in 0 1 2 3; do
     CUDA_VISIBLE_DEVICES="${rr_uuids[$rr_i]}" "$rr_python" -u -m exp.text_realizer_package_eval generate \
@@ -37,9 +51,7 @@ for rr_pid in "${rr_pids[@]}"; do
     if ! wait "$rr_pid"; then rr_failed=1; fi
 done
 [[ "$rr_failed" == 0 ]] || { echo 'A generation worker failed; see the shard logs' >&2; exit 1; }
-# The decoder environment plus the BERTScore and VADER packages of the earlier scorers.
-CUDA_VISIBLE_DEVICES="${rr_uuids[0]}" "${UV:-uv}" run --project exp/text_realizer/environment --frozen \
-    --with bert-score==0.3.13 --with vaderSentiment==3.3.2 \
+CUDA_VISIBLE_DEVICES="${rr_uuids[0]}" "${rr_score[@]}" \
     python -u -m exp.text_realizer_package_eval.renderers score --device cuda:0 \
     >> "$rr_output/logs/score.log" 2>&1
 echo "Done: docs/experiments/results/decoder_package_renderers_v1.json"

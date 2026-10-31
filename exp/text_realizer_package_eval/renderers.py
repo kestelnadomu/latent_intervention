@@ -13,8 +13,8 @@ target state s' instead of the operator's draw, with psi(z) as source state as b
    the unedited phi(x) as the set ``factual``;
 2. ``python -m exp.text_realizer_package_eval generate`` on that bundle, one shard per GPU;
 3. ``score`` (one GPU) scores every renderer's texts against x', and phi^-1(phi(x)) against
-   x, with the paper tables' metrics: text similarity, VADER, overall fact accuracy and
-   RoBERTa-large BERTScore.
+   x, with the paper tables' metrics: text similarity, VADER, overall and changed/preserved
+   fact accuracy, and RoBERTa-large BERTScore.
 
 Steps 2 and 3 on four GPUs: ``scripts/run_text_realizer_renderers.sh``. Outputs: the bundle
 ``models/.../renderers-v1``, the predictions and ``scores/comparisons.jsonl`` (every text)
@@ -95,9 +95,9 @@ def prepare(spec: dict, bundle: Path, *, allow_oracle: bool = False) -> dict:
         # package-v1's IDs, in the partition order that reproduces the operator's draws
         ids = base["ids"]
         do_values = [int(interventions[unit]["do_value"]) for unit in ids]
-        target = pd.read_csv(
-            checked_source(spec["target_states"]), index_col="id"
-        ).loc[ids]
+        target = pd.read_csv(checked_source(spec["target_states"]), index_col="id").loc[
+            ids
+        ]
         if target["X"].tolist() != do_values:
             raise ValueError("true target states do not follow each unit's do(O = k)")
         payload = torch.load(inputs["latents"], map_location="cpu", weights_only=True)
@@ -141,7 +141,11 @@ def prepare(spec: dict, bundle: Path, *, allow_oracle: bool = False) -> dict:
             "format_version": 1,
             "complete": True,
             "ids": ids,
-            "conditions": [*spec["renderers"], "factual", *(n for n in latent if n not in same)],
+            "conditions": [
+                *spec["renderers"],
+                "factual",
+                *(n for n in latent if n not in same),
+            ],
             "same_edits": same,
             "models": {key: {**model, **files[key]}},
             "files": files,
@@ -156,11 +160,19 @@ def prepare(spec: dict, bundle: Path, *, allow_oracle: bool = False) -> dict:
         return manifest
 
 
-def score(bundle: Path, predictions: Path, output: Path, device: str) -> dict:
-    """Every renderer's texts against x', phi^-1(phi(x)) against x, with the decoder tables' metrics."""
+def score(
+    bundle: Path,
+    predictions: Path,
+    output: Path,
+    device: str,
+    *,
+    bertscore_exclude_ids: tuple[int, ...] = (),
+) -> dict:
+    """Score full CVs; explicit BERTScore exclusions apply to every condition only for that metric."""
     from src.text_realizer.metrics import normalize
 
     from exp.text_realizer_bertscore.__main__ import check_lengths
+    from exp.text_realizer_fact_changes import CODEBOOK, evaluate as fact_changes
     from exp.text_realizer_vader import load_analyzer
 
     from .baselines import bertscore, bertscorer, provenance, text_scores
@@ -169,16 +181,27 @@ def score(bundle: Path, predictions: Path, output: Path, device: str) -> dict:
     manifest = load_manifest(bundle)
     ((key, model),) = manifest["models"].items()
     ids = manifest["ids"]
+    excluded = set(bertscore_exclude_ids)
+    bert_ids = [unit for unit in ids if unit not in excluded]
+    if excluded - set(ids) or not bert_ids:
+        raise ValueError("BERTScore cohort must be nonempty and exclude only known IDs")
     reference_rows = jsonl_records(
         checked_file(bundle, manifest["files"]["references"])
     )
     if [row["id"] for row in reference_rows] != ids:
         raise ValueError("reference IDs differ from the bundle")
+    originals = {row["id"]: row["original"] for row in reference_rows}
+    codebook = yaml.safe_load(CODEBOOK.read_text(encoding="utf-8"))
     bundle_hash = sha256_file(bundle / "manifest.json")
     analyzer, vader = load_analyzer()
     scorer = bertscorer(
         device, download=False
     )  # the cached model of the BERTScore runs
+    print(
+        f"BERTScore common cohort: {len(bert_ids)}/{len(ids)} IDs; "
+        f"excluded {sorted(excluded)}. Other metrics use all {len(ids)} IDs.",
+        flush=True,
+    )
     rows, outputs, compound = [], {}, {}
     for kind in manifest["conditions"]:
         generated = collect_predictions(
@@ -195,13 +218,25 @@ def score(bundle: Path, predictions: Path, output: Path, device: str) -> dict:
         field = "original" if kind == "factual" else "reference"
         references = [row[field] for row in reference_rows]
         pairs = [
-            {"id": i, "reference": normalize(a), "prediction": normalize(b)}
+            {
+                "id": i,
+                "decoder": key,
+                "condition": kind,
+                "reference": normalize(a),
+                "prediction": normalize(b),
+            }
             for i, a, b in zip(ids, references, texts, strict=True)
         ]
-        check_lengths(pairs, scorer._tokenizer)
+        bert_pairs = [pair for pair in pairs if pair["id"] not in excluded]
+        check_lengths(bert_pairs, scorer._tokenizer)
         row = {"method": kind, "decoder": key, "against": against, "units": len(ids)}
         row |= text_scores(references, texts, pairs, analyzer, compound)
-        row |= bertscore(scorer, pairs)
+        for summary in fact_changes(pairs, originals, codebook)[1]:
+            row.setdefault(summary["status"], {})[summary["field"]] = {
+                name: summary[name] for name in ("units", "correct", "accuracy")
+            }
+        row |= bertscore(scorer, bert_pairs)
+        row["bertscore_units"] = len(bert_pairs)
         rows.append(row)
         outputs[f"{key}/{kind}"] = texts
         print(
@@ -228,8 +263,25 @@ def score(bundle: Path, predictions: Path, output: Path, device: str) -> dict:
         "decoder": key,
         "bundle_sha256": bundle_hash,
         "comparisons_sha256": sha256_file(path),
+        "bertscore_cohort": {
+            "policy": "explicit common ID subset across all conditions; no truncation",
+            "max_tokens_including_special": 512,
+            "ids": bert_ids,
+            "units": len(bert_ids),
+            "coverage": len(bert_ids) / len(ids),
+            "unit_ids_sha256": digest(bert_ids),
+            "excluded_ids": [unit for unit in ids if unit in excluded],
+            "other_metrics_units": len(ids),
+        },
         "replays": manifest["replays"],
         "true_target_latent": manifest["true_target_latent"],
+        "fact_changes": {
+            "reference_policy": "both original and target values must be extractable",
+            "missing_generated_value": "failure on scorable reference pairs",
+            "factual_policy": "target is x; all jointly scorable facts are preserved",
+            "codebook_sha256": sha256_file(CODEBOOK),
+        },
+        "source_sha256": source_hashes(),
         **provenance(vader, device),
         "rows": rows,
     }
@@ -247,12 +299,17 @@ def main() -> None:
     step.add_argument("--config", type=Path, default=CONFIG)
     step.add_argument("--bundle", type=Path, default=BUNDLE)
     step.add_argument("--allow-oracle-evaluation", action="store_true")
-    step = commands.add_parser(
-        "score", help="score all decoded texts after generation"
-    )
+    step = commands.add_parser("score", help="score all decoded texts after generation")
     step.add_argument("--bundle", type=Path, default=BUNDLE)
     step.add_argument("--predictions", type=Path, default=OUTPUT / "predictions")
     step.add_argument("--output", type=Path, default=OUTPUT / "scores")
+    step.add_argument(
+        "--bertscore-exclude-id",
+        action="append",
+        type=int,
+        default=[],
+        help="exclude this ID from BERTScore in every condition; keep it for all other metrics/texts",
+    )
     step.add_argument(
         "--device", default="cpu", help="cpu or a visible device such as cuda:0"
     )
@@ -264,7 +321,13 @@ def main() -> None:
             f"Prepared {len(manifest['ids'])} units x {len(manifest['conditions'])} vector sets at {args.bundle}"
         )
     else:
-        score(args.bundle, args.predictions, args.output, args.device)
+        score(
+            args.bundle,
+            args.predictions,
+            args.output,
+            args.device,
+            bertscore_exclude_ids=tuple(args.bertscore_exclude_id),
+        )
 
 
 if __name__ == "__main__":

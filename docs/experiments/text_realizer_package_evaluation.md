@@ -697,8 +697,10 @@ Gemma 3 270M decoder and on the same 1,000 test units:
 - all six renderers (the state flow too) with the same fits and psi(z) as source state, but
   conditioned on the simulation's true target state s'
   (`data/sim_talent_motivation/sim_data_counterfactual.csv`) instead of the operator's draw
-  (vector sets `<renderer>-true-target`). This removes the error of the S -> S' step: from
-  the true source state, the operator's draw hits the true s' in only about 48% of the
+  (vector sets `<renderer>-true-target`). This replaces the entire sampled target with its
+  true state; the source is still estimated by psi(z). It is an oracle-assisted diagnostic,
+  not a removal of all reader error. From the true source state, the operator's draw hits
+  the true s' in only about 48% of the
   test units (D about 68%, U about 70%), since a unit's noise cannot be recovered from its
   state. `prepare` stores their gap closed, distance and cosine to phi(x');
 - the unedited phi(x) of the same units (vector set `factual`): phi^-1(phi(x)) against x is
@@ -708,6 +710,8 @@ Gemma 3 270M decoder and on the same 1,000 test units:
 The group OT reads only O, which do(O = k) sets exactly, so its true-target edits equal its
 sampled ones; `prepare` drops identical sets and `score` reuses their texts (greedy decoding
 is deterministic). 11 vector sets, 11,000 CVs in total. Nothing is retrained.
+The reused group-OT alias gives 12 reported conditions; sampled state-flow results remain
+in package-v1. Budget 0.3 GB for new artifacts, excluding dependency/model caches.
 `configs/text_realizer_renderers_eval.yaml` pins the five other renderer fits and the true
 target states by file and checksum (the state flow's fit is pinned in the base config);
 `prepare` also requires each sampled replay to reproduce the run report's cosine and
@@ -717,21 +721,42 @@ the repository root on the `decoder` branch:
 ```bash
 # 1. CPU, a few minutes: the bundle models/.../text-realizer-evaluation/renderers-v1
 exp/text_realizer_package_eval/environment/.venv/bin/python   -m exp.text_realizer_package_eval.renderers prepare --allow-oracle-evaluation
-# 2. check that scoring's packages resolve before the long run
-UV_CACHE_DIR=.cache/text-realizer-uv .cache/text-realizer-tools/uv run   --project exp/text_realizer/environment --frozen   --with bert-score==0.3.13 --with vaderSentiment==3.3.2   python -c "import bert_score, vaderSentiment"
+# 2. resolve scoring packages and verify GPU execution before the long run
+UV_CACHE_DIR=.cache/text-realizer-uv .cache/text-realizer-tools/uv run \
+  --project exp/text_realizer/environment --frozen \
+  --index https://download.pytorch.org/whl/cu124 --with torch==2.6.0+cu124 \
+  --with bert-score==0.3.13 --with vaderSentiment==3.3.2 \
+  python -c 'import bert_score, torch, vaderSentiment; print("Scoring GPU ready:", torch.__version__, torch.ones(1, device="cuda:0").item())'
 # 3. inside tmux, with all four GPUs idle: generation (about 11.5 h), then scoring
 UV=.cache/text-realizer-tools/uv UV_CACHE_DIR=.cache/text-realizer-uv   bash scripts/run_text_realizer_renderers.sh 0 1 2 3
 ```
+
+The CUDA 12.4 PyTorch pin also applies to the scoring overlay: `--frozen` alone does not
+constrain `--with` dependencies. The launcher uses the prepared cache offline, checks GPU
+execution before generation and holds the existing text-realizer GPU leases; duplicate,
+reserved or busy GPUs are refused.
 
 Each GPU decodes one shard of 250 units for all 11 vector sets (about 15 s per CV). Logs
 and `.progress.json` files are under
 `reports/talent_motivation/text-realizer-evaluation/renderers-v1/`; rerunning the launcher
 resumes. After all shards are complete, `renderers score` runs on the first GPU (minutes):
-text similarity, VADER and overall fact accuracy as `exp.text_realizer_package_eval.score`
-and VADER, and RoBERTa-large BERTScore with the BERTScore follow-up's settings; the
+text similarity, VADER, overall and changed/preserved fact accuracy using the existing
+extractors, and RoBERTa-large BERTScore with the BERTScore follow-up's settings; the
 renderers against x', phi^-1(phi(x)) against x. It writes every text to
 `renderers-v1/scores/comparisons.jsonl` and the portable aggregates to
 `docs/experiments/results/decoder_package_renderers_v1.json`, one row per vector set in the
 reference rows' schema plus `against` (`x'` or `x`), and the true-target latent metrics.
-Commit these two files (the comparisons file with `git add -f`, as the report tree is
-excluded locally).
+Changed/preserved groups require extractable original and target facts; an unparseable
+generated fact is a failure. Factual reconstruction has only preserved facts and empty
+changed groups (`accuracy: null`). Counts and accuracies use the reference rows' schema.
+For the 31 October scoring follow-up, `score --bertscore-exclude-id 2333` uses the same
+999 IDs for BERTScore in every renderer condition: one `editor-true-target` output is 518
+RoBERTa tokens, beyond its 512-token limit. All other metrics and text exports retain
+all 1,000 units. The result's `bertscore_cohort` records the IDs, hash and 99.9% coverage;
+each row has `bertscore_units`. No text is truncated. Report this denominator explicitly
+alongside package-v1's BERTScore results on 1,000 IDs. See the
+[handoff's scoring-only command](decoder_renderers_handoff.md#scoring-only-follow-up-31-october-2026).
+Publish these two files along with the run's prediction shards, metadata, logs and frozen
+bundle manifest, as listed in the [handoff](decoder_renderers_handoff.md#deliver).
+The report tree is excluded locally, so add those result files explicitly with `git add -f`;
+keep transient locks, decoder weights and caches out of this results transfer.

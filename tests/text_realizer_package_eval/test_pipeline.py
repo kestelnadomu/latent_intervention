@@ -52,7 +52,7 @@ def bundle(tmp_path):
                 {
                     "id": key,
                     "do_value": 1,
-                    "original": "Original CV",
+                    "original": "Nigeria, master, top100, 3 projects.",
                     "reference": f"CV {key}: France, master, top100, 3 projects.",
                 }
             )
@@ -198,8 +198,9 @@ def test_sharded_generation_covers_every_vector_set_of_a_renderer_bundle(
         generation.run_generation(bundle, output, "768-270m", condition="oracle")
 
 
+@pytest.mark.parametrize("excluded", [(), (7,)])
 def test_renderer_scoring_reads_every_vector_set(
-    bundle, tmp_path, fake_decoder, monkeypatch
+    bundle, tmp_path, fake_decoder, monkeypatch, excluded
 ):
     from exp import text_realizer_vader
     from exp.text_realizer_package_eval import baselines, renderers
@@ -216,25 +217,54 @@ def test_renderer_scoring_reads_every_vector_set(
         class _tokenizer:  # noqa: N801 - BERTScorer's attribute name
             @staticmethod
             def encode(text, **kwargs):
+                if excluded and text.startswith("CV 8:"):
+                    return [0] * 518  # ID 7 is too long only in the editor condition.
                 return text.split()
+
+    bert_ids = [unit for unit in (7, 2, 9, 4) if unit not in excluded]
+
+    def bertscore(scorer, pairs):
+        assert [pair["id"] for pair in pairs] == bert_ids
+        return {"f1": 0.9}
 
     # stand-ins for the RoBERTa-large and VADER models; everything else is real
     monkeypatch.setattr(text_realizer_vader, "load_analyzer", lambda: (Analyzer(), {}))
     monkeypatch.setattr(baselines, "bertscorer", lambda *a, **kw: Scorer())
-    monkeypatch.setattr(baselines, "bertscore", lambda scorer, pairs: {"f1": 0.9})
+    monkeypatch.setattr(baselines, "bertscore", bertscore)
     monkeypatch.setattr(baselines, "provenance", lambda vader, device: {})
     monkeypatch.setattr(renderers, "RESULTS", tmp_path / "results.json")
     result = renderers.score(
-        bundle, tmp_path / "predictions", tmp_path / "scores", "cpu"
+        bundle,
+        tmp_path / "predictions",
+        tmp_path / "scores",
+        "cpu",
+        bertscore_exclude_ids=excluded,
     )
     rows = {row["method"]: row for row in result["rows"]}
     assert list(rows) == ["editor", "group_ot", "factual", "group_ot-true-target"]
     assert all(row["units"] == 4 and row["f1"] == 0.9 for row in result["rows"])
+    assert all(row["bertscore_units"] == len(bert_ids) for row in result["rows"])
+    assert result["bertscore_cohort"]["ids"] == bert_ids
+    assert result["bertscore_cohort"]["excluded_ids"] == list(excluded)
+    assert result["bertscore_cohort"]["coverage"] == len(bert_ids) / 4
     # the fake decoder writes (nearly) x', so phi^-1(phi(x)), scored against x, falls behind
     assert [row["against"] for row in rows.values()] == ["x'", "x'", "x", "x'"]
     assert rows["group_ot-true-target"]["chrf"] == rows["group_ot"]["chrf"]
     assert rows["editor"]["character_similarity"] > 0.9
-    assert rows["factual"]["character_similarity"] < 0.5
+    assert (
+        rows["factual"]["character_similarity"] < rows["editor"]["character_similarity"]
+    )
+    assert rows["editor"]["changed"]["country"] == {
+        "units": 4,
+        "correct": 4,
+        "accuracy": 1.0,
+    }
+    assert rows["editor"]["preserved"]["degree"]["accuracy"] == 1.0
+    assert rows["factual"]["changed"]["country"]["units"] == 0
+    assert rows["factual"]["changed"]["country"]["accuracy"] is None
+    assert rows["factual"]["preserved"]["country"]["accuracy"] == 0.0
+    assert rows["group_ot-true-target"]["changed"] == rows["group_ot"]["changed"]
+    assert rows["group_ot-true-target"]["preserved"] == rows["group_ot"]["preserved"]
     comparisons = (tmp_path / "scores/comparisons.jsonl").read_text().splitlines()
     assert [json.loads(line)["id"] for line in comparisons] == [7, 2, 9, 4]
     assert set(json.loads(comparisons[0])["generated"]) == {
@@ -244,6 +274,24 @@ def test_renderer_scoring_reads_every_vector_set(
         "768-270m/group_ot-true-target",
     }
     assert read_json(tmp_path / "results.json")["rows"] == result["rows"]
+
+
+@pytest.mark.parametrize("excluded", [(999,), (7, 2, 9, 4)])
+def test_renderer_refuses_invalid_bertscore_cohort(bundle, tmp_path, excluded):
+    from exp.text_realizer_package_eval import renderers
+
+    manifest = read_json(bundle / "manifest.json")
+    manifest["models"] = {"768-270m": manifest["models"]["768-270m"]}
+    write_json(bundle / "manifest.json", manifest)
+    with pytest.raises(ValueError, match="BERTScore cohort"):
+        renderers.score(
+            bundle,
+            tmp_path / "predictions",
+            tmp_path / "scores",
+            "cpu",
+            bertscore_exclude_ids=excluded,
+        )
+    assert not (tmp_path / "scores").exists()
 
 
 def test_portable_resume_repairs_only_uncommitted_tail(bundle, tmp_path, fake_decoder):

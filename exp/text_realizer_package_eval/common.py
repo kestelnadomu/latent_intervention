@@ -91,6 +91,9 @@ def source_hashes() -> dict:
     files += [
         ROOT / "src/artifact_io.py",
         ROOT / "exp/text_realizer/facts.py",
+        ROOT / "exp/text_realizer_fact_changes.py",
+        ROOT / "exp/text_realizer_vader.py",
+        ROOT / "exp/text_realizer_bertscore/__main__.py",
         ROOT / "exp/sim/codebook.yaml",
         ROOT / "exp/text_realizer/environment/pyproject.toml",
         ROOT / "exp/text_realizer/environment/uv.lock",
