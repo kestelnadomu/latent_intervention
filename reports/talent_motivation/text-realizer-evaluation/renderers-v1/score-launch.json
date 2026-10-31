@@ -1,0 +1,50 @@
+{
+  "bertscore_excluded_ids": [
+    2333
+  ],
+  "bertscore_units": 999,
+  "bundle_sha256": "6c6971c68725b82f0aa668985a21483ecc36f6c48b2fd2b8d41de553738db28d",
+  "command": [
+    "env",
+    "CUDA_VISIBLE_DEVICES=GPU-a0703cdd-30aa-716a-0dae-53d5b9e4915e",
+    "UV_CACHE_DIR=/home/boustanip/projects/latent_intervention/.cache/text-realizer-uv",
+    "HF_HUB_OFFLINE=1",
+    "TRANSFORMERS_OFFLINE=1",
+    "TOKENIZERS_PARALLELISM=false",
+    "OMP_NUM_THREADS=1",
+    "MKL_NUM_THREADS=1",
+    "/home/boustanip/projects/latent_intervention/.cache/text-realizer-tools/uv",
+    "run",
+    "--project",
+    "exp/text_realizer/environment",
+    "--frozen",
+    "--offline",
+    "--index",
+    "https://download.pytorch.org/whl/cu124",
+    "--with",
+    "torch==2.6.0+cu124",
+    "--with",
+    "bert-score==0.3.13",
+    "--with",
+    "vaderSentiment==3.3.2",
+    "python",
+    "-u",
+    "-c",
+    "from exp.text_realizer.runtime import gpu_lease\nfrom exp.text_realizer_package_eval.common import lock\nfrom exp.text_realizer_package_eval.renderers import main, OUTPUT\nwith lock(OUTPUT / \".launch.lock\"), gpu_lease(\"cuda:0\"):\n    main()",
+    "score",
+    "--device",
+    "cuda:0",
+    "--bertscore-exclude-id",
+    "2333"
+  ],
+  "estimated_finish": [
+    "2026-10-31T11:20:59.312719+01:00",
+    "2026-10-31T11:25:59.312719+01:00"
+  ],
+  "gpu": 0,
+  "log": "reports/talent_motivation/text-realizer-evaluation/renderers-v1/logs/score-common-cohort-20261031-111059.log",
+  "scoring_source_sha256": "fa67daf190751c76bcd80affb1651468d2153dea5990b9ce773508ce62b2c2da",
+  "session": "decoder-renderers-score-20261031-111059",
+  "started_at": "2026-10-31T11:10:59.312719+01:00",
+  "units": 1000
+}

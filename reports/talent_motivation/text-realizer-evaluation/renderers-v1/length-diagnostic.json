@@ -1,0 +1,76 @@
+{
+  "affected_ids": [
+    2333
+  ],
+  "bundle_sha256": "6c6971c68725b82f0aa668985a21483ecc36f6c48b2fd2b8d41de553738db28d",
+  "conditions": {
+    "editor": {
+      "max_tokens": 500,
+      "overlong": [],
+      "units": 1000
+    },
+    "editor-true-target": {
+      "max_tokens": 518,
+      "overlong": [
+        {
+          "id": 2333,
+          "prediction_tokens": 518,
+          "reference_tokens": 397,
+          "termination": "eos"
+        }
+      ],
+      "units": 1000
+    },
+    "factual": {
+      "max_tokens": 489,
+      "overlong": [],
+      "units": 1000
+    },
+    "flow-true-target": {
+      "max_tokens": 500,
+      "overlong": [],
+      "units": 1000
+    },
+    "group_ot": {
+      "max_tokens": 500,
+      "overlong": [],
+      "units": 1000
+    },
+    "ot_editor": {
+      "max_tokens": 500,
+      "overlong": [],
+      "units": 1000
+    },
+    "ot_editor-true-target": {
+      "max_tokens": 500,
+      "overlong": [],
+      "units": 1000
+    },
+    "ot_flow": {
+      "max_tokens": 503,
+      "overlong": [],
+      "units": 1000
+    },
+    "ot_flow-true-target": {
+      "max_tokens": 500,
+      "overlong": [],
+      "units": 1000
+    },
+    "state_effect": {
+      "max_tokens": 509,
+      "overlong": [],
+      "units": 1000
+    },
+    "state_effect-true-target": {
+      "max_tokens": 509,
+      "overlong": [],
+      "units": 1000
+    }
+  },
+  "overlong_pairs": 1,
+  "same_edits": {
+    "group_ot-true-target": "group_ot"
+  },
+  "units": 1000,
+  "verified_cvs": 11000
+}
