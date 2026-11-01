@@ -11,6 +11,7 @@ def test_facts_marked_against_the_reference():
     tex = marked(text, reference, CODEBOOK)
     assert r"\factright{Netherlands}" in tex  # same region as Spain
     assert r"\factwrong{Bachelor's}" in tex
-    assert r"\factright{global top 100}" in tex and r"\factright{5 projects}" in tex
+    assert r"\factright{global top 100}" in tex
+    assert "completed 5 projects." in tex  # only O, D and U are marked
     assert r"university \& completed" in tex
     assert r"\factwrong{Kenya}" in marked("I am from Kenya.", reference, CODEBOOK)

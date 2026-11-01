@@ -1,8 +1,8 @@
 """Portable LaTeX tables for the four package CV decoders; standard library only.
 
 Render from the shipped aggregate JSON, its non-generative reference rows (retrieval,
-unedited x) and the noise floor (same-state rewrite; both from
-``exp.text_realizer_package_eval.baselines``), without CV texts or downloads:
+unedited x), the noise floor (same-state rewrite) and the joint O/D/U fact accuracies (all
+three from ``exp.text_realizer_package_eval.baselines``), without CV texts or downloads:
     python -m exp.paper_tables.decoder_package_table --output tables/decoder.tex
 
 Refresh the aggregate on a machine holding the completed evaluation reports:
@@ -25,11 +25,18 @@ ROOT = Path(__file__).resolve().parents[2]
 SUMMARY = ROOT / "docs/experiments/results/decoder_package_v1.json"
 BASELINES = ROOT / "docs/experiments/results/decoder_package_baselines_v1.json"
 FLOOR = ROOT / "docs/experiments/results/decoder_package_floor_v1.json"
+JOINT = ROOT / "docs/experiments/results/decoder_package_joint_v1.json"
 DIMENSIONS = (256, 768)
 DECODERS = ("256-270m", "256-1b", "768-270m", "768-1b")
 CONDITIONS = ("oracle", "predicted")
 FIELDS = ("country", "region", "degree", "university_tier", "project_count")
-LABELS = ("Country", "Region", "Degree", "Univ. tier", "Projects")
+# the state variables the CVs state as facts (O as the region of the named country); T and
+# M appear only as behavioural evidence, which the fixed fact rules cannot score
+FACTS = {
+    "region": r"$\texttt O$",
+    "degree": r"$\texttt D$",
+    "university_tier": r"$\texttt U$",
+}
 SOURCES = ("scores", "bertscore-roberta-large", "vader", "fact-changes")
 ROW_END = r" \\"
 TEXT_COLUMNS = (
@@ -37,9 +44,7 @@ TEXT_COLUMNS = (
     ("chrf", r"chrF $\uparrow$", 3),
     ("rouge_l", r"ROUGE-L $\uparrow$", 3),
     ("f1", r"BERTScore $F_1\uparrow$", 4),
-    ("mean_sentiment_delta", r"VADER $\Delta$", 5),
-    ("mean_absolute_sentiment_delta", r"VADER $|\Delta|\downarrow$", 5),
-)
+)  # no VADER columns: its compound saturates at about 0.99 for every CV
 
 
 def _digest(value: object) -> str:
@@ -237,21 +242,14 @@ def collect(reports_dir: Path) -> dict:
     return summary
 
 
-def _row(panel: str, dim: str, label: str, values: dict) -> str:
-    """One table row; ``values`` holds the text metrics, or one accuracy per fact field."""
-    if panel == "text":
-        cells = [
-            f"{values[name]:+.{digits}f}"
-            if name == "mean_sentiment_delta"
-            else cell(values[name], digits, 1)
-            for name, _, digits in TEXT_COLUMNS
-        ]
-    else:
-        cells = [
-            "--" if values[field] is None else cell(values[field], 1, 100)
-            for field in FIELDS
-        ]
-    return "  " + " & ".join([dim, label, *cells]) + ROW_END
+def _row(panel: str, labels: list[str], values: dict) -> str:
+    """One table row after its d_Z, decoder and size ``labels``: the fact accuracies (joint
+    first in the main table), then, in the main table, the text metrics."""
+    names = ("joint", *FACTS) if panel == "main" else tuple(FACTS)
+    cells = ["--" if values[n] is None else cell(values[n], 1, 100) for n in names]
+    if panel == "main":
+        cells += [cell(values[name], digits, 1) for name, _, digits in TEXT_COLUMNS]
+    return "  " + " & ".join([*labels, *cells]) + ROW_END
 
 
 def validate_floor(floor: dict) -> dict:
@@ -269,57 +267,82 @@ def validate_floor(floor: dict) -> dict:
     return row
 
 
-def render(summary: dict, baselines: dict, floor: dict) -> dict[str, str]:
-    """Render text, overall-fact, changed-fact and preserved-fact tabulars."""
-    base, bert, vader, changed = validate(summary)
+def validate_joint(summary: dict, floor: dict, joint: dict) -> tuple[dict, int, int]:
+    """Joint O/D/U accuracy per row, and its denominators against x' and for the rewrites."""
+    if joint.get("format_version") != 1 or (
+        joint["unit_ids_sha256"],
+        joint["comparisons_sha256"],
+        joint["floor_unit_ids_sha256"],
+    ) != (summary["unit_ids_sha256"], summary["input_sha256"], floor["unit_ids_sha256"]):
+        raise ValueError("joint accuracies refer to other texts")
+    expected = {(d, None, c) for d in DECODERS for c in CONDITIONS}
+    expected |= {("retrieval", d, c) for d in DIMENSIONS for c in CONDITIONS}
+    expected |= {("unedited", None, None), ("same_state_rewrite", None, None)}
+    rows = _index(joint["rows"], ("method", "dim", "condition"), expected)
+    scorable = {
+        row["joint"]["reference_scorable"]
+        for key, row in rows.items()
+        if key[0] != "same_state_rewrite"
+    }
+    if len(scorable) != 1:
+        raise ValueError("joint accuracies use different reference cohorts")
+    accuracy = {key: _number(row["joint"]["accuracy"]) for key, row in rows.items()}
+    floor_n = rows["same_state_rewrite", None, None]["joint"]["reference_scorable"]
+    return accuracy, scorable.pop(), floor_n
+
+
+def render(summary: dict, baselines: dict, floor: dict, joint: dict) -> dict[str, str]:
+    """Render the main tabular (fact accuracy and text similarity), and the changed-fact and
+    preserved-fact tabulars."""
+    base, bert, _, changed = validate(summary)
     references = validate_baselines(summary, baselines, base, changed)
     rewrite = validate_floor(floor)
+    joints, joint_n, floor_n = validate_joint(summary, floor, joint)
+
+    def shown(text: dict, values: dict, key: tuple, panel: str) -> dict:
+        """O, D and U; in the main table also the joint accuracy and the text metrics."""
+        return {**text, "joint": joints[key], **values} if panel == "main" else values
 
     def floor_values(panel: str) -> dict:
-        if panel == "text":
-            return rewrite
-        # the rewrite changes the country by construction; it has no changed/preserved split
-        return {
-            f: rewrite["facts"][f]["accuracy"]
-            if panel == "facts" and f != "country"
-            else None
-            for f in FIELDS
+        # the rewrite has no changed/preserved split
+        values = {
+            f: rewrite["facts"][f]["accuracy"] if panel == "main" else None
+            for f in FACTS
         }
+        return shown(rewrite, values, ("same_state_rewrite", None, None), panel)
 
     def decoder_values(key: tuple, panel: str) -> dict:
-        if panel == "text":
-            return {**base[key], **bert[key], **vader[key]}
-        if panel == "facts":
-            return {
-                f: base[key][f"{f}_accuracy_on_scorable_references"] for f in FIELDS
+        if panel == "main":
+            values = {
+                f: base[key][f"{f}_accuracy_on_scorable_references"] for f in FACTS
             }
-        return {f: changed[*key, f, panel]["accuracy"] for f in FIELDS}
+        else:
+            values = {f: changed[*key, f, panel]["accuracy"] for f in FACTS}
+        return shown({**base[key], **bert[key]}, values, (key[0], None, key[1]), panel)
 
     def reference_values(key: tuple, panel: str) -> dict:
         row = references[key]
-        if panel == "text":
-            return row
-        return {
-            f: row["facts" if panel == "facts" else panel][f]["accuracy"]
-            for f in FIELDS
-        }
+        group = "facts" if panel == "main" else panel
+        values = {f: row[group][f]["accuracy"] for f in FACTS}
+        return shown(row, values, key, panel)
 
     result = {}
     first = DECODERS[0], CONDITIONS[0]
-    for panel in ("text", "facts", "changed", "preserved"):
-        headers = [label for _, label, _ in TEXT_COLUMNS]
-        if panel != "text":
-            denominators = [
-                round(base[first][f"{field}_reference_coverage"] * summary["units"])
-                if panel == "facts"
-                else changed[*first, field, panel]["units"]
-                for field in FIELDS
-            ]
+    # the main table's fact denominators belong in its caption
+    scorable = [
+        round(base[first][f"{f}_reference_coverage"] * summary["units"]) for f in FACTS
+    ]
+    floor_scorable = [rewrite["facts"][f]["reference_scorable"] for f in FACTS]
+    for panel in ("main", "changed", "preserved"):
+        if panel == "main":
+            headers = ["Joint", *FACTS.values()]
+            headers += [label for _, label, _ in TEXT_COLUMNS]
+        else:
             headers = [
-                rf"\shortstack{{{label}\\$n={n}$}}"
-                for label, n in zip(LABELS, denominators, strict=True)
+                rf"\shortstack{{{label}\\$n={changed[*first, f, panel]['units']}$}}"
+                for f, label in FACTS.items()
             ]
-        columns = len(headers) + 2
+        columns = len(headers) + 3
         lines = [
             "% Generated by exp.paper_tables.decoder_package_table; do not edit numbers.",
             f"% Source aggregate SHA256: {summary['reports_sha256']}",
@@ -329,18 +352,32 @@ def render(summary: dict, baselines: dict, floor: dict) -> dict[str, str]:
             f"% Same-state rewrite (noise floor): {floor['units']} floor texts against their"
             " factual CVs; the country differs by construction.",
             "% 256-D and 768-D reader/flow training protocols differ; not a dimension-only comparison.",
-            "% Text scores use raw 0--1 scales; facts are percentages; VADER differences are raw.",
+            "% Text scores use raw 0--1 scales; facts are percentages.",
             "% Fact n is the scorable denominator; -- means n=0. Interpret small groups cautiously.",
+            f"% Joint: O, D and U all right, over the units whose reference states all three;"
+            f" SHA256 of its rows {_digest(joint['rows'])}.",
+            "% Fact n, joint/O/D/U: against x' {}/{}/{}/{}; the rewrites {}/{}/{}/{}.".format(
+                joint_n, *scorable, floor_n, *floor_scorable
+            ),
             "% Bare tabular: provide the table float/caption and load booktabs in the paper.",
-            r"\begin{tabular}{@{}rl" + "r" * len(headers) + "@{}}",
+            r"\begin{tabular}{@{}rll" + "r" * len(headers) + "@{}}",
             r"  \toprule",
-            "  "
-            + " & ".join([bold(r"$d_Z$"), bold("Decoder"), *map(bold, headers)])
-            + ROW_END,
         ]
+        if panel == "main":
+            fidelity = bold(r"Fidelity $\uparrow$")
+            span = len(FACTS) + 1
+            lines += [
+                rf"  & & & \multicolumn{{{span}}}{{c}}{{{fidelity}}}" + ROW_END,
+                rf"  \cmidrule(lr){{4-{3 + span}}}",
+            ]
+        lines.append(
+            "  "
+            + " & ".join(map(bold, [r"$d_Z$", "Decoder", "Size", *headers]))
+            + ROW_END
+        )
         for condition, label in (
             ("oracle", r"$\varphi^{-1}(\varphi(x'))$ against $x'$"),
-            ("predicted", r"$\varphi^{-1}(z')$ against $x'$"),
+            ("predicted", r"$\varphi^{-1}(\hat{z}')$ against $x'$"),
         ):
             lines.extend(
                 [
@@ -353,15 +390,15 @@ def render(summary: dict, baselines: dict, floor: dict) -> dict[str, str]:
                     if decoder.startswith(f"{dim}-"):
                         size = decoder.split("-")[1].upper()
                         values = decoder_values((decoder, condition), panel)
-                        lines.append(_row(panel, str(dim), f"Gemma 3 {size}", values))
+                        lines.append(_row(panel, [str(dim), "Gemma 3", size], values))
                 values = reference_values(("retrieval", dim, condition), panel)
-                lines.append(_row(panel, str(dim), "Retrieval", values))
+                lines.append(_row(panel, [str(dim), "Retrieval", "--"], values))
         values = reference_values(("unedited", None, None), panel)
         lines.extend(
             [
                 r"  \midrule",
-                _row(panel, "--", r"Unedited $x$", values),
-                _row(panel, "--", "Same-state rewrite", floor_values(panel)),
+                _row(panel, ["--", r"Unedited $x$", "--"], values),
+                _row(panel, ["--", "Same-state rewrite", "--"], floor_values(panel)),
                 r"  \bottomrule",
                 r"\end{tabular}",
             ]
@@ -394,6 +431,7 @@ def main() -> None:
     parser.add_argument("--summary", type=Path, default=SUMMARY)
     parser.add_argument("--baselines", type=Path, default=BASELINES)
     parser.add_argument("--floor", type=Path, default=FLOOR)
+    parser.add_argument("--joint", type=Path, default=JOINT)
     parser.add_argument(
         "--reports",
         type=Path,
@@ -403,7 +441,7 @@ def main() -> None:
         "--output",
         type=Path,
         required=True,
-        help="text table .tex path; companion tables share its stem",
+        help="main table .tex path; companion tables share its stem",
     )
     args = parser.parse_args()
     if args.output.suffix != ".tex" or args.output.resolve() == args.summary.resolve():
@@ -411,11 +449,11 @@ def main() -> None:
     summary = (
         collect(args.reports) if args.reports else json.loads(args.summary.read_text())
     )
-    baselines, floor = (
+    baselines, floor, joint = (
         json.loads(path.read_text(encoding="utf-8"))
-        for path in (args.baselines, args.floor)
+        for path in (args.baselines, args.floor, args.joint)
     )
-    tables = render(summary, baselines, floor)
+    tables = render(summary, baselines, floor, joint)
     if args.reports:
         _write(
             args.summary,
@@ -425,7 +463,7 @@ def main() -> None:
     for panel, text in tables.items():
         path = (
             args.output
-            if panel == "text"
+            if panel == "main"
             else args.output.with_stem(f"{args.output.stem}_{panel}")
         )
         _write(path, text)

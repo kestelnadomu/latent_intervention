@@ -2,9 +2,9 @@
 
 Reads the evaluation's per-unit texts (``scores/comparisons.jsonl``, checked against the
 input hash in ``decoder_package_v1.json``) and writes the decoder's text from the predicted
-vector z' and from the oracle vector phi(x') to ``overleaf/generated/decoder/``. Every fact
-the evaluation scores is marked ``\\factright`` or ``\\factwrong`` against the true
-counterfactual CV x', by the evaluation's own extractor. The country is judged by its
+vector z' and from the oracle vector phi(x') to ``overleaf/generated/decoder/``. The facts
+of the state variables O, D and U are marked ``\\factright`` or ``\\factwrong`` against the
+true counterfactual CV x', by the evaluation's own extractor. The country is judged by its
 region, the variable the intervention sets; which country of the region a text names is
 free. x' itself is ``generated/simulation/example_cv_counterfactual.tex``.
 
@@ -32,13 +32,11 @@ CODEBOOK = ROOT / "exp/sim/codebook.yaml"
 OUTPUT = ROOT / "overleaf/generated/decoder"
 UNIT = 1898  # the worked example of the simulation appendix
 DECODER = "768-270m"  # its z' is the paper's main pipeline (768-D state flow, seed 0)
-NUMBER = r"(?:\d+|one|two|three|four|five|six|seven|eight|nine)"
-# The spans behind exp.text_realizer.facts.extract, per field it scores.
+# The spans behind exp.text_realizer.facts.extract for D and U (O: the country names).
 PATTERNS = {
     "degree": r"\bbachelor(?:['’]s|s)?\b|\bmaster(?:['’]s|s)?\b|\b(?:doctorate|doctoral|ph\.?d\.?)\b",
     "university_tier": r"\b(?:unranked|not listed in (?:the )?(?:major )?global rankings)\b"
     r"|\b(?:global\s+)?top\s*(?:500|100)\b",
-    "project_count": rf"\b{NUMBER}\s+(?:completed\s+)?projects?\b",
 }
 LATEX = {
     "\\": r"\textbackslash{}",
@@ -59,7 +57,7 @@ def escape(text: str) -> str:
 
 
 def marked(text: str, reference: str, codebook: dict) -> str:
-    """``text`` as LaTeX, every scored fact marked right or wrong against ``reference``."""
+    """``text`` as LaTeX, the facts of O, D and U marked right or wrong against ``reference``."""
     truth, found = extract(reference, codebook), extract(text, codebook)
     names = [
         n.removeprefix("the ") for ns in codebook["choices"]["X"].values() for n in ns
