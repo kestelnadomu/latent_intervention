@@ -3,12 +3,14 @@
 - ``latent_tradeoff.pdf``: joint fidelity against preservation of M, per renderer and seed,
   for the renderer in isolation (true source state s, true counterfactual state s');
 - ``latent_gap.pdf``: per-unit gap closed to phi(x') per renderer, in isolation;
+- ``latent_triangle.pdf``: the triangle (z, edit, phi(x')) per renderer, in isolation, next to
+  same-state texts, with the spread over units as 1-SD ellipses;
 - ``latent_downstream.pdf``: counterfactual fairness, do(O = Western Europe) for every unit in
   the deployment setting: boxplots of the per-unit expected predicted qualification per factual region.
 - ``latent_downstream_hist.pdf``: the predicted class per factual region, one panel per method (seed 0),
   with the true Y and Y' as reference panels.
 
-The trade-off reads the run report. The gap and the downstream figure recompute the edits
+The trade-off reads the run report. The gap, triangle and downstream figures recompute the edits
 from the cached fits without refitting; their gap closed (against the report) and region
 means (against the notebook's cached fairness evaluation) per renderer and seed must match. Writes
 to ``overleaf_paper/figures/``:
@@ -27,6 +29,7 @@ import yaml
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.patches import Ellipse  # noqa: E402
 
 from latent_lab import Encoder, LinearSCM, Pipeline, mean_predict  # noqa: E402
 
@@ -51,6 +54,16 @@ LEVELS = {"X": 4, "T": 3, "D": 3, "U": 3}
 PARENTS = {"D": {"X": 0.30, "T": 0.60}, "U": {"X": 0.35, "T": 0.50}}
 NOISE = {"D": (-0.10, 0.50), "U": (-0.15, 0.50)}
 FAIR_X = 3  # Western Europe: the counterfactual fairness use case sets every unit to it
+# Same-state texts in the triangle figure: label, cached encodings, filled
+TRIANGLE_REFERENCES = {
+    "swap": ("Country swap", "z_floor.pt", True),
+    "vb": (r"$\mathcal{V}_B$ rewording", "z_factual_vb.pt", False),
+}
+# Offset (points) of each label from its marker in the triangle figure
+TRIANGLE_LABELS = {
+    "editor": (-5, -1), "ot_editor": (-5, 3), "flow": (5, -1), "state_effect": (5, 1), "ot_flow": (5, 2),
+    "group_ot": (-5, -3), "swap": (-5, 3), "vb": (-5, 1),
+}
 
 
 def isolated(r: dict) -> bool:
@@ -167,6 +180,75 @@ def gap_figure(report: dict, run: dict) -> None:
     save(fig, "latent_gap.pdf")
 
 
+def triangle_positions(edit: torch.Tensor, z: torch.Tensor, z_cf: torch.Tensor) -> np.ndarray:
+    """Per-unit position of an edit in the frame z = (0, 0), phi(x') = (1, 0): its part along
+    phi(x') - z and the length of the rest, both relative to |phi(x') - z|."""
+    gap, shift = z_cf - z, edit - z
+    along = (shift * gap).sum(1) / (gap * gap).sum(1)
+    off = (shift - along[:, None] * gap).norm(dim=1) / gap.norm(dim=1)
+    return torch.stack([along, off], 1).numpy()
+
+
+def triangle_apex(positions: np.ndarray) -> tuple[float, float]:
+    """The point at the units' mean distances from z and from phi(x'), so that its distance
+    from phi(x') is 1 - the mean gap closed and its distance from z the mean relative shift."""
+    to_z = np.hypot(positions[:, 0], positions[:, 1]).mean()
+    to_cf = np.hypot(positions[:, 0] - 1, positions[:, 1]).mean()
+    x = (to_z**2 - to_cf**2 + 1) / 2
+    return x, np.sqrt(to_z**2 - x**2)
+
+
+def triangle_figure(report: dict, run: dict) -> None:
+    z, z_cf = run["z"], run["z_cf"]
+    seeds = {key: triangle_positions(edit, z, z_cf) for key, edit in run["alone"].items()}
+    check(report, "gap_closed", {key: float(1 - np.hypot(p[:, 0] - 1, p[:, 1]).mean()) for key, p in seeds.items()})
+    # label, marker, filled, positions, label offset (points)
+    series = {kind: (RENDERERS[kind][0], RENDERERS[kind][1], RENDERERS[kind][2], RENDERERS[kind][3],
+                     np.concatenate([seeds[kind, seed] for seed in range(5)]), TRIANGLE_LABELS[kind])
+              for kind in RENDERERS}
+    for name, (label, source, filled) in TRIANGLE_REFERENCES.items():
+        texts = run["encoder"].auxiliary("talent_motivation", source)
+        rows = run["ids"].get_indexer(texts.ids)
+        series[name] = (label, "0.25", "D", filled, triangle_positions(texts.factual(texts.ids), z[rows], z_cf[rows]),
+                        TRIANGLE_LABELS[name])
+    fig, ax = plt.subplots(figsize=(2.9, 2.9))
+    # the arcs of equal gap closed around phi(x'); each label sits on its arc in the free upper right
+    arc = np.linspace(np.pi / 2, np.pi, 200)
+    for gap in (0.0, 0.1, 0.2):
+        radius = 1 - gap
+        ax.plot(1 + radius * np.cos(arc), radius * np.sin(arc), color="0.82", linewidth=0.6, linestyle=(0, (3, 3)), zorder=1)
+        angle = np.radians(101)
+        ax.text(1 + radius * np.cos(angle), radius * np.sin(angle), f"gap closed = {gap:.1f}", fontsize=5, color="0.4",
+                ha="center", va="center", rotation=np.degrees(angle) - 90, rotation_mode="anchor", zorder=1,
+                bbox={"facecolor": "white", "edgecolor": "none", "pad": 0.8})
+    for label, color, marker, filled, positions, offset in series.values():
+        x, y = triangle_apex(positions)
+        line = (0, (1, 1.5)) if color == "0.25" else ("-" if filled else "--")
+        ax.plot([0, x, 1], [0, y, 0], color=color, linewidth=0.5, alpha=0.55, linestyle=line, zorder=2)
+        values, vectors = np.linalg.eigh(np.cov(positions.T))
+        ellipse = {"xy": (x, y), "width": 2 * values[1] ** 0.5, "height": 2 * values[0] ** 0.5,
+                   "angle": np.degrees(np.arctan2(vectors[1, 1], vectors[0, 1]))}
+        if filled and color != "0.25":
+            ax.add_patch(Ellipse(**ellipse, facecolor=color, alpha=0.1, edgecolor="none", zorder=2))
+        ax.add_patch(Ellipse(**ellipse, fill=False, edgecolor=color, linewidth=0.6, linestyle=line, zorder=3))
+        ax.scatter(x, y, s=16, marker=marker, facecolors=color if filled else "white", edgecolors=color,
+                   linewidths=0.8, zorder=4, label=label)
+        ax.annotate(label, (x, y), xytext=offset, textcoords="offset points", fontsize=5.5, color="0.15", zorder=6,
+                    ha="left" if offset[0] > 0 else "right", va="center",
+                    bbox={"facecolor": "white", "edgecolor": "none", "alpha": 0.75, "pad": 0.4})
+    ax.plot([0, 1], [0, 0], color="0.2", linewidth=1, zorder=3)
+    ax.scatter([0, 1], [0, 0], s=16, color="0.2", zorder=5)
+    ax.annotate("$z$", (0, 0), xytext=(0, -4), textcoords="offset points", ha="center", va="top", fontsize=8)
+    ax.annotate(r"$z' = \varphi(x')$", (1, 0), xytext=(-2, -4), textcoords="offset points", ha="center", va="top", fontsize=8)
+    ax.set_aspect("equal")
+    ax.axis("off")
+    ax.set_xlim(-0.14, 1.08)
+    ax.set_ylim(-0.1, 1.03)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, 0.03), ncol=4, frameon=False, fontsize=5.5,
+              handletextpad=0.1, columnspacing=0.6)
+    save(fig, "latent_triangle.pdf")
+
+
 def downstream_figure(report: dict, run: dict) -> None:
     """Counterfactual fairness: per-unit expected predicted qualification per factual region
     under do(O = Western Europe), for the unedited, edited and real latents."""
@@ -281,6 +363,7 @@ def main() -> None:
     tradeoff_figure(results)
     run = replay(report)
     gap_figure(report, run)
+    triangle_figure(report, run)
     downstream_figure(report, run)
 
 
