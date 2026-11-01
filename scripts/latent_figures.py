@@ -326,7 +326,7 @@ def downstream_figure(report: dict, run: dict) -> None:
                (r"$\pi(\varphi(x))$", predict(run["z"]), x), (r"$\pi(\varphi(x'))$", predict(z_real), x[real]),
                renderer["ot_editor"], renderer["ot_flow"], renderer["group_ot"]]
     fig, axes = plt.subplots(2, 5, figsize=(5.3, 2.5), sharex=True, sharey=True,
-                             gridspec_kw={"hspace": 0.45, "wspace": 0.12})
+                             gridspec_kw={"hspace": 0.45, "wspace": 0.12, "right": 0.8})
     # regions ordered by factual qualification: a sequential ramp, light (SSA) to dark (WE)
     region_colors = ["#F2A93B", "#D1495B", "#7B3294", "#1B1B6B"]
     bar = 0.8 / len(names)
@@ -340,12 +340,12 @@ def downstream_figure(report: dict, run: dict) -> None:
         ax.grid(axis="y", color="0.9", linewidth=0.6)
         ax.set_axisbelow(True)
         ax.spines[["top", "right"]].set_visible(False)
-    fig.supxlabel("Qualification (class)", fontsize=7, y=-0.05)
+    fig.supxlabel("Qualification (class)", fontsize=7, x=0.4625, y=-0.05)  # centred under the panels
     fig.supylabel("Units of the region (%)", fontsize=7, x=0.02)
     handles = [plt.Rectangle((0, 0), 1, 1, color=c, linewidth=0) for c in region_colors]
-    fig.legend(handles, [names[k] for k in range(len(names))], loc="upper center",
-               bbox_to_anchor=(0.5, -0.09), ncol=len(names), frameon=False, handlelength=1.2,
-               title="Factual region $\\mathsf{O}$", title_fontsize=7)
+    fig.legend(handles, [names[k] for k in range(len(names))], loc="center left",
+               bbox_to_anchor=(0.81, 0.5), frameon=False, handlelength=1.2,
+               title="Factual region $\\mathsf{O}$", title_fontsize=7, alignment="left")
     save(fig, "latent_downstream_hist.pdf")
     for label, _, _, values, groups in series:
         means = pd.Series(values).groupby(groups).mean()
