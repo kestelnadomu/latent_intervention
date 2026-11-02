@@ -68,11 +68,16 @@ def evaluate(
     """Compare edited latents z' with target latents phi(x'), the encodings of real
     texts that have the target states.
 
+    Latent space, in raw coordinates, per-unit ratios averaged over units that move:
+
+    - ``gap_closed``: 1 - |z' - phi(x')| / |z - phi(x')| (1 = perfect, 0 = no better
+      than leaving z alone, < 0 = worse).
+    - ``relative_shift``: |z' - z| / |phi(x') - z| (0 = no edit, 1 = an edit as long as
+      the real change, whatever its direction).
+
     Latent space, in coordinates divided by ``scale`` (default: the std of ``z``) and
     by sqrt(d):
 
-    - ``gap_closed``: 1 - |z' - phi(x')| / |z - phi(x')|, averaged over units that
-      move (1 = perfect, 0 = no better than leaving z alone, < 0 = worse).
     - ``distance``: mean |z' - phi(x')| (the per-unit energy score of a point edit).
     - ``energy``: energy distance between the sets {z'} and {phi(x')}.
     - ``shift``: mean |z' - z|.
@@ -97,6 +102,7 @@ def evaluate(
         "distance": float(((z_prime - z_true) / scale).norm(dim=1).mean() / root),
         "energy": _energy_distance(z_prime / scale, z_true / scale) / root,
         "shift": float(((z_prime - z) / scale).norm(dim=1).mean() / root),
+        "relative_shift": float(((z_prime - z).norm(dim=1)[moving] / before[moving]).mean()),
         "cosine": float(torch.nn.functional.cosine_similarity(z_prime, z_true).mean()),
     }
     if reader is not None and true_states is not None:

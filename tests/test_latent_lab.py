@@ -110,6 +110,19 @@ def test_state_metrics_and_evaluate(toy):
     assert {"joint_acc", "real_joint_acc", "down_acc", "parity_gap"} <= set(out.index)
 
 
+def test_evaluate_relative_shift(toy):
+    z, _ = toy
+    z_true = z + 2.0
+    assert evaluate(z, z, z_true)["relative_shift"] == 0
+    assert abs(evaluate(z, z_true, z_true)["relative_shift"] - 1) < 1e-6
+    assert abs(evaluate(z, z + 1.0, z_true)["relative_shift"] - 0.5) < 1e-5
+    assert abs(evaluate(z, z - 1.0, z_true)["relative_shift"] - 0.5) < 1e-5  # blind to direction
+    assert abs(evaluate(z, z + 1.0, z_true, scale=torch.full((z.shape[1],), 7.0))["relative_shift"] - 0.5) < 1e-5
+    still = z_true.clone()
+    still[0] = z[0]  # a unit whose real change is zero is left out, like in gap_closed
+    assert abs(evaluate(z, z_true, still)["relative_shift"] - 1) < 1e-6
+
+
 def test_evaluate_samples(toy):
     z, states = toy
     reader = Reader(["X", "D"]).fit(z, states, epochs=5)
