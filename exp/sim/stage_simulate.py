@@ -49,7 +49,7 @@ def _archive_existing(paths: Iterable[str | Path]) -> None:
 
 def stage_simulate(config: dict[str, Any]) -> None:
     """Generate aligned S/S' for all units and a seeded test index."""
-    from src.schema import load_object
+    from exp.sim.schema import load_object
 
     factory = load_object(config["objects"]["scm"])
     scm = factory(config)

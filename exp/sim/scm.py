@@ -24,7 +24,7 @@ from typing import Callable
 import numpy as np
 import pandas as pd
 
-from src.schema import ColumnSpec
+from exp.sim.schema import ColumnSpec
 
 NoiseSampler = Callable[[np.random.Generator, int], np.ndarray]
 StructuralFn = Callable[[dict[str, np.ndarray], dict[str, np.ndarray]], np.ndarray]

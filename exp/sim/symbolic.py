@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 import torch
 
-from src.schema import ColumnSpec
+from exp.sim.schema import ColumnSpec
 
 _SQRT2 = math.sqrt(2.0)
 
@@ -272,7 +272,7 @@ class SymbolicIntervention:
 if __name__ == "__main__":
     # Smoke test: closed-form h_S vs. empirical transition counts from the SCM and
     # kernel of the active experiment, resolved through exp/sim_talent/config.yaml.
-    from src.schema import load_config_object, load_intervention
+    from exp.sim.schema import load_config_object, load_intervention
 
     h_s = load_config_object("symbolic_kernel")()
     scm = load_config_object("scm")()

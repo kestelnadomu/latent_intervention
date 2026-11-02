@@ -23,7 +23,7 @@ from exp.sim.design import (
 )
 from exp.sim.helpers import coerce_bool, read_csv, sha256_file
 from exp.sim.pairing import PairingError, build_pair_index
-from src.schema import ColumnSpec
+from exp.sim.schema import ColumnSpec
 
 
 def state_columns(config: Mapping[str, Any]) -> list[str]:
