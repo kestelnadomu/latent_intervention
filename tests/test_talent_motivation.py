@@ -8,7 +8,7 @@ from exp.sim_talent_motivation import talent_motivation as tm
 from exp.sim_talent import talent_sfm
 from exp.sim.helpers import load_sim_config
 from exp.sim.render import load_render_spec
-from src.schema import load_intervention
+from exp.sim.schema import load_intervention
 
 CONFIG = load_sim_config(tm.CONFIG_PATH)
 CARD = {c.name: c.n_categories for c in tm._nodes(CONFIG)}

@@ -5,7 +5,7 @@ The canonical Standard Fairness Model of Plecko & Bareinboim (X protected
 attribute, Z confounder, W mediators, Y outcome), instantiated for CV screening
 and extended by a measurement model for the latent confounder. This is the
 single place the numbers live; the schema (names and cardinalities) is data in
-``exp/sim_talent/config.yaml`` and read via ``src.schema.load_schema``. The generic
+``exp/sim_talent/config.yaml`` and read via ``exp.sim.schema.load_schema``. The generic
 engine and pipeline stages live in ``exp/sim/``; ``exp.sim_talent.talent_sfm`` remains an
 alias of this module, because the hash-guarded config points there.
 
@@ -33,7 +33,7 @@ import pandas as pd
 
 from exp.sim.scm import SCM, LinearMechanism, NoiseSampler, linear_mechanism
 from exp.sim.symbolic import SymbolicIntervention
-from src.schema import ColumnSpec, load_schema
+from exp.sim.schema import ColumnSpec, load_schema
 
 ROOT_NODES = ("X", "T")
 CONFIG_PATH = Path(__file__).parent / "config.yaml"
@@ -225,7 +225,7 @@ def outcome_bayes_predictions(
 
 if __name__ == "__main__":
     from exp.sim.paired_data import auxiliary_columns
-    from src.schema import load_intervention
+    from exp.sim.schema import load_intervention
 
     config = _as_config(None)
     columns, outcome = load_schema(config)

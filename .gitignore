@@ -16,10 +16,10 @@
 .Rhistory
 
 # Generated pipeline artifacts (regenerable; data/text/ stays tracked: texts cost API credits)
-data/sim/
-# data/sim_talent/
-data/text/
-data/latents/**
+# data/sim/
+# # data/sim_talent/
+# data/text/
+# data/latents/**
 # Canonical embedding artifacts are intentionally portable/tracked.
 # Temporary queue/staging files stay ignored.
 !data/latents/talent/
@@ -50,7 +50,7 @@ data/latents/**
 !data/latents/talent_motivation/embeddinggemma_768/manifest.json
 # Keep published semantic decoders and the oracle regression reference portable.
 # Trials, archives, legacy unselected h_Z models, encoder checkpoints and temporary files stay local.
-models/**
+# models/**
 !models/talent/
 !models/talent/*/
 !models/talent/*/g-independent/
@@ -67,7 +67,7 @@ models/**
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.pt
 !models/talent/*/g-*/h-*/benchmarks/*/selected/latent_intervention.info.json
 # Published training reports and the small all-encoder benchmark audit bundle.
-reports/**
+# reports/**
 !reports/talent_motivation/
 !reports/talent_motivation/encoding/
 !reports/talent_motivation/encoding/*/
@@ -311,6 +311,26 @@ overleaf*
 !reports/talent_motivation/hz_misspecification/*/evaluation/**/
 !reports/talent_motivation/hz_misspecification/*/evaluation/references.json
 !reports/talent_motivation/hz_misspecification/*/evaluation/**/metrics.json
+
+# Scheduling-only distributed handoff; keep compact provenance, not transfer archives.
+!reports/talent_motivation/hz_misspecification/*/shards/
+!reports/talent_motivation/hz_misspecification/*/shards/*/
+!reports/talent_motivation/hz_misspecification/*/shards/*/assignment.json
+!reports/talent_motivation/hz_misspecification/*/shards/*/status-before-split.json
+!reports/talent_motivation/hz_misspecification/*/shards/*/merge.json
+!reports/talent_motivation/hz_misspecification/*/shards/*/local/
+!reports/talent_motivation/hz_misspecification/*/shards/*/remote/
+!reports/talent_motivation/hz_misspecification/*/shards/*/local/*.json
+!reports/talent_motivation/hz_misspecification/*/shards/*/remote/*.json
+!reports/talent_motivation/hz_misspecification/*/shards/*/local/executions/
+!reports/talent_motivation/hz_misspecification/*/shards/*/remote/executions/
+!reports/talent_motivation/hz_misspecification/*/shards/*/local/executions/*.json
+!reports/talent_motivation/hz_misspecification/*/shards/*/remote/executions/*.json
+
+# Original ownership/cutover records for the authorized 38/12 subdivision.
+!reports/talent_motivation/hz_misspecification/hz-misspec-v1/shards/remote50-20261020/return12-20261022/
+!reports/talent_motivation/hz_misspecification/hz-misspec-v1/shards/remote50-20261020/return12-20261022/allocation.json
+!reports/talent_motivation/hz_misspecification/hz-misspec-v1/shards/remote50-20261020/return12-20261022/cutover.json
 
 # private notes
 _notes/
